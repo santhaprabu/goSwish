@@ -20,6 +20,7 @@ import TermsPrivacy from './components/TermsPrivacy';
 // New cleaner enhancement components
 import CleanerSchedule from './components/CleanerSchedule';
 import CleanerNotifications from './components/CleanerNotifications';
+import CustomerNotifications from './components/CustomerNotifications';
 import CleanerRatings from './components/CleanerRatings';
 import CleanerMessaging from './components/CleanerMessaging';
 import EarningsDashboard from './components/EarningsDashboard';
@@ -317,6 +318,22 @@ function AppContent() {
           />
         );
 
+      case 'customer-notifications':
+        return (
+          <CustomerNotifications
+            onBack={() => {
+              setCurrentScreen('main');
+              setActiveTab('home');
+            }}
+            onViewBooking={(bookingId) => {
+              // We could navigate to specific booking details if we had a screen for it
+              // For now, go to bookings list
+              setActiveTab('bookings');
+              setCurrentScreen('main');
+            }}
+          />
+        );
+
       case 'cleaner-notifications':
         return (
           <CleanerNotifications
@@ -400,6 +417,7 @@ function AppContent() {
                 onNewBooking={() => navigateTo('booking')}
                 onViewHouses={() => navigateTo('houses')}
                 onViewBookings={() => setActiveTab('bookings')}
+                onNotifications={() => setCurrentScreen('customer-notifications')}
               />
             )}
             {activeTab === 'houses' && (

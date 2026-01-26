@@ -297,7 +297,33 @@ export const acceptJobOffer = async (bookingId, cleanerId, jobDetails) => {
         updatedAt: new Date().toISOString(),
     };
 
-    return await setDoc(COLLECTIONS.JOBS, job.id, job);
+    await setDoc(COLLECTIONS.JOBS, job.id, job);
+
+    // 5. Notify Customer
+    try {
+        const cleaner = await getDoc(COLLECTIONS.CLEANERS, cleanerId);
+        let cleanerName = 'A cleaner';
+        if (cleaner) {
+            const cleanerUser = await getDoc(COLLECTIONS.USERS, cleaner.userId);
+            if (cleanerUser) cleanerName = `${cleanerUser.firstName} ${cleanerUser.lastName}`;
+        }
+
+        const notifId = generateId('notification');
+        await setDoc(COLLECTIONS.NOTIFICATIONS, notifId, {
+            id: notifId,
+            userId: booking.customerId,
+            type: 'booking_accepted',
+            title: 'Booking Confirmed!',
+            message: `${cleanerName} has accepted your booking for ${jobDetails.date}.`,
+            relatedId: booking.id,
+            read: false,
+            createdAt: new Date().toISOString()
+        });
+    } catch (e) {
+        console.warn('Failed to send notification', e);
+    }
+
+    return job;
 };
 
 /**
@@ -1008,4 +1034,64 @@ export const cleanupOldAvailability = async (cleanerId, daysToKeep = 7) => {
         availability: cleanedAvailability,
         updatedAt: new Date().toISOString(),
     });
+};
+
+/**
+ * Broadcast new job to cleaners
+ */
+export const broadcastNewJob = async (booking) => {
+    try {
+        // 1. Get House for location
+        const house = await getDoc(COLLECTIONS.HOUSES, booking.houseId);
+        if (!house) return;
+
+        // 2. Get all cleaners
+        const cleaners = await getDocs(COLLECTIONS.CLEANERS);
+
+        // Helper to calc distance (simple Haversine)
+        const getDist = (loc1, loc2) => {
+            if (!loc1?.lat || !loc2?.lat) return 999;
+            const R = 3959; // miles
+            const dLat = (loc2.lat - loc1.lat) * Math.PI / 180;
+            const dLng = (loc2.lng - loc1.lng) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(loc1.lat * Math.PI / 180) * Math.cos(loc2.lat * Math.PI / 180) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        };
+
+        // 3. Filter eligible cleaners
+        const eligibleCleaners = cleaners.filter(cleaner => {
+            if (cleaner.status !== 'active') return false;
+
+            // Check distance
+            if (cleaner.baseLocation && house.address) {
+                const dist = getDist(cleaner.baseLocation, house.address);
+                return dist <= (cleaner.serviceRadius || 25);
+            }
+            return true; // Default allow if no location data
+        });
+
+        console.log(`Broadcasting job ${booking.id} to ${eligibleCleaners.length} cleaners`);
+
+        // 4. Create notifications per cleaner
+        const createPromises = eligibleCleaners.map(cleaner => {
+            const notif = {
+                id: generateId('notification'),
+                userId: cleaner.userId,
+                type: 'job_offer',
+                title: 'New Job Available!',
+                message: `New ${booking.serviceTypeId} job near you ($${Math.round(booking.totalAmount * 0.7)})`,
+                relatedId: booking.id,
+                read: false,
+                createdAt: new Date().toISOString()
+            };
+            return setDoc(COLLECTIONS.NOTIFICATIONS, notif.id, notif);
+        });
+
+        await Promise.all(createPromises);
+    } catch (e) {
+        console.error('Error broadcasting job:', e);
+    }
 };

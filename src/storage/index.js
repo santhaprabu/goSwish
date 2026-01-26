@@ -135,6 +135,7 @@ export {
     bulkUpdateCleanerAvailability,
     getAvailableCleanersForSlot,
     cleanupOldAvailability,
+    broadcastNewJob,
 } from './helpers.js';
 
 // Aliases for consistency

@@ -13,41 +13,25 @@ import {
 
 // Notification types mapping
 const NOTIFICATION_TYPES = {
-    job_available: 'job_available',
-    job_offer: 'job_offer', // Specific type used in broadcast
-    NEW_JOB: 'new_job',
-    job_accepted: 'job_accepted',
-    JOB_ACCEPTED: 'job_accepted',
     booking_accepted: 'booking_accepted',
-    payment: 'payment',
-    PAYMENT_RECEIVED: 'payment_received',
-    review: 'review',
-    REVIEW_RECEIVED: 'review_received',
+    job_accepted: 'job_accepted',
+    booking_update: 'booking_update',
     message: 'message',
-    MESSAGE: 'message',
-    reminder: 'reminder',
-    REMINDER: 'reminder',
-    system: 'system',
-    SYSTEM: 'system'
+    promo: 'promo',
+    system: 'system'
 };
 
 const getNotificationIcon = (type) => {
     const normalizedType = type?.toLowerCase() || 'system';
 
-    if (normalizedType.includes('job') || normalizedType.includes('available') || normalizedType.includes('offer') || normalizedType.includes('booking')) {
-        return { icon: Briefcase, color: 'text-primary-600', bg: 'bg-primary-100' };
+    if (normalizedType.includes('booking') || normalizedType.includes('job') || normalizedType.includes('accepted')) {
+        return { icon: Calendar, color: 'text-primary-600', bg: 'bg-primary-100' };
     }
-    if (normalizedType.includes('payment')) {
-        return { icon: DollarSign, color: 'text-secondary-600', bg: 'bg-secondary-100' };
-    }
-    if (normalizedType.includes('review')) {
-        return { icon: Star, color: 'text-yellow-500', bg: 'bg-yellow-100' };
+    if (normalizedType.includes('promo') || normalizedType.includes('offer')) {
+        return { icon: Sparkles, color: 'text-purple-600', bg: 'bg-purple-100' };
     }
     if (normalizedType.includes('message')) {
         return { icon: MessageSquare, color: 'text-primary-600', bg: 'bg-primary-100' };
-    }
-    if (normalizedType.includes('reminder')) {
-        return { icon: Clock, color: 'text-warning-600', bg: 'bg-warning-100' };
     }
     return { icon: Bell, color: 'text-gray-600', bg: 'bg-gray-100' };
 };
@@ -70,20 +54,11 @@ const formatTimeAgo = (timestamp) => {
     return date.toLocaleDateString();
 };
 
-export default function CleanerNotifications({ onBack, onViewJob, onViewMessage, onViewReview }) {
+export default function CustomerNotifications({ onBack, onViewBooking }) {
     const { user } = useApp();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('all'); // all, unread, jobs, payments
-    const [showSettings, setShowSettings] = useState(false);
-    const [settings, setSettings] = useState({
-        newJobs: true,
-        payments: true,
-        reviews: true,
-        messages: true,
-        reminders: true,
-        marketing: false
-    });
+    const [filter, setFilter] = useState('all'); // all, unread
 
     // Load notifications from database
     useEffect(() => {
@@ -107,11 +82,8 @@ export default function CleanerNotifications({ onBack, onViewJob, onViewMessage,
     const unreadCount = notifications.filter(n => !n.read).length;
 
     const filteredNotifications = notifications.filter(n => {
-        const type = n.type?.toLowerCase() || '';
         if (filter === 'all') return true;
         if (filter === 'unread') return !n.read;
-        if (filter === 'jobs') return type.includes('job') || type.includes('available');
-        if (filter === 'payments') return type.includes('payment');
         return true;
     });
 
@@ -144,75 +116,12 @@ export default function CleanerNotifications({ onBack, onViewJob, onViewMessage,
     const handleNotificationClick = (notification) => {
         handleMarkAsRead(notification.id);
 
-        switch (notification.type) {
-            case NOTIFICATION_TYPES.NEW_JOB:
-            case NOTIFICATION_TYPES.job_offer:
-                onViewJob?.(notification.relatedId ? { id: notification.relatedId } : notification.data);
-                break;
-            case NOTIFICATION_TYPES.MESSAGE:
-                onViewMessage?.(notification.data);
-                break;
-            case NOTIFICATION_TYPES.REVIEW_RECEIVED:
-                onViewReview?.(notification.data);
-                break;
-            default:
-                break;
+        if (notification.type === 'booking_accepted' || notification.type === 'job_accepted') {
+            // Navigate to booking details if possible
+            // Assuming relatedId is booking ID
+            onViewBooking?.(notification.relatedId);
         }
     };
-
-    // Settings Modal
-    if (showSettings) {
-        return (
-            <div className="min-h-screen bg-gray-50 pb-24">
-                <div className="app-bar">
-                    <button onClick={() => setShowSettings(false)} className="p-2">
-                        <ChevronRight className="w-6 h-6 rotate-180" />
-                    </button>
-                    <h1 className="text-lg font-semibold">Notification Settings</h1>
-                    <div className="w-10" />
-                </div>
-
-                <div className="px-6 py-6 space-y-6">
-                    <div className="card p-0 divide-y divide-gray-100">
-                        {[
-                            { key: 'newJobs', label: 'New Job Offers', desc: 'Get notified when jobs match your preferences' },
-                            { key: 'payments', label: 'Payment Updates', desc: 'Receive alerts when you get paid' },
-                            { key: 'reviews', label: 'Customer Reviews', desc: 'Know when customers leave feedback' },
-                            { key: 'messages', label: 'Messages', desc: 'Get notified of new customer messages' },
-                            { key: 'reminders', label: 'Job Reminders', desc: 'Reminders for upcoming scheduled jobs' },
-                            { key: 'marketing', label: 'Promotions & Tips', desc: 'Earn more with tips and special offers' }
-                        ].map(({ key, label, desc }) => (
-                            <label key={key} className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50">
-                                <div>
-                                    <p className="font-medium text-gray-900">{label}</p>
-                                    <p className="text-sm text-gray-500">{desc}</p>
-                                </div>
-                                <div className="relative">
-                                    <input
-                                        type="checkbox"
-                                        checked={settings[key]}
-                                        onChange={(e) => setSettings(prev => ({ ...prev, [key]: e.target.checked }))}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-secondary-500 
-                                                    after:content-[''] after:absolute after:top-0.5 after:left-[2px] 
-                                                    after:bg-white after:rounded-full after:h-5 after:w-5 
-                                                    after:transition-all peer-checked:after:translate-x-full" />
-                                </div>
-                            </label>
-                        ))}
-                    </div>
-
-                    <button
-                        onClick={() => setShowSettings(false)}
-                        className="btn btn-secondary w-full"
-                    >
-                        Save Settings
-                    </button>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
@@ -221,9 +130,7 @@ export default function CleanerNotifications({ onBack, onViewJob, onViewMessage,
                     <ChevronRight className="w-6 h-6 rotate-180" />
                 </button>
                 <h1 className="text-lg font-semibold">Notifications</h1>
-                <button onClick={() => setShowSettings(true)} className="p-2">
-                    <Settings className="w-5 h-5 text-gray-600" />
-                </button>
+                <div className="w-10" />
             </div>
 
             {/* Unread Badge & Mark All */}
@@ -233,7 +140,7 @@ export default function CleanerNotifications({ onBack, onViewJob, onViewMessage,
                         <Bell className="w-5 h-5 text-gray-400" />
                         {unreadCount > 0 ? (
                             <span className="text-sm font-medium text-gray-900">
-                                {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+                                {unreadCount} unread
                             </span>
                         ) : (
                             <span className="text-sm text-gray-500">All caught up!</span>
@@ -242,7 +149,7 @@ export default function CleanerNotifications({ onBack, onViewJob, onViewMessage,
                     {unreadCount > 0 && (
                         <button
                             onClick={handleMarkAllRead}
-                            className="text-sm font-medium text-secondary-600 hover:text-secondary-700"
+                            className="text-sm font-medium text-primary-600 hover:text-primary-700"
                         >
                             Mark all read
                         </button>
@@ -256,15 +163,13 @@ export default function CleanerNotifications({ onBack, onViewJob, onViewMessage,
                     {[
                         { id: 'all', label: 'All' },
                         { id: 'unread', label: 'Unread' },
-                        { id: 'jobs', label: 'Jobs' },
-                        { id: 'payments', label: 'Payments' }
                     ].map(({ id, label }) => (
                         <button
                             key={id}
                             onClick={() => setFilter(id)}
                             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
                                 ${filter === id
-                                    ? 'bg-secondary-500 text-white'
+                                    ? 'bg-primary-500 text-white'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                         >
@@ -288,10 +193,7 @@ export default function CleanerNotifications({ onBack, onViewJob, onViewMessage,
                         </div>
                         <h3 className="font-semibold text-gray-900 mb-1">No notifications</h3>
                         <p className="text-sm text-gray-500">
-                            {filter === 'unread'
-                                ? "You're all caught up!"
-                                : "You'll see notifications here when something happens"
-                            }
+                            You'll see updates here when your bookings change
                         </p>
                     </div>
                 ) : (
@@ -302,12 +204,12 @@ export default function CleanerNotifications({ onBack, onViewJob, onViewMessage,
                             <div
                                 key={notification.id}
                                 className={`card p-4 relative transition-all cursor-pointer hover:shadow-md
-                                    ${!notification.read ? 'bg-secondary-50/50 border-secondary-200' : ''}`}
+                                    ${!notification.read ? 'bg-primary-50/50 border-primary-200' : ''}`}
                                 onClick={() => handleNotificationClick(notification)}
                             >
                                 {/* Unread indicator */}
                                 {!notification.read && (
-                                    <div className="absolute top-4 right-4 w-2.5 h-2.5 bg-secondary-500 rounded-full" />
+                                    <div className="absolute top-4 right-4 w-2.5 h-2.5 bg-primary-500 rounded-full" />
                                 )}
 
                                 <div className="flex items-start gap-3">
@@ -334,14 +236,6 @@ export default function CleanerNotifications({ onBack, onViewJob, onViewMessage,
                                         <X className="w-4 h-4 text-gray-400" />
                                     </button>
                                 </div>
-
-                                {/* Action hint */}
-                                {notification.actionable && (
-                                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                                        <span className="text-xs text-secondary-600 font-medium">Tap to view details</span>
-                                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                                    </div>
-                                )}
                             </div>
                         );
                     })

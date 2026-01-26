@@ -330,8 +330,12 @@ export function AppProvider({ children }) {
                 throw new Error('User not authenticated');
             }
 
-            const { createBooking: createBookingInDB } = await import('../storage/index.js');
+            const { createBooking: createBookingInDB, broadcastNewJob } = await import('../storage/index.js');
             const newBooking = await createBookingInDB(state.user.uid, bookingData);
+
+            // Broadcast notification to relevant cleaners
+            broadcastNewJob(newBooking).catch(console.error);
+
             return newBooking;
         } catch (error) {
             console.error('Error creating booking:', error);

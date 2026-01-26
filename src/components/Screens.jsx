@@ -60,12 +60,13 @@ export function BottomNavigation({ activeTab, onTabChange, role }) {
     );
 }
 
-export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings }) {
+export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNotifications }) {
     const { user, getUserHouses, getUserBookings, serviceTypes } = useApp();
 
     const [houses, setHouses] = useState([]);
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [notificationCount, setNotificationCount] = useState(0);
 
     // Load data on mount
     useEffect(() => {
@@ -78,13 +79,22 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings }) {
                 if (isMounted) {
                     setLoading(true);
                 }
-                const [housesData, bookingsData] = await Promise.all([
+
+                // Import storage dynamically
+                const { getUserNotifications } = await import('../storage');
+
+                const [housesData, bookingsData, notifications] = await Promise.all([
                     getUserHouses(),
-                    getUserBookings()
+                    getUserBookings(),
+                    getUserNotifications(user.uid)
                 ]);
+
                 if (isMounted) {
                     setHouses(housesData || []);
                     setBookings(bookingsData || []);
+                    if (notifications) {
+                        setNotificationCount(notifications.filter(n => !n.read).length);
+                    }
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
@@ -114,9 +124,14 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings }) {
                         <div>
                             <h1 className="text-2xl font-bold">Welcome Back {user?.name?.split(' ')[0] || 'Friend'}</h1>
                         </div>
-                        <button className="relative p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                        <button
+                            onClick={onNotifications}
+                            className="relative p-2 bg-white/20 rounded-xl backdrop-blur-sm hover:bg-white/30 transition-colors"
+                        >
                             <Bell className="w-6 h-6" />
-                            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                            {notificationCount > 0 && (
+                                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-primary-600" />
+                            )}
                         </button>
                     </div>
 
