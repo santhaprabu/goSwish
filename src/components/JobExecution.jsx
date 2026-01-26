@@ -4,6 +4,7 @@ import {
     Upload, ChevronRight, Check, X, AlertCircle, Play,
     Square, Image as ImageIcon, Loader2
 } from 'lucide-react';
+import { updateBookingTracking } from '../storage'; // Import tracking helper
 
 // Job Execution - Complete workflow for cleaners
 export default function JobExecution({ job, onComplete, onBack }) {
@@ -34,6 +35,7 @@ export default function JobExecution({ job, onComplete, onBack }) {
     }, []);
 
     const generateChecklist = () => {
+        // ... (Task generation logic implementation details omitted for brevity, logic remains same)
         const tasks = [];
         const rooms = ['Kitchen', 'Living Room', 'Bathroom 1', 'Bathroom 2', 'Bedroom 1', 'Bedroom 2'];
 
@@ -60,28 +62,9 @@ export default function JobExecution({ job, onComplete, onBack }) {
             });
         });
 
-        // Add-on specific tasks
-        if (job.addOns?.includes('inside-fridge')) {
-            tasks.push({
-                id: 'addon-fridge',
-                room: 'Kitchen',
-                title: 'Clean inside refrigerator',
-                required: true,
-                status: 'not_started',
-                notes: ''
-            });
-        }
-
-        if (job.addOns?.includes('inside-oven')) {
-            tasks.push({
-                id: 'addon-oven',
-                room: 'Kitchen',
-                title: 'Clean inside oven',
-                required: true,
-                status: 'not_started',
-                notes: ''
-            });
-        }
+        // Add-ons
+        if (job.addOns?.includes('inside-fridge')) tasks.push({ id: 'addon-fridge', room: 'Kitchen', title: 'Clean inside refrigerator', required: true, status: 'not_started', notes: '' });
+        if (job.addOns?.includes('inside-oven')) tasks.push({ id: 'addon-oven', room: 'Kitchen', title: 'Clean inside oven', required: true, status: 'not_started', notes: '' });
 
         setChecklist(tasks);
     };
@@ -91,10 +74,30 @@ export default function JobExecution({ job, onComplete, onBack }) {
         setStartTime(new Date());
         setCurrentStep('trip');
 
+        // Initial DB update
+        updateBookingTracking(job.id, {
+            status: 'on_the_way',
+            lat: currentLocation.lat,
+            lng: currentLocation.lng,
+            distance: distance,
+            eta: eta
+        });
+
         // Simulate location updates
         const interval = setInterval(() => {
             setDistance(prev => {
                 const newDist = Math.max(0, prev - 0.3);
+                const newEta = Math.ceil((newDist / 3.2) * 12);
+
+                // Update DB with simulated move
+                updateBookingTracking(job.id, {
+                    status: newDist === 0 ? 'arrived' : 'on_the_way',
+                    lat: currentLocation.lat + (Math.random() * 0.005 - 0.0025), // Small jitter
+                    lng: currentLocation.lng + (Math.random() * 0.005 - 0.0025),
+                    distance: newDist,
+                    eta: newEta
+                });
+
                 if (newDist === 0) {
                     clearInterval(interval);
                     setTripStatus('arrived');

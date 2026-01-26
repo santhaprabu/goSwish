@@ -136,6 +136,8 @@ export {
     getAvailableCleanersForSlot,
     cleanupOldAvailability,
     broadcastNewJob,
+    updateBookingTracking,
+    getBookingWithTracking,
 } from './helpers.js';
 
 // Aliases for consistency

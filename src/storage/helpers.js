@@ -1095,3 +1095,26 @@ export const broadcastNewJob = async (booking) => {
         console.error('Error broadcasting job:', e);
     }
 };
+
+// ============================================
+// TRACKING OPERATIONS
+// ============================================
+
+/**
+ * Update booking tracking info
+ */
+export const updateBookingTracking = async (bookingId, trackingData) => {
+    return await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
+        tracking: {
+            ...trackingData,
+            updatedAt: new Date().toISOString()
+        }
+    });
+};
+
+/**
+ * Get booking with tracking
+ */
+export const getBookingWithTracking = async (bookingId) => {
+    return await getDoc(COLLECTIONS.BOOKINGS, bookingId);
+};

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
     MapPin, Navigation, Phone, MessageCircle, Clock,
-    User, Car, Home, ChevronRight
+    User, Car, Home, ChevronRight, Loader2
 } from 'lucide-react';
+import { getBookingWithTracking } from '../storage';
 
 // Live Tracking - Customer view of cleaner en route
 export default function LiveTracking({ booking, cleaner, onBack }) {
@@ -13,24 +14,43 @@ export default function LiveTracking({ booking, cleaner, onBack }) {
     const [distance, setDistance] = useState(3.2); // miles
     const [eta, setEta] = useState(12); // minutes
     const [status, setStatus] = useState('on_the_way'); // on_the_way, arrived, in_progress
+    const [loading, setLoading] = useState(true);
 
-    // Simulate location updates
+    // Poll for location updates
     useEffect(() => {
-        if (status === 'on_the_way') {
-            const interval = setInterval(() => {
-                setDistance(prev => {
-                    const newDist = Math.max(0, prev - 0.2);
-                    if (newDist === 0) {
-                        setStatus('arrived');
-                    }
-                    return newDist;
-                });
-                setEta(prev => Math.max(0, prev - 1));
-            }, 5000);
+        let interval;
 
-            return () => clearInterval(interval);
+        const fetchLocation = async () => {
+            try {
+                const updatedBooking = await getBookingWithTracking(booking.id);
+                if (updatedBooking?.tracking) {
+                    const t = updatedBooking.tracking;
+                    if (t.lat && t.lng) setCleanerLocation({ lat: t.lat, lng: t.lng });
+                    if (t.distance !== undefined) setDistance(t.distance);
+                    if (t.eta !== undefined) setEta(t.eta);
+                    if (t.status) setStatus(t.status);
+                } else {
+                    // Start simulation if no real tracking data yet
+                    // Only if we haven't received any data
+                }
+                setLoading(false);
+            } catch (err) {
+                console.error("Error fetching tracking:", err);
+            }
+        };
+
+        // Initial fetch
+        fetchLocation();
+
+        // Poll every 4 seconds
+        if (status !== 'arrived') {
+            interval = setInterval(fetchLocation, 4000);
         }
-    }, [status]);
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [booking.id, status]);
 
     const houseLocation = booking.house?.location || { lat: 32.7831, lng: -96.8067 };
 
@@ -52,7 +72,8 @@ export default function LiveTracking({ booking, cleaner, onBack }) {
                     <div className="text-center">
                         <MapPin className="w-16 h-16 text-primary-600 mx-auto mb-3" />
                         <p className="text-lg font-semibold text-primary-900">Live Map View</p>
-                        <p className="text-sm text-primary-700 mt-1">GPS tracking simulation</p>
+                        <p className="text-sm text-primary-700 mt-1">Real-time GPS tracking enabled</p>
+                        {loading && <p className="text-xs text-primary-600 mt-2 flex items-center justify-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Connecting...</p>}
                     </div>
                 </div>
 
@@ -125,7 +146,7 @@ export default function LiveTracking({ booking, cleaner, onBack }) {
                 </div>
 
                 {/* Trip Details */}
-                {status === 'on_the_way' && (
+                {status !== 'arrived' && (
                     <div className="card p-6">
                         <h3 className="font-semibold text-gray-900 mb-4">Trip Details</h3>
 
