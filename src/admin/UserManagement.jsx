@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
-    getDocs, updateDoc, COLLECTIONS, getCleanerByUserId
+    getDocs, updateDoc, COLLECTIONS
 } from '../storage/db';
 import {
-    Search, Filter, MoreVertical, Shield, Shieldcheck,
+    Search, Filter, MoreVertical, Shield, ShieldCheck,
     User, Briefcase, CheckCircle, XCircle
 } from 'lucide-react';
 
