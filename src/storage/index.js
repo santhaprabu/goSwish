@@ -55,12 +55,14 @@ export {
     // Houses
     createHouse,
     getUserHouses,
+    getHouseById,
     updateHouse,
     deleteHouse,
 
     // Bookings
     createBooking,
     getBookingById,
+    getAvailableBookings,
     getCustomerBookings,
     getCleanerBookings,
     updateBooking,
@@ -74,6 +76,7 @@ export {
 
     // Jobs
     createJob,
+    acceptJobOffer,
     getJobById,
     getCleanerJobs,
     updateJob,

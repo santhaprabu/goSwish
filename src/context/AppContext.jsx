@@ -366,6 +366,17 @@ export function AppProvider({ children }) {
         }
     }, [state.user]);
 
+    const acceptJobOffer = useCallback(async (bookingId, cleanerId, jobDetails) => {
+        try {
+            const { acceptJobOffer: acceptOfferInDB } = await import('../storage/index.js');
+            const newJob = await acceptOfferInDB(bookingId, cleanerId, jobDetails);
+            return newJob;
+        } catch (error) {
+            console.error('Error accepting job offer:', error);
+            throw error;
+        }
+    }, []);
+
     // Promo code validation (can stay in-memory or move to DB later)
     const validatePromoCode = useCallback(async (code) => {
         try {
@@ -557,6 +568,7 @@ export function AppProvider({ children }) {
         updateBooking,
         setCurrentBooking,
         getUserBookings,
+        acceptJobOffer, // Add this
 
         // Promo & Pricing
         validatePromoCode,

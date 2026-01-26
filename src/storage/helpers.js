@@ -58,6 +58,13 @@ export const getUserHouses = async (userId) => {
 };
 
 /**
+ * Get house by ID
+ */
+export const getHouseById = async (houseId) => {
+    return await getDoc(COLLECTIONS.HOUSES, houseId);
+};
+
+/**
  * Update house
  */
 export const updateHouse = async (houseId, updates) => {
@@ -122,6 +129,17 @@ export const getCustomerBookings = async (customerId) => {
  */
 export const getCleanerBookings = async (cleanerId) => {
     return await queryDocs(COLLECTIONS.BOOKINGS, 'cleanerId', cleanerId);
+};
+
+/**
+ * Get available bookings (confirmed but no cleaner)
+ */
+export const getAvailableBookings = async () => {
+    // Determine bookings that correspond to "open jobs"
+    // In a real DB we'd composite query: status=='confirmed' AND cleanerId==null
+    // Here we might fetch confirmed and filter
+    const bookings = await queryDocs(COLLECTIONS.BOOKINGS, 'status', 'confirmed');
+    return bookings.filter(b => !b.cleanerId);
 };
 
 /**
@@ -223,6 +241,58 @@ export const createJob = async (bookingId) => {
             after: [],
         },
         notes: '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+
+    return await setDoc(COLLECTIONS.JOBS, job.id, job);
+};
+
+/**
+ * Accept a job offer (assign cleaner to booking and create job)
+ */
+export const acceptJobOffer = async (bookingId, cleanerId, jobDetails) => {
+    // 1. Get current booking
+    const booking = await getBookingById(bookingId);
+    if (!booking) throw new Error('Booking not found');
+    if (booking.cleanerId) throw new Error('Job already taken');
+
+    // 2. Fetch related data
+    const [house, customer] = await Promise.all([
+        getDoc(COLLECTIONS.HOUSES, booking.houseId),
+        getDoc(COLLECTIONS.USERS, booking.customerId)
+    ]);
+
+    // 3. Update booking
+    await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
+        cleanerId: cleanerId,
+        status: 'scheduled',
+        updatedAt: new Date().toISOString()
+    });
+
+    // 4. Create Job
+    const job = {
+        id: generateId('job'),
+        bookingId: booking.id,
+        customerId: booking.customerId,
+        cleanerId: cleanerId,
+        houseId: booking.houseId,
+        serviceType: booking.serviceTypeId,
+        amount: booking.totalAmount,
+        earnings: booking.totalAmount * 0.7, // 70% split
+        status: 'scheduled',
+
+        // Schedule details from acceptance
+        scheduledDate: jobDetails.date,
+        startTime: jobDetails.startTime,
+        endTime: jobDetails.endTime,
+        duration: 3, // Should ideally come from booking estimation
+
+        // Snapshot data
+        customerName: customer ? `${customer.firstName} ${customer.lastName}` : 'Customer',
+        address: house ? `${house.address.street}, ${house.address.city}` : 'Unknown Address',
+
+        checklistItems: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
     };

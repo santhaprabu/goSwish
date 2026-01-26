@@ -1,48 +1,89 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
+    getAvailableBookings,
+    getHouseById,
+    getCleanerByUserId
+} from '../storage'; // Import direct helpers not exposed in context
+
+import {
     DollarSign, MapPin, Clock, Calendar, Home, User,
     Check, X, ChevronRight, AlertCircle, TrendingUp
 } from 'lucide-react';
 
 // Job Offers - Available Jobs for Cleaners
 export default function JobOffers() {
-    const { user, bookings, getUserHouses, findEligibleCleaners } = useApp();
+    const { user, acceptJobOffer } = useApp();
     const [offers, setOffers] = useState([]);
     const [selectedOffer, setSelectedOffer] = useState(null);
     const [sortBy, setSortBy] = useState('earnings'); // earnings, distance, expiring
     const [filter, setFilter] = useState('all');
+    const [loading, setLoading] = useState(true);
 
-    // Simulate job offers
+    // Load available job offers
     useEffect(() => {
-        // Find bookings that need cleaners
-        const availableBookings = bookings.filter(b =>
-            b.status === 'confirmed' && !b.cleanerId
-        );
+        async function loadOffers() {
+            try {
+                setLoading(true);
+                // 1. Get available bookings (confirmed, no cleaner yet)
+                const bookings = await getAvailableBookings();
 
-        // Create mock offers
-        const mockOffers = availableBookings.map(booking => {
-            const house = getUserHouses().find(h => h.id === booking.houseId);
-            const distance = Math.random() * 20 + 2; // 2-22 miles
-            const earnings = booking.pricingBreakdown.total * 0.7; // 70% to cleaner
-            const expiresIn = Math.floor(Math.random() * 15) + 1; // 1-15 minutes
+                // 2. Map to offers ( enriching with house data )
+                const offersData = await Promise.all(bookings.map(async (booking) => {
+                    let house = null;
+                    if (booking.houseId) {
+                        try {
+                            house = await getHouseById(booking.houseId);
+                        } catch (e) {
+                            console.warn('Could not fetch house for booking', booking.id);
+                        }
+                    }
 
-            return {
-                id: `offer-${booking.id}`,
-                bookingId: booking.id,
-                booking,
-                house,
-                earnings: Math.round(earnings),
-                distance: Math.round(distance * 10) / 10,
-                expiresAt: new Date(Date.now() + expiresIn * 60 * 1000),
-                expiresIn,
-                status: 'sent',
-                createdAt: new Date()
-            };
-        });
+                    // Calculate distance (mock for now or real if cleaner location known)
+                    // In a real app we'd need cleaner's location here. 
+                    // For now, mockup distance.
+                    const distance = Math.random() * 15 + 2;
 
-        setOffers(mockOffers);
-    }, [bookings, getUserHouses]);
+                    // Earnings estimate (70% of total)
+                    // If booking has totalAmount, use it.
+                    const amount = booking.totalAmount || 100; // Fallback
+                    const earnings = amount * 0.7;
+
+                    // Expiry logic (mock)
+                    // Real app might use booking.createdAt + 1 hour?
+                    // Let's just say it expires in 30 mins from now for engagement.
+                    const expiresIn = Math.floor(Math.random() * 30) + 10;
+
+                    return {
+                        id: booking.id, // Use booking ID as offer ID
+                        bookingId: booking.id,
+                        booking,
+                        house: house || {
+                            // Fallback house data if missing
+                            id: 'unknown',
+                            sqft: 1500,
+                            bedrooms: 2,
+                            bathrooms: 2,
+                            address: { street: 'Unknown St', city: 'City', state: 'ST', zip: '00000' }
+                        },
+                        earnings: Math.round(earnings),
+                        distance: Math.round(distance * 10) / 10,
+                        expiresIn,
+                        status: 'open',
+                        createdAt: booking.createdAt
+                    };
+                }));
+
+                setOffers(offersData);
+            } catch (error) {
+                console.error('Error loading job offers:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        loadOffers();
+    }, []);
 
     // Sort offers
     const sortedOffers = [...offers].sort((a, b) => {
@@ -55,19 +96,66 @@ export default function JobOffers() {
     // Filter offers
     const filteredOffers = sortedOffers.filter(offer => {
         if (filter === 'all') return true;
-        return offer.booking.serviceType === filter;
+        // Check service type ID, assuming booking.serviceTypeId exists
+        const type = offer.booking.serviceTypeId || 'regular';
+        return type.includes(filter);
     });
 
     const handleViewDetails = (offer) => {
         setSelectedOffer(offer);
     };
 
-    const handleAcceptOffer = (offer, selectedDate) => {
-        // Simulate accepting offer
-        console.log('Accepting offer:', offer.id, 'for date:', selectedDate);
-        // In real app: call Cloud Function to lock booking and assign cleaner
-        setSelectedOffer(null);
-        setOffers(prev => prev.filter(o => o.id !== offer.id));
+    const handleAcceptOffer = async (offer, selectedDateOption) => {
+        try {
+            if (!user?.uid) {
+                console.log('Please log in first');
+                return;
+            }
+
+            // Get Cleaner Profile ID
+            const cleanerProfile = await getCleanerByUserId(user.uid);
+            if (!cleanerProfile) {
+                console.log('Cleaner profile not found. Please setup your profile.');
+                return;
+            }
+
+            const { date, startTime, endTime } = selectedDateOption || {
+                // If options not provided, use booking's primary selection
+                date: offer.booking.dates?.[0],
+                startTime: '09:00', // Default hardcode if not detailed
+                endTime: '12:00'
+            };
+
+            // If booking has timeSlots, use that
+            let actualStartTime = startTime;
+            let actualEndTime = endTime;
+
+            if (offer.booking.timeSlots && offer.booking.timeSlots[date]) {
+                // timeSlots is { "2026-01-25": ["morning"] }
+                // Need to map "morning" to times
+                const slot = offer.booking.timeSlots[date][0];
+                if (slot === 'morning') { actualStartTime = '09:00'; actualEndTime = '12:00'; }
+                else if (slot === 'afternoon') { actualStartTime = '12:00'; actualEndTime = '15:00'; }
+                else if (slot === 'evening') { actualStartTime = '15:00'; actualEndTime = '18:00'; }
+            }
+
+            console.log('Accepting offer for:', date, actualStartTime);
+
+            await acceptJobOffer(offer.booking.id, cleanerProfile.id, {
+                date,
+                startTime: actualStartTime,
+                endTime: actualEndTime
+            });
+
+            // Remove from list
+            setOffers(prev => prev.filter(o => o.id !== offer.id));
+            setSelectedOffer(null);
+            console.log('Job Accepted! Check your schedule.');
+
+        } catch (error) {
+            console.error('Failed to accept offer:', error);
+            console.log('Failed to accept job: ' + error.message);
+        }
     };
 
     const handleDeclineOffer = (offer) => {
@@ -75,8 +163,34 @@ export default function JobOffers() {
         setSelectedOffer(null);
     };
 
+    // Helper: Normalize date options for UI
+    const getDateOptions = (booking) => {
+        if (booking.dateOptions && booking.dateOptions.length > 0) return booking.dateOptions;
+
+        // Fallback: create options from booking.dates
+        if (booking.dates && booking.dates.length > 0) {
+            return booking.dates.map(date => {
+                const slots = booking.timeSlots?.[date] || ['morning'];
+                const slot = slots[0];
+                let timeRange = '9 AM - 12 PM';
+                if (slot === 'afternoon') timeRange = '12 PM - 3 PM';
+                if (slot === 'evening') timeRange = '3 PM - 6 PM';
+
+                return {
+                    date,
+                    timeSlot: slot,
+                    startTime: timeRange.split(' - ')[0],
+                    endTime: timeRange.split(' - ')[1]
+                };
+            });
+        }
+        return [];
+    };
+
     // Offer Details Modal
     if (selectedOffer) {
+        const dateOptions = getDateOptions(selectedOffer.booking);
+
         return (
             <div className="min-h-screen bg-gray-50 pb-24">
                 <div className="app-bar">
@@ -125,7 +239,7 @@ export default function JobOffers() {
                             <div>
                                 <p className="text-sm text-gray-500">Service Type</p>
                                 <p className="font-medium text-gray-900 capitalize">
-                                    {selectedOffer.booking.serviceType.replace('-', ' ')}
+                                    {(selectedOffer.booking.serviceTypeId || 'regular').replace('-', ' ')}
                                 </p>
                             </div>
                         </div>
@@ -149,7 +263,7 @@ export default function JobOffers() {
                             <div>
                                 <p className="text-sm text-gray-500">Estimated Duration</p>
                                 <p className="font-medium text-gray-900">
-                                    {selectedOffer.booking.pricingBreakdown.estimatedDuration || 3} hours
+                                    {Math.ceil(selectedOffer.house.sqft / 500)} hours
                                 </p>
                             </div>
                         </div>
@@ -193,6 +307,12 @@ export default function JobOffers() {
                             </div>
                         )}
 
+                        {selectedOffer.house.petInfo != null && selectedOffer.house.petInfo !== 'No pets' && (
+                            <div className="p-3 bg-warning-50 rounded-lg">
+                                <p className="text-sm font-medium text-warning-900">🐾 Pets: {selectedOffer.house.petInfo}</p>
+                            </div>
+                        )}
+
                         {selectedOffer.house.accessNotes && (
                             <div>
                                 <p className="text-sm text-gray-500 mb-1">Access Instructions</p>
@@ -205,11 +325,11 @@ export default function JobOffers() {
                     <div className="card p-6 space-y-4">
                         <h3 className="font-semibold text-gray-900">Choose Your Preferred Date</h3>
                         <p className="text-sm text-gray-600">
-                            Customer provided 3 date options. Select the one that works best for you.
+                            Customer provided {dateOptions.length} date options. Select the one that works best for you.
                         </p>
 
                         <div className="space-y-3">
-                            {selectedOffer.booking.dateOptions.map((option, index) => (
+                            {dateOptions.map((option, index) => (
                                 <button
                                     key={index}
                                     onClick={() => handleAcceptOffer(selectedOffer, option)}
@@ -218,7 +338,7 @@ export default function JobOffers() {
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <p className="text-xs text-gray-500 mb-1">
-                                                {index === 0 ? '1st Choice' : index === 1 ? '2nd Choice' : '3rd Choice'}
+                                                {index === 0 ? '1st Choice' : `Option ${index + 1}`}
                                             </p>
                                             <p className="font-medium text-gray-900">{option.date}</p>
                                             <p className="text-sm text-gray-600 capitalize">
@@ -241,11 +361,11 @@ export default function JobOffers() {
                     )}
 
                     {/* Add-ons */}
-                    {selectedOffer.booking.addOns && selectedOffer.booking.addOns.length > 0 && (
+                    {selectedOffer.booking.addOnIds && selectedOffer.booking.addOnIds.length > 0 && (
                         <div className="card p-6">
                             <h3 className="font-semibold text-gray-900 mb-3">Add-on Services</h3>
                             <div className="space-y-2">
-                                {selectedOffer.booking.addOns.map((addon, index) => (
+                                {selectedOffer.booking.addOnIds.map((addon, index) => (
                                     <div key={index} className="flex items-center gap-2">
                                         <Check className="w-4 h-4 text-success-600" />
                                         <span className="text-sm text-gray-700 capitalize">
@@ -337,7 +457,11 @@ export default function JobOffers() {
 
             {/* Offers List */}
             <div className="px-6 py-6 space-y-4">
-                {filteredOffers.length === 0 ? (
+                {loading ? (
+                    <div className="text-center py-12">
+                        <p className="text-gray-500">Loading open jobs...</p>
+                    </div>
+                ) : filteredOffers.length === 0 ? (
                     <div className="text-center py-12">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <AlertCircle className="w-8 h-8 text-gray-400" />
@@ -364,7 +488,7 @@ export default function JobOffers() {
                                     </div>
                                     <div className="px-2 py-1 bg-primary-100 rounded-full">
                                         <span className="text-xs font-medium text-primary-700 capitalize">
-                                            {offer.booking.serviceType.replace('-', ' ')}
+                                            {(offer.booking.serviceTypeId || 'regular').replace('-', ' ')}
                                         </span>
                                     </div>
                                 </div>
@@ -395,8 +519,10 @@ export default function JobOffers() {
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-gray-600">
                                     <Calendar className="w-4 h-4" />
-                                    <span>{offer.booking.dateOptions[0].date}</span>
-                                    <span className="text-gray-400">+2 more options</span>
+                                    <span>{offer.booking.dates?.[0] || 'Flexible'}</span>
+                                    {offer.booking.dates?.length > 1 && (
+                                        <span className="text-gray-400">+{offer.booking.dates.length - 1} more options</span>
+                                    )}
                                 </div>
                             </div>
 
