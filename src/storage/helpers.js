@@ -1,0 +1,941 @@
+/**
+ * Storage Helper Functions
+ * High-level functions for common operations
+ */
+
+import { COLLECTIONS, addDoc, setDoc, updateDoc, getDoc, getDocs, queryDocs, deleteDoc, generateId } from './db.js';
+
+// ============================================
+// USER OPERATIONS
+// ============================================
+
+/**
+ * Get user by ID
+ */
+export const getUserById = async (userId) => {
+    return await getDoc(COLLECTIONS.USERS, userId);
+};
+
+/**
+ * Get user by email
+ */
+export const getUserByEmail = async (email) => {
+    const users = await queryDocs(COLLECTIONS.USERS, 'email', email);
+    return users.length > 0 ? users[0] : null;
+};
+
+/**
+ * Update user
+ */
+export const updateUser = async (userId, updates) => {
+    return await updateDoc(COLLECTIONS.USERS, userId, updates);
+};
+
+// ============================================
+// HOUSE OPERATIONS
+// ============================================
+
+/**
+ * Create house
+ */
+export const createHouse = async (userId, houseData) => {
+    const house = {
+        id: generateId('house'),
+        userId,
+        ...houseData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+
+    return await setDoc(COLLECTIONS.HOUSES, house.id, house);
+};
+
+/**
+ * Get user's houses
+ */
+export const getUserHouses = async (userId) => {
+    return await queryDocs(COLLECTIONS.HOUSES, 'userId', userId);
+};
+
+/**
+ * Update house
+ */
+export const updateHouse = async (houseId, updates) => {
+    return await updateDoc(COLLECTIONS.HOUSES, houseId, updates);
+};
+
+/**
+ * Delete house
+ */
+export const deleteHouse = async (houseId) => {
+    return await deleteDoc(COLLECTIONS.HOUSES, houseId);
+};
+
+// ============================================
+// BOOKING OPERATIONS
+// ============================================
+
+/**
+ * Create booking
+ */
+export const createBooking = async (customerId, bookingData) => {
+    const bookingNumber = `GS-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+
+    const booking = {
+        id: generateId('booking'),
+        bookingId: bookingNumber,
+        customerId: customerId, // Explicitly assign customerId
+        houseId: bookingData.houseId,
+        serviceTypeId: bookingData.serviceTypeId,
+        addOnIds: bookingData.addOnIds || [],
+        dates: bookingData.dates || [],
+        timeSlots: bookingData.timeSlots || {},
+        specialNotes: bookingData.specialNotes || '',
+        paymentMethod: bookingData.paymentMethod || 'card',
+        totalAmount: bookingData.totalAmount,
+        status: 'confirmed',
+        paymentStatus: 'pending',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+
+    console.log('💾 Creating booking:', booking);
+    return await setDoc(COLLECTIONS.BOOKINGS, booking.id, booking);
+};
+
+/**
+ * Get booking by ID
+ */
+export const getBookingById = async (bookingId) => {
+    return await getDoc(COLLECTIONS.BOOKINGS, bookingId);
+};
+
+/**
+ * Get customer's bookings
+ */
+export const getCustomerBookings = async (customerId) => {
+    return await queryDocs(COLLECTIONS.BOOKINGS, 'customerId', customerId);
+};
+
+/**
+ * Get cleaner's bookings
+ */
+export const getCleanerBookings = async (cleanerId) => {
+    return await queryDocs(COLLECTIONS.BOOKINGS, 'cleanerId', cleanerId);
+};
+
+/**
+ * Update booking
+ */
+export const updateBooking = async (bookingId, updates) => {
+    return await updateDoc(COLLECTIONS.BOOKINGS, bookingId, updates);
+};
+
+/**
+ * Cancel booking
+ */
+export const cancelBooking = async (bookingId, reason) => {
+    return await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
+        status: 'cancelled',
+        cancellationReason: reason,
+        cancelledAt: new Date().toISOString(),
+    });
+};
+
+// ============================================
+// CLEANER OPERATIONS
+// ============================================
+
+/**
+ * Create cleaner profile
+ */
+export const createCleanerProfile = async (userId, cleanerData) => {
+    const cleaner = {
+        id: generateId('cleaner'),
+        userId,
+        ...cleanerData,
+        verificationStatus: 'pending',
+        status: 'active',
+        stats: {
+            completedJobs: 0,
+            rating: 0,
+            totalReviews: 0,
+            acceptanceRate: 0,
+            cancellationRate: 0,
+            reliabilityScore: 100,
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+
+    return await setDoc(COLLECTIONS.CLEANERS, cleaner.id, cleaner);
+};
+
+/**
+ * Get cleaner profile by user ID
+ */
+export const getCleanerByUserId = async (userId) => {
+    const cleaners = await getDocs(COLLECTIONS.CLEANERS);
+    return cleaners.find(c => c.userId === userId) || null;
+};
+
+/**
+ * Get all cleaners
+ */
+export const getAllCleaners = async () => {
+    return await getDocs(COLLECTIONS.CLEANERS);
+};
+
+/**
+ * Update cleaner profile
+ */
+export const updateCleanerProfile = async (cleanerId, updates) => {
+    return await updateDoc(COLLECTIONS.CLEANERS, cleanerId, updates);
+};
+
+// ============================================
+// JOB OPERATIONS
+// ============================================
+
+/**
+ * Create job from booking
+ */
+export const createJob = async (bookingId) => {
+    const booking = await getBookingById(bookingId);
+
+    if (!booking) {
+        throw new Error('Booking not found');
+    }
+
+    const job = {
+        id: generateId('job'),
+        bookingId: booking.id,
+        customerId: booking.customerId,
+        cleanerId: booking.cleanerId,
+        houseId: booking.houseId,
+        status: 'scheduled',
+        startTime: booking.selectedDate.date,
+        endTime: null,
+        checklistItems: [],
+        photos: {
+            before: [],
+            during: [],
+            after: [],
+        },
+        notes: '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+
+    return await setDoc(COLLECTIONS.JOBS, job.id, job);
+};
+
+/**
+ * Get job by ID
+ */
+export const getJobById = async (jobId) => {
+    return await getDoc(COLLECTIONS.JOBS, jobId);
+};
+
+/**
+ * Get cleaner's jobs
+ */
+export const getCleanerJobs = async (cleanerId) => {
+    return await queryDocs(COLLECTIONS.JOBS, 'cleanerId', cleanerId);
+};
+
+/**
+ * Update job
+ */
+export const updateJob = async (jobId, updates) => {
+    return await updateDoc(COLLECTIONS.JOBS, jobId, updates);
+};
+
+/**
+ * Update job status
+ */
+export const updateJobStatus = async (jobId, status) => {
+    const updates = {
+        status,
+    };
+
+    if (status === 'in_progress') {
+        updates.startTime = new Date().toISOString();
+    } else if (status === 'completed') {
+        updates.endTime = new Date().toISOString();
+    }
+
+    return await updateDoc(COLLECTIONS.JOBS, jobId, updates);
+};
+
+// ============================================
+// REVIEW OPERATIONS
+// ============================================
+
+/**
+ * Create review
+ */
+export const createReview = async (reviewData) => {
+    const review = {
+        id: generateId('review'),
+        ...reviewData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+
+    return await setDoc(COLLECTIONS.REVIEWS, review.id, review);
+};
+
+/**
+ * Get cleaner's reviews
+ */
+export const getCleanerReviews = async (cleanerId) => {
+    return await queryDocs(COLLECTIONS.REVIEWS, 'cleanerId', cleanerId);
+};
+
+/**
+ * Get customer's reviews
+ */
+export const getCustomerReviews = async (customerId) => {
+    return await queryDocs(COLLECTIONS.REVIEWS, 'customerId', customerId);
+};
+
+// ============================================
+// SERVICE TYPE OPERATIONS
+// ============================================
+
+/**
+ * Get all service types
+ */
+export const getServiceTypes = async () => {
+    const services = await getDocs(COLLECTIONS.SERVICE_TYPES);
+    return services.filter(s => s.active);
+};
+
+/**
+ * Get service type by ID
+ */
+export const getServiceTypeById = async (serviceId) => {
+    return await getDoc(COLLECTIONS.SERVICE_TYPES, serviceId);
+};
+
+// ============================================
+// ADD-ON OPERATIONS
+// ============================================
+
+/**
+ * Get all add-ons
+ */
+export const getAddOns = async () => {
+    const addOns = await getDocs(COLLECTIONS.ADD_ONS);
+    return addOns.filter(a => a.active);
+};
+
+/**
+ * Get add-on by ID
+ */
+export const getAddOnById = async (addOnId) => {
+    return await getDoc(COLLECTIONS.ADD_ONS, addOnId);
+};
+
+// ============================================
+// PROMO CODE OPERATIONS
+// ============================================
+
+/**
+ * Get promo code by code
+ */
+export const createPromoCode = async (promoData) => {
+    const promo = {
+        id: generateId('promo'),
+        ...promoData,
+        code: promoData.code.toUpperCase(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+    return await setDoc(COLLECTIONS.PROMO_CODES, promo.id, promo);
+};
+
+/**
+ * Get promo code by code
+ */
+export const getPromoCodeByCode = async (code) => {
+
+    const promoCodes = await getDocs(COLLECTIONS.PROMO_CODES);
+    return promoCodes.find(p => p.code.toUpperCase() === code.toUpperCase()) || null;
+};
+
+/**
+ * Validate promo code
+ */
+export const validatePromoCode = async (code, userId, serviceType, amount) => {
+    const promo = await getPromoCodeByCode(code);
+
+    if (!promo) {
+        return { valid: false, error: 'Invalid promo code' };
+    }
+
+    if (!promo.active) {
+        return { valid: false, error: 'Promo code is no longer active' };
+    }
+
+    const now = new Date();
+    const validFrom = new Date(promo.validFrom);
+    const validUntil = new Date(promo.validUntil);
+
+    if (now < validFrom || now > validUntil) {
+        return { valid: false, error: 'Promo code has expired' };
+    }
+
+    if (promo.usedCount >= promo.maxUses) {
+        return { valid: false, error: 'Promo code has reached maximum uses' };
+    }
+
+    if (amount < promo.minAmount) {
+        return { valid: false, error: `Minimum amount is $${promo.minAmount}` };
+    }
+
+    if (promo.serviceTypes && !promo.serviceTypes.includes(serviceType)) {
+        return { valid: false, error: 'Promo code not valid for this service type' };
+    }
+
+    if (promo.firstTimeOnly) {
+        const userBookings = await getCustomerBookings(userId);
+        if (userBookings.length > 0) {
+            return { valid: false, error: 'Promo code is for first-time users only' };
+        }
+    }
+
+    return { valid: true, promo };
+};
+
+/**
+ * Apply promo code
+ */
+export const applyPromoCode = async (promoId) => {
+    const promo = await getDoc(COLLECTIONS.PROMO_CODES, promoId);
+
+    if (!promo) {
+        return false;
+    }
+
+    await updateDoc(COLLECTIONS.PROMO_CODES, promoId, {
+        usedCount: promo.usedCount + 1,
+    });
+
+    return true;
+};
+
+// ============================================
+// SETTINGS OPERATIONS
+// ============================================
+
+/**
+ * Get app settings
+ */
+export const getAppSettings = async () => {
+    return await getDoc(COLLECTIONS.SETTINGS, 'app');
+};
+
+// ============================================
+// NOTIFICATION OPERATIONS
+// ============================================
+
+/**
+ * Create notification
+ */
+export const createNotification = async (userId, notificationData) => {
+    const notification = {
+        id: generateId('notification'),
+        userId,
+        ...notificationData,
+        read: false,
+        createdAt: new Date().toISOString(),
+    };
+
+    return await setDoc(COLLECTIONS.NOTIFICATIONS, notification.id, notification);
+};
+
+/**
+ * Get user notifications
+ */
+export const getUserNotifications = async (userId) => {
+    const notifications = await getDocs(COLLECTIONS.NOTIFICATIONS);
+    return notifications
+        .filter(n => n.userId === userId)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+};
+
+/**
+ * Mark notification as read
+ */
+export const markNotificationAsRead = async (notificationId) => {
+    return await updateDoc(COLLECTIONS.NOTIFICATIONS, notificationId, {
+        read: true,
+    });
+};
+
+/**
+ * Mark all notifications as read
+ */
+export const markAllNotificationsAsRead = async (userId) => {
+    const notifications = await getUserNotifications(userId);
+    const unread = notifications.filter(n => !n.read);
+
+    for (const notification of unread) {
+        await markNotificationAsRead(notification.id);
+    }
+
+    return true;
+};
+
+// ============================================
+// MESSAGE OPERATIONS
+// ============================================
+
+/**
+ * Create a conversation
+ */
+export const createConversation = async (participantIds, metadata = {}) => {
+    const conversation = {
+        id: generateId('conv'),
+        participantIds,
+        ...metadata,
+        lastMessage: null,
+        lastMessageTime: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+
+    return await setDoc(COLLECTIONS.MESSAGES, conversation.id, conversation);
+};
+
+/**
+ * Get user's conversations
+ */
+export const getUserConversations = async (userId) => {
+    const allMessages = await getDocs(COLLECTIONS.MESSAGES);
+    // Filter for conversations (items with participantIds)
+    const conversations = allMessages.filter(m =>
+        m.participantIds && m.participantIds.includes(userId)
+    );
+    return conversations.sort((a, b) =>
+        new Date(b.lastMessageTime || b.createdAt) - new Date(a.lastMessageTime || a.createdAt)
+    );
+};
+
+/**
+ * Get conversation between two users
+ */
+export const getConversation = async (userId1, userId2) => {
+    const conversations = await getUserConversations(userId1);
+    return conversations.find(c =>
+        c.participantIds.includes(userId2)
+    ) || null;
+};
+
+/**
+ * Get conversation messages
+ */
+export const getConversationMessages = async (conversationId) => {
+    const allMessages = await getDocs(COLLECTIONS.MESSAGES);
+    return allMessages
+        .filter(m => m.conversationId === conversationId)
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+};
+
+/**
+ * Send a message
+ */
+export const sendMessage = async (conversationId, senderId, content) => {
+    const message = {
+        id: generateId('msg'),
+        conversationId,
+        senderId,
+        content,
+        status: 'sent',
+        createdAt: new Date().toISOString(),
+    };
+
+    await setDoc(COLLECTIONS.MESSAGES, message.id, message);
+
+    // Update conversation's last message
+    await updateDoc(COLLECTIONS.MESSAGES, conversationId, {
+        lastMessage: content,
+        lastMessageTime: message.createdAt,
+    });
+
+    return message;
+};
+
+/**
+ * Mark message as read
+ */
+export const markMessageAsRead = async (messageId) => {
+    return await updateDoc(COLLECTIONS.MESSAGES, messageId, {
+        status: 'read',
+        readAt: new Date().toISOString(),
+    });
+};
+
+/**
+ * Get unread message count for user
+ */
+export const getUnreadMessageCount = async (userId) => {
+    const conversations = await getUserConversations(userId);
+    let count = 0;
+
+    for (const conv of conversations) {
+        const messages = await getConversationMessages(conv.id);
+        count += messages.filter(m =>
+            m.senderId !== userId && m.status !== 'read'
+        ).length;
+    }
+
+    return count;
+};
+
+// ============================================
+// EARNINGS / TRANSACTION OPERATIONS
+// ============================================
+
+/**
+ * Create an earning/transaction record
+ */
+export const createTransaction = async (cleanerId, transactionData) => {
+    const transaction = {
+        id: generateId('txn'),
+        cleanerId,
+        ...transactionData,
+        createdAt: new Date().toISOString(),
+    };
+
+    return await setDoc(COLLECTIONS.JOBS, `txn_${transaction.id}`, transaction);
+};
+
+/**
+ * Get cleaner earnings
+ */
+export const getCleanerEarnings = async (cleanerId, period = 'all') => {
+    const jobs = await getCleanerJobs(cleanerId);
+    const completedJobs = jobs.filter(j => j.status === 'completed');
+
+    // Filter by period
+    const now = new Date();
+    let filteredJobs = completedJobs;
+
+    if (period === 'today') {
+        const today = now.toISOString().split('T')[0];
+        filteredJobs = completedJobs.filter(j =>
+            j.completedAt?.startsWith(today) || j.endTime?.startsWith(today)
+        );
+    } else if (period === 'week') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filteredJobs = completedJobs.filter(j => {
+            const jobDate = new Date(j.completedAt || j.endTime || j.createdAt);
+            return jobDate >= weekAgo;
+        });
+    } else if (period === 'month') {
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        filteredJobs = completedJobs.filter(j => {
+            const jobDate = new Date(j.completedAt || j.endTime || j.createdAt);
+            return jobDate >= monthAgo;
+        });
+    }
+
+    const earnings = filteredJobs.reduce((sum, j) => sum + (j.amount || j.earnings || 0), 0);
+    const tips = filteredJobs.reduce((sum, j) => sum + (j.tip || 0), 0);
+    const hours = filteredJobs.reduce((sum, j) => sum + (j.duration || 2), 0); // Default 2 hours per job
+
+    return {
+        earnings,
+        tips,
+        jobs: filteredJobs.length,
+        hours,
+        transactions: filteredJobs,
+    };
+};
+
+/**
+ * Get cleaner daily earnings for a date range
+ */
+export const getCleanerDailyEarnings = async (cleanerId, days = 7) => {
+    const jobs = await getCleanerJobs(cleanerId);
+    const completedJobs = jobs.filter(j => j.status === 'completed');
+
+    const dailyEarnings = [];
+    const now = new Date();
+
+    for (let i = days - 1; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+
+        const dayJobs = completedJobs.filter(j => {
+            const jobDate = (j.completedAt || j.endTime || j.scheduledDate || j.createdAt || '').split('T')[0];
+            return jobDate === dateStr;
+        });
+
+        dailyEarnings.push({
+            day: dayName,
+            date: dateStr,
+            earnings: dayJobs.reduce((sum, j) => sum + (j.amount || j.earnings || 0), 0),
+            jobs: dayJobs.length,
+        });
+    }
+
+    return dailyEarnings;
+};
+
+// ============================================
+// REVIEW OPERATIONS (ENHANCED)
+// ============================================
+
+/**
+ * Get cleaner reviews with stats
+ */
+export const getCleanerReviewsWithStats = async (cleanerId) => {
+    const reviews = await getCleanerReviews(cleanerId);
+
+    if (reviews.length === 0) {
+        return {
+            reviews: [],
+            stats: {
+                avgRating: 0,
+                totalReviews: 0,
+                distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+                topTags: [],
+            },
+        };
+    }
+
+    const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+    const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    const tagCounts = {};
+
+    reviews.forEach(r => {
+        distribution[r.rating]++;
+        (r.tags || []).forEach(tag => {
+            tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+    });
+
+    const topTags = Object.entries(tagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([tag, count]) => ({ tag, count }));
+
+    // Sort reviews by date (newest first)
+    const sortedReviews = reviews.sort((a, b) =>
+        new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    return {
+        reviews: sortedReviews,
+        stats: {
+            avgRating: Math.round(avgRating * 10) / 10,
+            totalReviews: reviews.length,
+            distribution,
+            topTags,
+        },
+    };
+};
+
+/**
+ * Add response to review
+ */
+export const addReviewResponse = async (reviewId, response) => {
+    return await updateDoc(COLLECTIONS.REVIEWS, reviewId, {
+        response,
+        responseDate: new Date().toISOString(),
+    });
+};
+
+// ============================================
+// CLEANER STATS / SCHEDULE OPERATIONS
+// ============================================
+
+/**
+ * Get cleaner schedule for a date range
+ */
+export const getCleanerSchedule = async (cleanerId, startDate, endDate) => {
+    const jobs = await getCleanerJobs(cleanerId);
+
+    return jobs.filter(j => {
+        const jobDate = new Date(j.scheduledDate || j.startTime || j.createdAt);
+        return jobDate >= new Date(startDate) && jobDate <= new Date(endDate);
+    }).sort((a, b) =>
+        new Date(a.scheduledDate || a.startTime) - new Date(b.scheduledDate || b.startTime)
+    );
+};
+
+/**
+ * Get cleaner stats
+ */
+export const getCleanerStats = async (cleanerId) => {
+    const jobs = await getCleanerJobs(cleanerId);
+    const reviews = await getCleanerReviews(cleanerId);
+
+    const completedJobs = jobs.filter(j => j.status === 'completed');
+    const totalEarnings = completedJobs.reduce((sum, j) =>
+        sum + (j.amount || j.earnings || 0), 0
+    );
+    const totalTips = completedJobs.reduce((sum, j) => sum + (j.tip || 0), 0);
+
+    const avgRating = reviews.length > 0
+        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+        : 0;
+
+    // Calculate on-time rate (jobs started on time vs total)
+    const onTimeJobs = completedJobs.filter(j => !j.startedLate);
+    const onTimeRate = completedJobs.length > 0
+        ? Math.round((onTimeJobs.length / completedJobs.length) * 100)
+        : 100;
+
+    // Calculate repeat clients
+    const clientCounts = {};
+    completedJobs.forEach(j => {
+        clientCounts[j.customerId] = (clientCounts[j.customerId] || 0) + 1;
+    });
+    const repeatClients = Object.values(clientCounts).filter(c => c > 1).length;
+    const totalClients = Object.keys(clientCounts).length;
+    const repeatRate = totalClients > 0
+        ? Math.round((repeatClients / totalClients) * 100)
+        : 0;
+
+    return {
+        completedJobs: completedJobs.length,
+        totalEarnings,
+        totalTips,
+        avgRating: Math.round(avgRating * 10) / 10,
+        totalReviews: reviews.length,
+        onTimeRate,
+        repeatRate,
+        totalClients,
+    };
+};
+
+// ============================================
+// CLEANER AVAILABILITY OPERATIONS
+// ============================================
+
+/**
+ * Get cleaner availability for a date range
+ */
+export const getCleanerAvailability = async (cleanerId, startDate, endDate) => {
+    // Try to get from settings or a dedicated availability store
+    const cleaner = await getDoc(COLLECTIONS.CLEANERS, cleanerId);
+
+    if (!cleaner) {
+        return {};
+    }
+
+    // Return stored availability or empty object
+    return cleaner.availability || {};
+};
+
+/**
+ * Update cleaner availability for a specific shift
+ */
+export const updateCleanerAvailability = async (cleanerId, date, shift, status) => {
+    const cleaner = await getDoc(COLLECTIONS.CLEANERS, cleanerId);
+
+    if (!cleaner) {
+        throw new Error('Cleaner not found');
+    }
+
+    // Get existing availability or create new
+    const availability = cleaner.availability || {};
+
+    // Initialize date if not exists
+    if (!availability[date]) {
+        availability[date] = {};
+    }
+
+    // Update the specific shift
+    availability[date][shift] = status;
+
+    // Save back to cleaner profile
+    return await updateDoc(COLLECTIONS.CLEANERS, cleanerId, {
+        availability,
+        updatedAt: new Date().toISOString(),
+    });
+};
+
+/**
+ * Bulk update cleaner availability
+ */
+export const bulkUpdateCleanerAvailability = async (cleanerId, updates) => {
+    const cleaner = await getDoc(COLLECTIONS.CLEANERS, cleanerId);
+
+    if (!cleaner) {
+        throw new Error('Cleaner not found');
+    }
+
+    const availability = cleaner.availability || {};
+
+    // Apply all updates
+    updates.forEach(({ date, shift, status }) => {
+        if (!availability[date]) {
+            availability[date] = {};
+        }
+        availability[date][shift] = status;
+    });
+
+    return await updateDoc(COLLECTIONS.CLEANERS, cleanerId, {
+        availability,
+        updatedAt: new Date().toISOString(),
+    });
+};
+
+/**
+ * Get cleaner's available shifts for job matching
+ */
+export const getAvailableCleanersForSlot = async (date, shift) => {
+    const cleaners = await getDocs(COLLECTIONS.CLEANERS);
+
+    return cleaners.filter(cleaner => {
+        // Check if cleaner is active and verified
+        if (cleaner.status !== 'active' || cleaner.verificationStatus !== 'approved') {
+            return false;
+        }
+
+        // Check availability
+        const availability = cleaner.availability || {};
+        const dayAvailability = availability[date] || {};
+
+        // Default to available if not explicitly blocked
+        const slotStatus = dayAvailability[shift] || 'available';
+
+        return slotStatus === 'available';
+    });
+};
+
+/**
+ * Clear old availability data (cleanup function)
+ */
+export const cleanupOldAvailability = async (cleanerId, daysToKeep = 7) => {
+    const cleaner = await getDoc(COLLECTIONS.CLEANERS, cleanerId);
+
+    if (!cleaner || !cleaner.availability) {
+        return;
+    }
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+    const cutoffStr = cutoffDate.toISOString().split('T')[0];
+
+    const availability = cleaner.availability;
+    const cleanedAvailability = {};
+
+    Object.keys(availability).forEach(date => {
+        if (date >= cutoffStr) {
+            cleanedAvailability[date] = availability[date];
+        }
+    });
+
+    return await updateDoc(COLLECTIONS.CLEANERS, cleanerId, {
+        availability: cleanedAvailability,
+        updatedAt: new Date().toISOString(),
+    });
+};

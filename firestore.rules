@@ -1,0 +1,329 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===== HELPER FUNCTIONS =====
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isCustomer() {
+      return isSignedIn() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'customer';
+    }
+    
+    function isCleaner() {
+      return isSignedIn() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'cleaner';
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // ===== USERS COLLECTION =====
+    
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles
+      allow read: if isSignedIn();
+      
+      // Users can only write their own profile
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId) || isAdmin();
+      
+      // Houses subcollection
+      match /houses/{houseId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+      
+      // Payment methods subcollection
+      match /paymentMethods/{methodId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+    }
+    
+    // ===== CLEANERS COLLECTION =====
+    
+    match /cleaners/{cleanerId} {
+      // Anyone can read active, verified cleaner profiles
+      allow read: if isSignedIn();
+      
+      // Only the cleaner can write their own profile
+      allow create: if isSignedIn() && request.auth.uid == cleanerId;
+      allow update: if isOwner(cleanerId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // ===== BOOKINGS COLLECTION =====
+    
+    match /bookings/{bookingId} {
+      // Read: customer or assigned cleaner
+      allow read: if isSignedIn() && (
+        resource.data.customerId == request.auth.uid ||
+        resource.data.cleanerId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Create: any authenticated user
+      allow create: if isSignedIn();
+      
+      // Update: customer or cleaner involved in booking
+      allow update: if isSignedIn() && (
+        resource.data.customerId == request.auth.uid ||
+        resource.data.cleanerId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Delete: only admin
+      allow delete: if isAdmin();
+    }
+    
+    // ===== JOB OFFERS COLLECTION =====
+    
+    match /jobOffers/{offerId} {
+      // Read: only the cleaner the offer is for
+      allow read: if isSignedIn() && (
+        resource.data.cleanerId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Create: system/admin only
+      allow create: if isAdmin();
+      
+      // Update: cleaner can accept/decline
+      allow update: if isSignedIn() && resource.data.cleanerId == request.auth.uid;
+      
+      // Delete: admin only
+      allow delete: if isAdmin();
+    }
+    
+    // ===== JOBS COLLECTION =====
+    
+    match /jobs/{jobId} {
+      // Read: customer or cleaner
+      allow read: if isSignedIn() && (
+        resource.data.customerId == request.auth.uid ||
+        resource.data.cleanerId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Create: system/cleaner
+      allow create: if isSignedIn();
+      
+      // Update: cleaner or customer
+      allow update: if isSignedIn() && (
+        resource.data.customerId == request.auth.uid ||
+        resource.data.cleanerId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Delete: admin only
+      allow delete: if isAdmin();
+      
+      // Photos subcollection
+      match /photos/{photoId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && (
+          get(/databases/$(database)/documents/jobs/$(jobId)).data.cleanerId == request.auth.uid
+        );
+      }
+      
+      // Checklist subcollection
+      match /checklist/{itemId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && (
+          get(/databases/$(database)/documents/jobs/$(jobId)).data.cleanerId == request.auth.uid
+        );
+      }
+    }
+    
+    // ===== REVIEWS COLLECTION =====
+    
+    match /reviews/{reviewId} {
+      // Read: public reviews or authenticated users
+      allow read: if resource.data.isPublic == true || isSignedIn();
+      
+      // Create: customer who booked the job
+      allow create: if isSignedIn() && isCustomer();
+      
+      // Update: only the reviewer
+      allow update: if isSignedIn() && resource.data.customerId == request.auth.uid;
+      
+      // Delete: reviewer or admin
+      allow delete: if isSignedIn() && (
+        resource.data.customerId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+    
+    // ===== PAYOUTS COLLECTION =====
+    
+    match /payouts/{payoutId} {
+      // Read: cleaner or admin
+      allow read: if isSignedIn() && (
+        resource.data.cleanerId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Create/Update: admin only
+      allow create, update: if isAdmin();
+      
+      // Delete: admin only
+      allow delete: if isAdmin();
+    }
+    
+    // ===== TEAMS COLLECTION =====
+    
+    match /teams/{teamId} {
+      // Read: team members
+      allow read: if isSignedIn() && (
+        request.auth.uid in resource.data.memberIds ||
+        isAdmin()
+      );
+      
+      // Create: any cleaner
+      allow create: if isSignedIn() && isCleaner();
+      
+      // Update: team leader
+      allow update: if isSignedIn() && resource.data.leaderId == request.auth.uid;
+      
+      // Delete: team leader or admin
+      allow delete: if isSignedIn() && (
+        resource.data.leaderId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+    
+    // ===== MESSAGES COLLECTION =====
+    
+    match /messages/{messageId} {
+      // Read: sender or recipient
+      allow read: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.recipientId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Create: authenticated users
+      allow create: if isSignedIn();
+      
+      // Update: sender only
+      allow update: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      
+      // Delete: sender or admin
+      allow delete: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+    
+    // ===== DISPUTES COLLECTION =====
+    
+    match /disputes/{disputeId} {
+      // Read: involved parties or admin
+      allow read: if isSignedIn() && (
+        resource.data.customerId == request.auth.uid ||
+        resource.data.cleanerId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Create: customer or cleaner
+      allow create: if isSignedIn();
+      
+      // Update: admin only (for resolution)
+      allow update: if isAdmin();
+      
+      // Delete: admin only
+      allow delete: if isAdmin();
+    }
+    
+    // ===== SUPPORT TICKETS COLLECTION =====
+    
+    match /supportTickets/{ticketId} {
+      // Read: ticket creator or admin
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Create: any authenticated user
+      allow create: if isSignedIn();
+      
+      // Update: ticket creator or admin
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Delete: admin only
+      allow delete: if isAdmin();
+    }
+    
+    // ===== READ-ONLY COLLECTIONS =====
+    
+    // Service Types
+    match /serviceTypes/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Add-ons
+    match /addOns/{addonId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Metro Multipliers
+    match /metroMultipliers/{metroId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Promo Codes
+    match /promoCodes/{promoId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    
+    // App Settings
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // ===== ANALYTICS COLLECTION =====
+    
+    match /analytics/{docId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    // ===== NOTIFICATIONS COLLECTION =====
+    
+    match /notifications/{notificationId} {
+      // Read: notification recipient
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // Create: system/admin
+      allow create: if isAdmin();
+      
+      // Update: recipient (mark as read)
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // Delete: recipient or admin
+      allow delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+  }
+}

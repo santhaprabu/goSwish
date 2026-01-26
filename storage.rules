@@ -1,0 +1,129 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isValidImage() {
+      return request.resource.size < 5 * 1024 * 1024 // 5MB
+             && request.resource.contentType.matches('image/.*');
+    }
+    
+    function isValidDocument() {
+      return request.resource.size < 10 * 1024 * 1024 // 10MB
+             && request.resource.contentType.matches('(image/.*|application/pdf)');
+    }
+    
+    // ===== USER PROFILE PHOTOS =====
+    
+    match /users/{userId}/profile/{fileName} {
+      // Anyone can read profile photos
+      allow read: if true;
+      
+      // Only the user can upload their own photo
+      allow write: if isOwner(userId) && isValidImage();
+      
+      // Only the user can delete their own photo
+      allow delete: if isOwner(userId);
+    }
+    
+    // ===== CLEANER PHOTOS =====
+    
+    match /cleaners/{cleanerId}/photos/{fileName} {
+      // Anyone can read cleaner photos
+      allow read: if true;
+      
+      // Only the cleaner can upload photos
+      allow write: if isOwner(cleanerId) && isValidImage();
+      
+      // Only the cleaner can delete photos
+      allow delete: if isOwner(cleanerId);
+    }
+    
+    // ===== CLEANER DOCUMENTS =====
+    
+    match /cleaners/{cleanerId}/documents/{fileName} {
+      // Only the cleaner and admins can read documents
+      allow read: if isOwner(cleanerId);
+      
+      // Only the cleaner can upload documents
+      allow write: if isOwner(cleanerId) && isValidDocument();
+      
+      // Only the cleaner can delete documents
+      allow delete: if isOwner(cleanerId);
+    }
+    
+    // ===== JOB PHOTOS =====
+    
+    match /jobs/{jobId}/photos/{fileName} {
+      // Authenticated users can read job photos
+      allow read: if isSignedIn();
+      
+      // Anyone authenticated can upload job photos
+      // (cleaner uploads during job execution)
+      allow write: if isSignedIn() && isValidImage();
+      
+      // Only uploader can delete
+      allow delete: if isSignedIn();
+    }
+    
+    // ===== HOUSE PHOTOS =====
+    
+    match /houses/{houseId}/photos/{fileName} {
+      // Authenticated users can read house photos
+      allow read: if isSignedIn();
+      
+      // Authenticated users can upload house photos
+      allow write: if isSignedIn() && isValidImage();
+      
+      // Authenticated users can delete
+      allow delete: if isSignedIn();
+    }
+    
+    // ===== BOOKING RECEIPTS =====
+    
+    match /bookings/{bookingId}/receipts/{fileName} {
+      // Authenticated users can read receipts
+      allow read: if isSignedIn();
+      
+      // System/admin can create receipts
+      allow write: if isSignedIn();
+      
+      // No deletion allowed
+      allow delete: if false;
+    }
+    
+    // ===== DISPUTE EVIDENCE =====
+    
+    match /disputes/{disputeId}/evidence/{fileName} {
+      // Only involved parties can read
+      allow read: if isSignedIn();
+      
+      // Involved parties can upload evidence
+      allow write: if isSignedIn() && isValidImage();
+      
+      // No deletion allowed
+      allow delete: if false;
+    }
+    
+    // ===== SUPPORT TICKET ATTACHMENTS =====
+    
+    match /support/{ticketId}/attachments/{fileName} {
+      // Ticket creator can read
+      allow read: if isSignedIn();
+      
+      // Ticket creator can upload
+      allow write: if isSignedIn() && isValidImage();
+      
+      // Ticket creator can delete
+      allow delete: if isSignedIn();
+    }
+  }
+}

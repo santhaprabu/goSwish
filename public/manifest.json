@@ -1,0 +1,44 @@
+{
+    "name": "GoSwish - Clean homes, happy lives",
+    "short_name": "GoSwish",
+    "description": "Book professional cleaning services or become a cleaner and earn money",
+    "start_url": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#ffffff",
+    "theme_color": "#3B82F6",
+    "icons": [
+        {
+            "src": "/goswish-icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/goswish-icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "lifestyle",
+        "utilities",
+        "business"
+    ],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "Book Cleaning",
+            "short_name": "Book",
+            "description": "Book a new cleaning service",
+            "url": "/?action=book",
+            "icons": [
+                {
+                    "src": "/goswish-icon-192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ]
+}
