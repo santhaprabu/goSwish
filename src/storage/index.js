@@ -138,6 +138,11 @@ export {
     broadcastNewJob,
     updateBookingTracking,
     getBookingWithTracking,
+    generateVerificationCodes,
+    verifyJobCode,
+    checkVerificationAndStart,
+    submitJobForApproval,
+    approveJob,
 } from './helpers.js';
 
 // Aliases for consistency

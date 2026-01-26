@@ -1118,3 +1118,100 @@ export const updateBookingTracking = async (bookingId, trackingData) => {
 export const getBookingWithTracking = async (bookingId) => {
     return await getDoc(COLLECTIONS.BOOKINGS, bookingId);
 };
+
+// ============================================
+// DAY OF CLEANING FLOW HELPERS
+// ============================================
+
+/**
+ * Generate Verification Codes when Cleaner Arrives
+ */
+export const generateVerificationCodes = async (bookingId) => {
+    const cleanerCode = Math.floor(1000 + Math.random() * 9000).toString();
+    const customerCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+    await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
+        status: 'arrived',
+        arrivedAt: new Date().toISOString(),
+        verificationCodes: {
+            cleanerCode,
+            customerCode,
+            generatedAt: new Date().toISOString(),
+            cleanerVerified: false,
+            customerVerified: false
+        }
+    });
+
+    return { cleanerCode, customerCode };
+};
+
+/**
+ * Verify Code (Simulates check)
+ */
+export const verifyJobCode = async (bookingId, role, codeProvided) => {
+    const booking = await getDoc(COLLECTIONS.BOOKINGS, bookingId);
+    if (!booking || !booking.verificationCodes) return false;
+
+    const { cleanerCode, customerCode } = booking.verificationCodes;
+
+    // If I am cleaner, I need to match the Customer's code
+    if (role === 'cleaner') {
+        if (codeProvided === customerCode) {
+            await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
+                'verificationCodes.cleanerVerified': true
+            });
+            return true;
+        }
+    }
+    // If I am customer, I need to match the Cleaner's code
+    else if (role === 'customer') {
+        if (codeProvided === cleanerCode) {
+            await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
+                'verificationCodes.customerVerified': true
+            });
+            return true;
+        }
+    }
+    return false;
+};
+
+/**
+ * Check if both Verified and Start Job
+ */
+export const checkVerificationAndStart = async (bookingId) => {
+    const booking = await getDoc(COLLECTIONS.BOOKINGS, bookingId);
+    if (booking?.verificationCodes?.cleanerVerified && booking?.verificationCodes?.customerVerified) {
+        await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
+            status: 'in_progress',
+            jobStartedAt: new Date().toISOString()
+        });
+        return true;
+    }
+    return false;
+};
+
+/**
+ * Submit Job for Approval
+ */
+export const submitJobForApproval = async (bookingId, notes, photos) => {
+    return await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
+        status: 'completed_pending_approval',
+        completedAt: new Date().toISOString(),
+        cleanerNotes: notes,
+        finalPhotos: photos
+    });
+};
+
+/**
+ * Approve Job (Customer)
+ */
+export const approveJob = async (bookingId, ratingData) => {
+    await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
+        status: 'approved',
+        approvedAt: new Date().toISOString(),
+        customerRating: ratingData
+    });
+    // Trigger Payout Logic here (simulated)
+    return true;
+};
+

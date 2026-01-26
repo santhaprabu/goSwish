@@ -22,6 +22,7 @@ import CleanerSchedule from './components/CleanerSchedule';
 import CleanerNotifications from './components/CleanerNotifications';
 import CustomerNotifications from './components/CustomerNotifications';
 import CustomerMessaging from './components/CustomerMessaging';
+import CustomerActiveJob from './components/CustomerActiveJob';
 import CleanerRatings from './components/CleanerRatings';
 import CleanerMessaging from './components/CleanerMessaging';
 import EarningsDashboard from './components/EarningsDashboard';
@@ -54,6 +55,7 @@ function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
   const [currentScreen, setCurrentScreen] = useState('splash');
   const [activeTab, setActiveTab] = useState('home');
+  const [activeJobBooking, setActiveJobBooking] = useState(null);
 
   // Auto-initialize database and seed data on first load
   useEffect(() => {
@@ -421,6 +423,20 @@ function AppContent() {
       return <AdminDashboard />;
     }
 
+    // Customer Active Job
+    if (activeJobBooking) {
+      return (
+        <CustomerActiveJob
+          booking={activeJobBooking}
+          onBack={() => setActiveJobBooking(null)}
+          onComplete={() => {
+            setActiveJobBooking(null);
+            setActiveTab('bookings');
+          }}
+        />
+      );
+    }
+
     const isCustomer = selectedRole === 'customer';
 
     return (
@@ -452,7 +468,9 @@ function AppContent() {
                 </div>
               </div>
             )}
-            {activeTab === 'bookings' && <BookingsList />}
+            {activeTab === 'bookings' && (
+              <BookingsList onTrackJob={setActiveJobBooking} />
+            )}
             {activeTab === 'profile' && (
               <ProfileScreen
                 onLogout={handleLogout}

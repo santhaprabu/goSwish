@@ -4,9 +4,8 @@ import { useApp } from '../context/AppContext';
 import { COLLECTIONS, getDocs } from '../storage/db';
 import { createReview } from '../storage';
 
-export default function MyBookings({ onMessaging }) {
+export default function MyBookings({ onMessaging, onTrackJob }) {
     const { user, serviceTypes, addOns, startChat } = useApp();
-
     const [bookings, setBookings] = useState([]);
     const [houses, setHouses] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -432,9 +431,19 @@ export default function MyBookings({ onMessaging }) {
                                     </div>
                                 )}
 
-                                {/* Actions Footer - Review */}
-                                {booking.status === 'completed' && (
-                                    <div className="pt-3 border-t border-gray-100 flex justify-end">
+                                {/* Actions Footer */}
+                                <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
+                                    {['on_the_way', 'arrived', 'in_progress', 'completed_pending_approval'].includes(booking.status) && (
+                                        <button
+                                            onClick={() => onTrackJob?.(booking)}
+                                            className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors shadow-sm shadow-blue-200"
+                                        >
+                                            <MapPin className="w-4 h-4" />
+                                            {booking.status === 'completed_pending_approval' ? 'Review Job' : 'Track Job'}
+                                        </button>
+                                    )}
+
+                                    {booking.status === 'completed' && (
                                         <button
                                             onClick={() => setReviewingBooking(booking)}
                                             className="px-4 py-2 bg-yellow-50 text-yellow-700 text-sm font-semibold rounded-lg hover:bg-yellow-100 border border-yellow-200 flex items-center gap-2 transition-colors"
@@ -442,8 +451,8 @@ export default function MyBookings({ onMessaging }) {
                                             <Star className="w-4 h-4" />
                                             Leave a Review
                                         </button>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
                     );
