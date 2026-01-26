@@ -71,18 +71,22 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
                 const dailyEarnings = await getCleanerDailyEarnings(cleanerProfile.id, 7);
 
                 // Get recent jobs as transactions
-                const allJobs = await getCleanerJobs(cleanerProfile.id);
                 const recentJobs = allJobs
                     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                     .slice(0, 10)
-                    .map(job => ({
-                        id: job.id,
-                        type: 'earning',
-                        description: `${job.serviceType || 'Clean'} - ${job.customerName || 'Customer'}`,
-                        amount: job.amount || job.earnings || 0,
-                        date: new Date(job.completedAt || job.scheduledDate || job.createdAt).toLocaleDateString(),
-                        tip: job.tip || 0
-                    }));
+                    .map(job => {
+                        const isPayout = job.id.startsWith('txn_') || job.type === 'payout' || job.type === 'withdrawal';
+                        return {
+                            id: job.id,
+                            type: isPayout ? 'payout' : 'earning',
+                            description: isPayout
+                                ? (job.description || 'Payout')
+                                : `${job.serviceType || 'Clean'} - ${job.customerName || 'Customer'}`,
+                            amount: job.amount || job.earnings || 0,
+                            date: new Date(job.completedAt || job.scheduledDate || job.createdAt).toLocaleDateString(),
+                            tip: job.tip || 0
+                        };
+                    });
 
                 setEarningsData({
                     today: {
