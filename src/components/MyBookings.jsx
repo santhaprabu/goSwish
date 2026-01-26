@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Home, Sparkles, MapPin, RefreshCw, Loader2, AlertCircle, MessageSquare } from 'lucide-react';
+import { Calendar, Clock, Home, Sparkles, MapPin, RefreshCw, Loader2, AlertCircle, MessageSquare, Star, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { COLLECTIONS, getDocs } from '../storage/db';
+import { createReview } from '../storage';
 
 export default function MyBookings({ onMessaging }) {
     const { user, serviceTypes, addOns, startChat } = useApp();
@@ -12,6 +13,12 @@ export default function MyBookings({ onMessaging }) {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
 
+    // Review State
+    const [reviewingBooking, setReviewingBooking] = useState(null);
+    const [reviewRating, setReviewRating] = useState(5);
+    const [reviewComment, setReviewComment] = useState('');
+    const [submittingReview, setSubmittingReview] = useState(false);
+
     const loadData = async () => {
         try {
             setRefreshing(true);
@@ -21,46 +28,32 @@ export default function MyBookings({ onMessaging }) {
 
             // Get ALL bookings from database
             const allBookings = await getDocs(COLLECTIONS.BOOKINGS);
-            console.log('📚 Total bookings in DB:', allBookings.length);
-            console.log('📋 All bookings:', allBookings);
 
             // Filter bookings for current user
-            // Handle both correct customerId field AND corrupted spread format
             const userBookings = allBookings.filter(booking => {
                 // Check if customerId field exists and matches
                 if (booking.customerId === user?.uid) {
                     return true;
                 }
-
                 // Check if userId field exists (alternative naming)
                 if (booking.userId === user?.uid) {
                     return true;
                 }
-
                 // Check for corrupted data (string spread as object)
-                // If customerId was spread, it creates indices: {"0": "u", "1": "s", "2": "e", ...}
                 const hasNumericKeys = Object.keys(booking).some(key => !isNaN(key));
                 if (hasNumericKeys) {
-                    // Try to reconstruct the string from numeric indices
                     const indices = Object.keys(booking).filter(key => !isNaN(key)).sort((a, b) => a - b);
                     const reconstructed = indices.map(i => booking[i]).join('');
                     if (reconstructed === user?.uid) {
-                        console.log('⚠️ Found corrupted booking, reconstructed ID:', reconstructed);
                         return true;
                     }
                 }
-
                 return false;
             });
-
-            console.log('👤 User bookings found:', userBookings.length);
-            console.log('📊 User bookings data:', userBookings);
 
             // Get all houses for reference
             const allHouses = await getDocs(COLLECTIONS.HOUSES);
             const userHouses = allHouses.filter(h => h.userId === user?.uid);
-
-            console.log('🏠 User houses:', userHouses.length);
 
             setBookings(userBookings);
             setHouses(userHouses);
@@ -150,6 +143,89 @@ export default function MyBookings({ onMessaging }) {
         return status.charAt(0).toUpperCase() + status.slice(1).replace(/-/g, ' ');
     };
 
+    const handleSubmitReview = async () => {
+        if (!reviewingBooking) return;
+        setSubmittingReview(true);
+        try {
+            await createReview({
+                customerId: user.uid,
+                cleanerId: reviewingBooking.cleanerId,
+                bookingId: reviewingBooking.id, // Link review to booking
+                customerName: user.name || 'Customer',
+                rating: reviewRating,
+                comment: reviewComment,
+                serviceType: getServiceName(reviewingBooking.serviceTypeId),
+                tags: ['professional', 'punctual'] // Demo tags
+            });
+            // Ideally mark booking as reviewed locally or refresh
+            alert('Review submitted! Thank you.');
+            setReviewingBooking(null);
+            setReviewComment('');
+            setReviewRating(5);
+        } catch (e) {
+            console.error(e);
+            alert('Failed to submit review');
+        } finally {
+            setSubmittingReview(false);
+        }
+    };
+
+    // Review Modal
+    const renderReviewModal = () => {
+        if (!reviewingBooking) return null;
+        return (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in duration-200">
+                    <button
+                        onClick={() => setReviewingBooking(null)}
+                        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+
+                    <h3 className="text-xl font-bold text-gray-900 mb-1">Rate your experience</h3>
+                    <p className="text-sm text-gray-500 mb-6">How was your cleaning with the professional?</p>
+
+                    <div className="flex justify-center gap-2 mb-6">
+                        {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                                key={star}
+                                onClick={() => setReviewRating(star)}
+                                className="transition-transform hover:scale-110 focus:outline-none"
+                            >
+                                <Star
+                                    className={`w-10 h-10 ${star <= reviewRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                                />
+                            </button>
+                        ))}
+                    </div>
+
+                    <textarea
+                        className="w-full p-3 border border-gray-200 rounded-xl mb-4 focus:ring-2 focus:ring-blue-500 outline-none resize-none h-32"
+                        placeholder="Write a review (optional)..."
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                    ></textarea>
+
+                    <button
+                        onClick={handleSubmitReview}
+                        disabled={submittingReview}
+                        className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50"
+                    >
+                        {submittingReview ? 'Submitting...' : 'Submit Review'}
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
+    // Sort bookings
+    const sortedBookings = [...bookings].sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA;
+    });
+
     // Loading state
     if (loading) {
         return (
@@ -213,16 +289,10 @@ export default function MyBookings({ onMessaging }) {
         );
     }
 
-    // Sort bookings by created date (newest first)
-    const sortedBookings = [...bookings].sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateB - dateA;
-    });
-
     // Bookings list
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
+            {renderReviewModal()}
             {/* Header */}
             <div className="bg-white border-b px-4 py-3 sticky top-0 z-10">
                 <div className="flex items-center justify-between">
@@ -359,6 +429,19 @@ export default function MyBookings({ onMessaging }) {
                                         <span className="text-2xl font-bold text-teal-700">
                                             ${typeof booking.totalAmount === 'number' ? booking.totalAmount.toFixed(2) : booking.totalAmount}
                                         </span>
+                                    </div>
+                                )}
+
+                                {/* Actions Footer - Review */}
+                                {booking.status === 'completed' && (
+                                    <div className="pt-3 border-t border-gray-100 flex justify-end">
+                                        <button
+                                            onClick={() => setReviewingBooking(booking)}
+                                            className="px-4 py-2 bg-yellow-50 text-yellow-700 text-sm font-semibold rounded-lg hover:bg-yellow-100 border border-yellow-200 flex items-center gap-2 transition-colors"
+                                        >
+                                            <Star className="w-4 h-4" />
+                                            Leave a Review
+                                        </button>
                                     </div>
                                 )}
                             </div>
