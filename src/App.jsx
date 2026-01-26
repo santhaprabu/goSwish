@@ -37,6 +37,7 @@ import {
 import { initDB, initializeDatabase } from './storage';
 import { seedAllData, getSeedingStats } from './storage/seedData';
 import { migrateUserData } from './storage/migration';
+import AdminDashboard from './admin/AdminDashboard';
 import './index.css';
 
 // Main app component with all navigation logic
@@ -415,6 +416,11 @@ function AppContent() {
 
   // Render main content based on active tab
   const renderMainContent = () => {
+    // Admin Check
+    if (user?.role === 'admin') {
+      return <AdminDashboard />;
+    }
+
     const isCustomer = selectedRole === 'customer';
 
     return (
