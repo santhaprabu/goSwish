@@ -369,6 +369,16 @@ function AppContent() {
           />
         );
 
+      case 'shift-management':
+        return (
+          <ShiftManagement
+            onBack={() => {
+              setCurrentScreen('main');
+              setActiveTab('schedule'); // Note: 'schedule' is the correct tab for cleaner schedule
+            }}
+          />
+        );
+
       case 'main':
       default:
         return renderMainContent();

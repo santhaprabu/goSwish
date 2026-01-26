@@ -10,6 +10,7 @@ import {
     getCleanerByUserId,
     getCleanerAvailability,
     updateCleanerAvailability,
+    bulkUpdateCleanerAvailability,
     getCleanerJobs
 } from '../storage';
 
@@ -92,6 +93,9 @@ export default function ShiftManagement({ onBack }) {
             const shiftsMap = {};
             if (availability) {
                 Object.entries(availability).forEach(([date, dayData]) => {
+                    // Safety check if dayData is null
+                    if (!dayData) return;
+
                     SHIFTS.forEach(shift => {
                         const key = `${date}_${shift}`;
                         shiftsMap[key] = {
@@ -238,10 +242,8 @@ export default function ShiftManagement({ onBack }) {
                 }
             }
 
-            // Update all shifts
-            for (const update of updates) {
-                await updateCleanerAvailability(cleanerProfile.id, update.date, update.shift, update.status);
-            }
+            // Use bulk update for better performance and consistency
+            await bulkUpdateCleanerAvailability(cleanerProfile.id, updates);
 
             // Refresh data
             await loadWeekData();

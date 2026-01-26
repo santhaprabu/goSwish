@@ -10,7 +10,7 @@ import {
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-export default function CleanerSchedule({ onViewJob, onStartJob }) {
+export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailability }) {
     const { user } = useApp();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -306,8 +306,14 @@ export default function CleanerSchedule({ onViewJob, onStartJob }) {
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
             <div className="app-bar">
-                <div className="px-4 py-3">
-                    <h1 className="text-lg font-semibold text-center">Schedule</h1>
+                <div className="px-4 py-3 flex items-center justify-between">
+                    <h1 className="text-lg font-semibold">Schedule</h1>
+                    <button
+                        onClick={onManageAvailability}
+                        className="text-sm font-medium text-secondary-600 bg-secondary-50 px-3 py-1.5 rounded-lg hover:bg-secondary-100 transition-colors"
+                    >
+                        Availability
+                    </button>
                 </div>
             </div>
 
