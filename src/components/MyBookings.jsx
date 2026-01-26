@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Home, Sparkles, MapPin, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, Home, Sparkles, MapPin, RefreshCw, Loader2, AlertCircle, MessageSquare } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { COLLECTIONS, getDocs } from '../storage/db';
 
-export default function MyBookings() {
-    const { user, serviceTypes, addOns } = useApp();
+export default function MyBookings({ onMessaging }) {
+    const { user, serviceTypes, addOns, startChat } = useApp();
 
     const [bookings, setBookings] = useState([]);
     const [houses, setHouses] = useState([]);
@@ -247,6 +247,16 @@ export default function MyBookings() {
                     const timeSlot = firstDate && booking.timeSlots ? booking.timeSlots[firstDate]?.[0] : null;
                     const addOnsList = getAddOnNames(booking.addOnIds);
 
+                    const handleMessageCleaner = async () => {
+                        if (!booking.cleanerId) return;
+                        try {
+                            await startChat(booking.cleanerId);
+                            onMessaging?.();
+                        } catch (error) {
+                            console.error('Error starting chat:', error);
+                        }
+                    };
+
                     return (
                         <div
                             key={booking.id || index}
@@ -263,6 +273,15 @@ export default function MyBookings() {
                                             <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusColor(booking.status)}`}>
                                                 {getStatusText(booking.status)}
                                             </span>
+                                            {booking.cleanerId && (
+                                                <button
+                                                    onClick={handleMessageCleaner}
+                                                    className="p-1 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors"
+                                                    title="Message Cleaner"
+                                                >
+                                                    <MessageSquare className="w-4 h-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="text-right">

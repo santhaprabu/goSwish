@@ -4,14 +4,14 @@ import { getCleanerJobs, getCleanerByUserId } from '../storage';
 import {
     Calendar, ChevronLeft, ChevronRight, Clock, MapPin,
     DollarSign, User, Home, Check, AlertCircle, Play,
-    Plus, Filter, Loader
+    Plus, Filter, Loader, MessageSquare
 } from 'lucide-react';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailability }) {
-    const { user } = useApp();
+export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailability, onMessaging }) {
+    const { user, startChat } = useApp();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [view, setView] = useState('week'); // week, month
@@ -43,6 +43,7 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
 
                     return {
                         id: job.id,
+                        customerId: job.customerId,
                         date: scheduledDate.toISOString().split('T')[0],
                         startTime: `${startHour}:00`,
                         endTime: `${startHour + duration}:00`,
@@ -169,6 +170,16 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
 
     const upcomingCount = jobs.filter(j => j.status === 'scheduled').length;
 
+    const handleMessageCustomer = async () => {
+        if (!selectedJob?.customerId) return;
+        try {
+            await startChat(selectedJob.customerId);
+            onMessaging?.();
+        } catch (error) {
+            console.error('Error starting chat:', error);
+        }
+    };
+
     // Job Detail Modal
     if (selectedJob) {
         return (
@@ -239,6 +250,12 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                                     </div>
                                 </div>
                             </div>
+                            <button
+                                onClick={handleMessageCustomer}
+                                className="p-2 bg-secondary-50 text-secondary-600 rounded-full hover:bg-secondary-100 transition-colors"
+                            >
+                                <MessageSquare className="w-5 h-5" />
+                            </button>
                         </div>
                     </div>
 

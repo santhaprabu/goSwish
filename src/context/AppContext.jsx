@@ -257,6 +257,42 @@ export function AppProvider({ children }) {
         }
     }, [state.user]);
 
+    const startChat = useCallback(async (targetUserId, metadata = {}) => {
+        if (!state.user?.uid) return null;
+        try {
+            const { getConversation, createConversation, getUserById } = await import('../storage/index.js');
+
+            // Check if exists
+            let conversation = await getConversation(state.user.uid, targetUserId);
+
+            if (!conversation) {
+                // Get names
+                let targetName = 'User';
+                try {
+                    const targetUser = await getUserById(targetUserId);
+                    if (targetUser) targetName = `${targetUser.firstName} ${targetUser.lastName}`;
+                } catch (e) {
+                    console.warn('Failed to fetch target user name', e);
+                }
+
+                const myName = state.user.name || 'User';
+                const isCustomer = state.selectedRole === 'customer' || state.user.role === 'customer';
+
+                conversation = await createConversation([state.user.uid, targetUserId], {
+                    ...metadata,
+                    customerName: isCustomer ? myName : targetName,
+                    cleanerName: isCustomer ? targetName : myName,
+                    startedBy: state.user.uid
+                });
+            }
+
+            return conversation;
+        } catch (error) {
+            console.error('Error starting chat:', error);
+            throw error;
+        }
+    }, [state.user, state.selectedRole]);
+
     // House actions - all use IndexedDB directly
     const addHouse = useCallback(async (houseData) => {
         try {
@@ -580,6 +616,7 @@ export function AppProvider({ children }) {
 
         // Cleaner matching
         findEligibleCleaners,
+        startChat,
 
         // UI actions
         setLoading,

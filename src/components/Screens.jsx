@@ -737,7 +737,7 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
     );
 }
 
-export function ProfileScreen({ onLogout, onBecomeCleanerClick, onEditProfile, onPaymentMethods, onHelpCenter, onTermsPrivacy }) {
+export function ProfileScreen({ onLogout, onBecomeCleanerClick, onEditProfile, onPaymentMethods, onHelpCenter, onTermsPrivacy, onNotifications, onMessaging }) {
     const { user, selectedRole, setRole } = useApp();
 
     const isCustomer = selectedRole === 'customer';
@@ -778,9 +778,15 @@ export function ProfileScreen({ onLogout, onBecomeCleanerClick, onEditProfile, o
                         <ChevronRight className="w-5 h-5 text-gray-400" />
                     </button>
 
-                    <button className="w-full px-4 py-4 flex items-center gap-4 text-left hover:bg-gray-50">
+                    <button onClick={onNotifications} className="w-full px-4 py-4 flex items-center gap-4 text-left hover:bg-gray-50">
                         <Bell className="w-5 h-5 text-gray-400" />
                         <span className="flex-1">Notifications</span>
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                    </button>
+
+                    <button onClick={onMessaging} className="w-full px-4 py-4 flex items-center gap-4 text-left hover:bg-gray-50">
+                        <MessageSquare className="w-5 h-5 text-gray-400" />
+                        <span className="flex-1">Messages</span>
                         <ChevronRight className="w-5 h-5 text-gray-400" />
                     </button>
 

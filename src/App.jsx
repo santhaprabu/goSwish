@@ -21,6 +21,7 @@ import TermsPrivacy from './components/TermsPrivacy';
 import CleanerSchedule from './components/CleanerSchedule';
 import CleanerNotifications from './components/CleanerNotifications';
 import CustomerNotifications from './components/CustomerNotifications';
+import CustomerMessaging from './components/CustomerMessaging';
 import CleanerRatings from './components/CleanerRatings';
 import CleanerMessaging from './components/CleanerMessaging';
 import EarningsDashboard from './components/EarningsDashboard';
@@ -318,6 +319,16 @@ function AppContent() {
           />
         );
 
+      case 'customer-messaging':
+        return (
+          <CustomerMessaging
+            onBack={() => {
+              setCurrentScreen('main');
+              setActiveTab('home'); // or profile?
+            }}
+          />
+        );
+
       case 'customer-notifications':
         return (
           <CustomerNotifications
@@ -444,6 +455,8 @@ function AppContent() {
                 onPaymentMethods={() => setCurrentScreen('payment-methods')}
                 onHelpCenter={() => setCurrentScreen('help-center')}
                 onTermsPrivacy={() => setCurrentScreen('terms-privacy')}
+                onNotifications={() => setCurrentScreen('customer-notifications')}
+                onMessaging={() => setCurrentScreen('customer-messaging')}
               />
             )}
           </>
@@ -468,6 +481,7 @@ function AppContent() {
                   console.log('Start job:', job);
                 }}
                 onManageAvailability={() => setCurrentScreen('shift-management')}
+                onMessaging={() => setCurrentScreen('cleaner-messaging')}
               />
             )}
             {activeTab === 'earnings' && (
@@ -483,6 +497,8 @@ function AppContent() {
                 onPaymentMethods={() => setCurrentScreen('payment-methods')}
                 onHelpCenter={() => setCurrentScreen('help-center')}
                 onTermsPrivacy={() => setCurrentScreen('terms-privacy')}
+                onNotifications={() => setCurrentScreen('cleaner-notifications')}
+                onMessaging={() => setCurrentScreen('cleaner-messaging')}
               />
             )}
           </>
