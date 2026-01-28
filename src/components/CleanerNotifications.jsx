@@ -3,7 +3,8 @@ import { useApp } from '../context/AppContext';
 import {
     getUserNotifications,
     markNotificationAsRead as markNotifRead,
-    markAllNotificationsAsRead as markAllRead
+    markAllNotificationsAsRead as markAllRead,
+    deleteNotification
 } from '../storage';
 import {
     Bell, Briefcase, DollarSign, Star, MessageSquare,
@@ -137,8 +138,13 @@ export default function CleanerNotifications({ onBack, onViewJob, onViewMessage,
         }
     };
 
-    const handleDismiss = (notifId) => {
-        setNotifications(prev => prev.filter(n => n.id !== notifId));
+    const handleDismiss = async (notifId) => {
+        try {
+            await deleteNotification(notifId);
+            setNotifications(prev => prev.filter(n => n.id !== notifId));
+        } catch (error) {
+            console.error('Error deleting notification:', error);
+        }
     };
 
     const handleNotificationClick = (notification) => {

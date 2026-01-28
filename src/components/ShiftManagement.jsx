@@ -17,7 +17,7 @@ import {
 // Date utility functions
 function startOfWeek(date) {
     const d = new Date(date);
-    const day = d.getDay();
+    const day = d.getDay(); // 0 (Sunday) to 6 (Saturday)
     const diff = d.getDate() - day;
     return new Date(d.setDate(diff));
 }
@@ -186,6 +186,9 @@ export default function ShiftManagement({ onBack }) {
 
         // Don't allow navigating to past weeks
         const thisWeekStart = startOfWeek(new Date());
+        thisWeekStart.setHours(0, 0, 0, 0);
+        newWeekStart.setHours(0, 0, 0, 0);
+
         if (newWeekStart < thisWeekStart) {
             showToast('Cannot view past weeks', 'error');
             return;
@@ -306,7 +309,9 @@ export default function ShiftManagement({ onBack }) {
 
                     <div className="text-center">
                         <p className="text-sm opacity-80">Week of</p>
-                        <p className="text-xl font-bold">{formatDate(currentWeekStart, 'MMM d')}</p>
+                        <p className="text-xl font-bold">
+                            {formatDate(currentWeekStart, 'MMM d')} - {formatDate(addDays(currentWeekStart, 6), 'MMM d')}
+                        </p>
                     </div>
 
                     <button

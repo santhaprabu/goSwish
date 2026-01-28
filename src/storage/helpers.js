@@ -263,6 +263,43 @@ export const acceptJobOffer = async (bookingId, cleanerId, jobDetails) => {
         getDoc(COLLECTIONS.USERS, booking.customerId)
     ]);
 
+    // Check for conflict before accepting
+    const bookingDates = booking.dates || [booking.date]; // Fallback
+    // Ensure timeSlots is formatted correctly or derived
+    const timeSlots = booking.timeSlots || { [bookingDates[0]]: ['morning'] };
+
+    // Note: checkCleanerConflict is defined later in file, so we might need to hoist or use module scope 
+    // BUT since we are in the same module, we can call it if it's hoisted or defined. 
+    // To be safe, I'll rely on it being available or move definition up.
+    // Actually, closures defined with `const` aren't hoisted. 
+    // I should define checkCleanerConflict AT THE TOP or before use.
+    // However, for this edit, I will duplicate the logic slightly or Assume the user accepts I move definition.
+    // BETTER STRATEGY: I will define `checkCleanerConflict` helper at top of file in next step if needed, or inline check here.
+
+    // Inline check for now to be safe:
+    const myJobs = await queryDocs(COLLECTIONS.JOBS, 'cleanerId', cleanerId);
+    const hasConflict = myJobs.some(j => {
+        if (j.status !== 'scheduled' && j.status !== 'in_progress') return false;
+
+        const jDate = new Date(j.scheduledDate || j.startTime).toISOString().split('T')[0];
+        if (bookingDates.includes(jDate)) {
+            // Simple conflicting day check for safety
+            // If we really want slot check:
+            const hour = new Date(j.startTime || j.scheduledDate).getHours();
+            let slot = 'morning';
+            if (hour >= 12) slot = 'afternoon';
+            if (hour >= 15) slot = 'evening';
+
+            const requestedSlots = timeSlots[jDate] || [];
+            if (requestedSlots.includes(slot)) return true;
+        }
+        return false;
+    });
+
+    if (hasConflict) {
+        throw new Error("You already have a booking at this time block.");
+    }
+
     // 3. Update booking
     await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
         cleanerId: cleanerId,
@@ -323,7 +360,29 @@ export const acceptJobOffer = async (bookingId, cleanerId, jobDetails) => {
         console.warn('Failed to send notification', e);
     }
 
+    // 6. Remove "Job Offer" notifications for this booking from ALL cleaners
+    // This cleans up the noise for others since the job is now taken
+    await deleteJobOfferNotifications(booking.id);
+
     return job;
+};
+
+/**
+ * Delete all job offer notifications for a specific booking
+ * Usage: When a job is taken, remove the alert from other cleaners' feeds.
+ */
+export const deleteJobOfferNotifications = async (bookingId) => {
+    try {
+        const notifs = await queryDocs(COLLECTIONS.NOTIFICATIONS, 'relatedId', bookingId);
+        const deletionPromises = notifs
+            .filter(n => n.type === 'job_offer')
+            .map(n => deleteDoc(COLLECTIONS.NOTIFICATIONS, n.id));
+
+        await Promise.all(deletionPromises);
+        console.log(`Deleted ${deletionPromises.length} stale job offers for booking ${bookingId}`);
+    } catch (e) {
+        console.error('Error clearing stale job notifications', e);
+    }
 };
 
 /**
@@ -556,9 +615,8 @@ export const createNotification = async (userId, notificationData) => {
  * Get user notifications
  */
 export const getUserNotifications = async (userId) => {
-    const notifications = await getDocs(COLLECTIONS.NOTIFICATIONS);
+    const notifications = await queryDocs(COLLECTIONS.NOTIFICATIONS, 'userId', userId);
     return notifications
-        .filter(n => n.userId === userId)
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 };
 
@@ -569,6 +627,12 @@ export const markNotificationAsRead = async (notificationId) => {
     return await updateDoc(COLLECTIONS.NOTIFICATIONS, notificationId, {
         read: true,
     });
+};
+/**
+ * Delete notification
+ */
+export const deleteNotification = async (notificationId) => {
+    return await deleteDoc(COLLECTIONS.NOTIFICATIONS, notificationId);
 };
 
 /**
@@ -1039,6 +1103,54 @@ export const cleanupOldAvailability = async (cleanerId, daysToKeep = 7) => {
 /**
  * Broadcast new job to cleaners
  */
+/**
+ * Check if cleaner has a conflicting job
+ */
+export const checkCleanerConflict = async (cleanerId, dates, timeSlots) => {
+    // Get cleaner's existing jobs
+    const jobs = await queryDocs(COLLECTIONS.JOBS, 'cleanerId', cleanerId);
+    const activeJobs = jobs.filter(j =>
+        j.status === 'scheduled' || j.status === 'in_progress'
+    );
+
+    // Check for overlap
+    for (const date of dates) {
+        // Requested slots for this date (e.g., ['morning'])
+        const requestedSlots = timeSlots[date] || [];
+
+        for (const job of activeJobs) {
+            const jobDate = new Date(job.scheduledDate || job.startTime).toISOString().split('T')[0];
+
+            if (jobDate === date) {
+                // If specific times are used, we would check ranges.
+                // For now, if they have a job on this date, assume busy or check slots if job has slots.
+                // Assuming 1 job per day per slot roughly.
+                // Let's be strict: If they have a job that day, check if times overlap.
+
+                // If job doesn't have explicit slots, we assume it takes a significant chunk.
+                // But let's try to be smart.
+                // If the new request is 'morning' and existing job is 'afternoon', it's fine.
+
+                // However, our job model might not store "slot". It stores startTime/endTime.
+                // Let's parse startTime to slot.
+                let jobSlot = 'morning'; // Default
+                const hour = new Date(job.startTime || job.scheduledDate).getHours();
+                if (hour >= 12 && hour < 15) jobSlot = 'afternoon';
+                if (hour >= 15) jobSlot = 'evening';
+
+                if (requestedSlots.includes(jobSlot)) {
+                    return true; // Conflict found
+                }
+            }
+        }
+    }
+
+    return false; // No conflict
+};
+
+/**
+ * Broadcast new job to cleaners
+ */
 export const broadcastNewJob = async (booking) => {
     try {
         // 1. Get House for location
@@ -1062,16 +1174,32 @@ export const broadcastNewJob = async (booking) => {
         };
 
         // 3. Filter eligible cleaners
-        const eligibleCleaners = cleaners.filter(cleaner => {
-            if (cleaner.status !== 'active') return false;
+        const eligibleCleaners = [];
+
+        for (const cleaner of cleaners) {
+            if (cleaner.status !== 'active') continue;
 
             // Check distance
             if (cleaner.baseLocation && house.address) {
                 const dist = getDist(cleaner.baseLocation, house.address);
-                return dist <= (cleaner.serviceRadius || 25);
+                if (dist > (cleaner.serviceRadius || 25)) continue;
             }
-            return true; // Default allow if no location data
-        });
+
+            // Check service type
+            if (booking.serviceTypeId && cleaner.serviceTypes && !cleaner.serviceTypes.includes(booking.serviceTypeId)) {
+                // Skip if cleaner doesn't support this service
+                continue;
+            }
+
+            // Check availability (Calendar Blocking)
+            const isBusy = await checkCleanerConflict(cleaner.id, booking.dates || [], booking.timeSlots || {});
+            if (isBusy) {
+                console.log(`Skipping cleaner ${cleaner.name} - Calendar blocked`);
+                continue;
+            }
+
+            eligibleCleaners.push(cleaner);
+        }
 
         console.log(`Broadcasting job ${booking.id} to ${eligibleCleaners.length} cleaners`);
 
@@ -1206,12 +1334,79 @@ export const submitJobForApproval = async (bookingId, notes, photos) => {
  * Approve Job (Customer)
  */
 export const approveJob = async (bookingId, ratingData) => {
+    // 1. Update Booking
     await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
         status: 'approved',
         approvedAt: new Date().toISOString(),
         customerRating: ratingData
     });
+
+    // 2. Create Review Record (Customer -> Cleaner)
+    try {
+        const booking = await getBookingById(bookingId);
+        if (booking && booking.cleanerId) {
+            const customer = await getUserById(booking.customerId);
+            const cleaner = await getUserById(booking.cleanerId);
+
+            await createReview({
+                bookingId: booking.id,
+                cleanerId: booking.cleanerId,
+                customerId: booking.customerId,
+                cleanerName: cleaner?.name || 'Cleaner',
+                customerName: customer?.name || 'Customer',
+                reviewerRole: 'customer',
+                rating: ratingData.rating || 5,
+                comment: ratingData.comment || '',
+                tags: ratingData.tags || [],
+                createdAt: new Date().toISOString()
+            });
+        }
+    } catch (e) {
+        console.warn('Failed to create cleaner review record', e);
+    }
+
     // Trigger Payout Logic here (simulated)
+    return true;
+};
+
+/**
+ * Rate Customer (Cleaner -> Customer)
+ */
+export const rateCustomer = async (bookingId, ratingData) => {
+    // 1. Update Booking with cleaner's rating of customer
+    await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
+        cleanerRating: {
+            rating: ratingData.rating,
+            comment: ratingData.comment,
+            tags: ratingData.tags,
+            ratedAt: new Date().toISOString()
+        }
+    });
+
+    // 2. Create Review Record (Cleaner -> Customer)
+    try {
+        const booking = await getBookingById(bookingId);
+        if (booking) {
+            const customer = await getUserById(booking.customerId);
+            const cleaner = await getUserById(booking.cleanerId);
+
+            await createReview({
+                bookingId: booking.id,
+                cleanerId: booking.cleanerId,
+                customerId: booking.customerId,
+                cleanerName: cleaner?.name || 'Cleaner',
+                customerName: customer?.name || 'Customer',
+                reviewerRole: 'cleaner',
+                rating: ratingData.rating,
+                comment: ratingData.comment,
+                tags: ratingData.tags || [],
+                createdAt: new Date().toISOString()
+            });
+        }
+    } catch (e) {
+        console.warn('Failed to create customer review record', e);
+    }
+
     return true;
 };
 

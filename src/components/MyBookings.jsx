@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Home, Sparkles, MapPin, RefreshCw, Loader2, AlertCircle, MessageSquare, Star, X } from 'lucide-react';
+import { Calendar, Clock, Home, Sparkles, MapPin, RefreshCw, Loader2, AlertCircle, MessageSquare, Star, X, User } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { COLLECTIONS, getDocs } from '../storage/db';
 import { createReview } from '../storage';
@@ -11,6 +11,7 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
+    const [cleanerDetails, setCleanerDetails] = useState({});
 
     // Review State
     const [reviewingBooking, setReviewingBooking] = useState(null);
@@ -66,6 +67,51 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
         }
     };
 
+    // Load cleaner details for bookings
+    useEffect(() => {
+        const fetchCleanerDetails = async () => {
+            if (bookings.length === 0) return;
+
+            const cleanerIds = [...new Set(bookings
+                .filter(b => b.cleanerId)
+                .map(b => b.cleanerId)
+            )];
+
+            if (cleanerIds.length === 0) return;
+
+            const details = {};
+            for (const cleanerId of cleanerIds) {
+                try {
+                    // First get cleaner doc to find userId
+                    const cleanerDoc = await getDocs(COLLECTIONS.CLEANERS).then(docs =>
+                        docs.find(c => c.id === cleanerId)
+                    );
+
+                    if (cleanerDoc && cleanerDoc.userId) {
+                        // Then get user doc for name/photo
+                        const userDoc = await getDocs(COLLECTIONS.USERS).then(docs =>
+                            docs.find(u => u.uid === cleanerDoc.userId || u.id === cleanerDoc.userId)
+                        );
+
+                        if (userDoc) {
+                            details[cleanerId] = {
+                                name: userDoc.profile?.name || userDoc.name || 'Cleaner',
+                                photo: userDoc.profile?.photoURL || userDoc.photoURL || null,
+                                phone: userDoc.profile?.phone || userDoc.phone,
+                                rating: cleanerDoc.stats?.rating || 5.0
+                            };
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error fetching cleaner details:', e);
+                }
+            }
+            setCleanerDetails(prev => ({ ...prev, ...details }));
+        };
+
+        fetchCleanerDetails();
+    }, [bookings]);
+
     useEffect(() => {
         if (user?.uid) {
             loadData();
@@ -76,7 +122,7 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
     const getHouseName = (houseId) => {
         if (!houseId) return 'Property not specified';
         const house = houses.find(h => h.id === houseId);
-        return house?.name || 'Unknown Property';
+        return house?.name || house?.address?.street || 'Unknown Property';
     };
 
     const getHouseAddress = (houseId) => {
@@ -431,6 +477,46 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
                                     </div>
                                 )}
 
+                                {/* Cleaner Info Section */}
+                                {booking.cleanerId && cleanerDetails[booking.cleanerId] && (
+                                    <div className="pt-3 border-t border-gray-100">
+                                        <div className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wide">Your Pro</div>
+                                        <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl">
+                                            <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex-shrink-0 border border-gray-100">
+                                                {cleanerDetails[booking.cleanerId].photo ? (
+                                                    <img
+                                                        src={cleanerDetails[booking.cleanerId].photo}
+                                                        alt={cleanerDetails[booking.cleanerId].name}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center bg-gray-300 text-gray-500">
+                                                        <User className="w-6 h-6" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-semibold text-gray-900 truncate">
+                                                    {cleanerDetails[booking.cleanerId].name}
+                                                </div>
+                                                <div className="flex items-center gap-1 text-sm text-gray-500">
+                                                    <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                                                    <span className="font-medium text-gray-700">
+                                                        {cleanerDetails[booking.cleanerId].rating.toFixed(1)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={handleMessageCleaner}
+                                                className="p-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors"
+                                                title="Message"
+                                            >
+                                                <MessageSquare className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Actions Footer */}
                                 <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
                                     {['on_the_way', 'arrived', 'in_progress', 'completed_pending_approval'].includes(booking.status) && (
@@ -458,6 +544,6 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
                     );
                 })}
             </div>
-        </div>
+        </div >
     );
 }

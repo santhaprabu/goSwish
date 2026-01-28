@@ -4,7 +4,7 @@
  */
 
 const DB_NAME = 'GoSwishDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // Collection names
 export const COLLECTIONS = {
@@ -88,6 +88,28 @@ export const initDB = () => {
                     if (collectionName === COLLECTIONS.REVIEWS) {
                         objectStore.createIndex('cleanerId', 'cleanerId', { unique: false });
                         objectStore.createIndex('customerId', 'customerId', { unique: false });
+                    }
+
+                    if (collectionName === COLLECTIONS.NOTIFICATIONS) {
+                        objectStore.createIndex('userId', 'userId', { unique: false });
+                        objectStore.createIndex('type', 'type', { unique: false });
+                        objectStore.createIndex('relatedId', 'relatedId', { unique: false });
+                    }
+                } else {
+                    // Update existing store indexes for version upgrades
+                    const transaction = event.target.transaction;
+                    const objectStore = transaction.objectStore(collectionName);
+
+                    if (collectionName === COLLECTIONS.NOTIFICATIONS) {
+                        if (!objectStore.indexNames.contains('userId')) {
+                            objectStore.createIndex('userId', 'userId', { unique: false });
+                        }
+                        if (!objectStore.indexNames.contains('type')) {
+                            objectStore.createIndex('type', 'type', { unique: false });
+                        }
+                        if (!objectStore.indexNames.contains('relatedId')) {
+                            objectStore.createIndex('relatedId', 'relatedId', { unique: false });
+                        }
                     }
                 }
             });

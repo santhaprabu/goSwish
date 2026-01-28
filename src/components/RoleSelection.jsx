@@ -36,7 +36,7 @@ export default function RoleSelection({ onRoleSelected }) {
                     </div>
                     <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                            <h2 className="text-xl font-bold text-gray-900">I'm a Customer</h2>
+                            <h2 className="text-xl font-bold text-gray-900">I'm a Home Owner</h2>
                             <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-primary-500 
                                      group-hover:translate-x-1 transition-all" />
                         </div>

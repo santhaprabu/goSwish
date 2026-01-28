@@ -71,6 +71,7 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
                 const dailyEarnings = await getCleanerDailyEarnings(cleanerProfile.id, 7);
 
                 // Get recent jobs as transactions
+                const allJobs = await getCleanerJobs(cleanerProfile.id);
                 const recentJobs = allJobs
                     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                     .slice(0, 10)
@@ -148,29 +149,29 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
             </div>
 
             {/* Main Earnings Card */}
-            <div className="bg-gradient-to-br from-secondary-500 via-secondary-600 to-secondary-700 text-white px-6 py-8">
+            <div className="bg-black text-white px-6 py-8 pb-10 rounded-b-[1.5rem] shadow-xl relative z-10">
                 <div className="text-center mb-6">
-                    <p className="text-secondary-100 text-sm mb-1">
+                    <p className="text-gray-400 text-sm font-medium uppercase tracking-wider mb-2">
                         {period === 'today' ? "Today's" : period === 'week' ? 'This Week' : period === 'month' ? 'This Month' : 'This Year'} Earnings
                     </p>
-                    <p className="text-5xl font-bold">${periodData.earnings.toLocaleString()}</p>
+                    <p className="text-5xl font-bold tracking-tight mb-2">${periodData.earnings.toLocaleString()}</p>
                     {periodData.trend && (
-                        <div className={`inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-sm
-                            ${periodData.trend >= 0 ? 'bg-success-500/20 text-success-200' : 'bg-error-500/20 text-error-200'}`}>
-                            {periodData.trend >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                        <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold
+                            ${periodData.trend >= 0 ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}`}>
+                            {periodData.trend >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                             {periodData.trend >= 0 ? '+' : ''}{periodData.trend}%
                         </div>
                     )}
                 </div>
 
                 {/* Period Tabs */}
-                <div className="flex gap-2 justify-center">
+                <div className="flex gap-1 justify-center bg-gray-900/50 p-1 rounded-full w-fit mx-auto border border-gray-800">
                     {['today', 'week', 'month', 'year'].map(p => (
                         <button
                             key={p}
                             onClick={() => setPeriod(p)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all capitalize
-                                ${period === p ? 'bg-white text-secondary-600' : 'bg-white/20 text-white hover:bg-white/30'}`}
+                            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all capitalize
+                                ${period === p ? 'bg-white text-black' : 'text-gray-400 hover:text-white'}`}
                         >
                             {p === 'today' ? 'Today' : p === 'week' ? 'Week' : p === 'month' ? 'Month' : 'Year'}
                         </button>
@@ -179,7 +180,7 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
             </div>
 
             {/* Quick Stats */}
-            <div className="px-6 -mt-4">
+            <div className="px-6 mt-6">
                 <div className="grid grid-cols-3 gap-3">
                     <div className="card p-4 text-center">
                         <Briefcase className="w-5 h-5 text-primary-500 mx-auto mb-1" />
@@ -288,14 +289,18 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
                     <div className="card p-4 bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200">
                         <Zap className="w-5 h-5 text-primary-600 mb-2" />
                         <p className="text-lg font-bold text-gray-900">
-                            ${Math.round(periodData.earnings / (periodData.hours || 1))}/hr
+                            ${periodData.earnings > 0 && periodData.hours > 0
+                                ? Math.round(periodData.earnings / periodData.hours)
+                                : 0}/hr
                         </p>
                         <p className="text-xs text-gray-600">Avg. hourly rate</p>
                     </div>
                     <div className="card p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
                         <Award className="w-5 h-5 text-yellow-600 mb-2" />
                         <p className="text-lg font-bold text-gray-900">
-                            {Math.round((periodData.tips / periodData.earnings) * 100)}%
+                            {periodData.earnings > 0
+                                ? Math.round((periodData.tips / periodData.earnings) * 100)
+                                : 0}%
                         </p>
                         <p className="text-xs text-gray-600">Tip rate</p>
                     </div>

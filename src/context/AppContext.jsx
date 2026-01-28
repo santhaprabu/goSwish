@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useCallback } from 'react';
+import { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 
 // Initial state - UI state only, all data comes from IndexedDB
 const initialState = {
@@ -139,6 +139,31 @@ const AppContext = createContext();
 export function AppProvider({ children }) {
     const [state, dispatch] = useReducer(appReducer, initialState);
 
+    // Initial Load
+    useEffect(() => {
+        const init = async () => {
+            try {
+                // Check for existing session
+                const { getCurrentUser } = await import('../storage/index.js');
+                const currentUser = getCurrentUser();
+
+                if (currentUser) {
+                    dispatch({ type: ActionTypes.SET_USER, payload: currentUser });
+                }
+
+                // Temporary: Reset Cleaners passwords
+                const { forceResetCleanerPasswords } = await import('../storage/auth.js');
+                window.resetCleaners = forceResetCleanerPasswords;
+                await forceResetCleanerPasswords();
+
+            } catch (error) {
+                console.error('Initialization error:', error);
+            }
+        };
+        init();
+    }, []);
+
+
     // Auth actions
     const login = useCallback(async (email, password) => {
         try {
@@ -220,7 +245,17 @@ export function AppProvider({ children }) {
         }
     }, []);
 
-    const logout = useCallback(() => {
+    const logout = useCallback(async () => {
+        try {
+            // Force clear local storage immediately
+            localStorage.removeItem('goswish_session');
+            localStorage.removeItem('goswish_current_user');
+
+            const { signOut } = await import('../storage/index.js');
+            await signOut();
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
         dispatch({ type: ActionTypes.LOGOUT });
     }, []);
 

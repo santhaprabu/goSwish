@@ -16,6 +16,7 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [view, setView] = useState('week'); // week, month
     const [jobs, setJobs] = useState([]);
+    const [blockedSlots, setBlockedSlots] = useState({}); // { '2025-01-26': { morning: 'unavailable' } }
     const [loading, setLoading] = useState(true);
     const [selectedJob, setSelectedJob] = useState(null);
 
@@ -33,6 +34,10 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                     return;
                 }
 
+                // 1. Fetch Availability
+                setBlockedSlots(cleanerProfile.availability || {});
+
+                // 2. Fetch Jobs
                 const allJobs = await getCleanerJobs(cleanerProfile.id);
 
                 // Format jobs for display
@@ -52,7 +57,7 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                         earnings: job.amount || job.earnings || 0,
                         status: job.status || 'scheduled',
                         customer: {
-                            name: job.customerName || 'Customer',
+                            name: job.customerName || 'Home Owner',
                             rating: '4.8'
                         },
                         address: {
@@ -145,10 +150,67 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
         return jobs.filter(job => job.date === dateKey);
     };
 
+    const getBlockedStatus = (date) => {
+        const dateKey = formatDateKey(date);
+        const slots = blockedSlots[dateKey] || {};
+        // If all slots (morning, afternoon, evening) or the whole day is marked unavailable
+        // Our structure is { '2025-01-26': { morning: 'unavailable' } }
+        const isMorningBlocked = slots.morning === 'unavailable';
+        const isAfternoonBlocked = slots.afternoon === 'unavailable';
+        const isEveningBlocked = slots.evening === 'unavailable';
+
+        if (isMorningBlocked && isAfternoonBlocked && isEveningBlocked) return 'fully_blocked';
+        if (isMorningBlocked || isAfternoonBlocked || isEveningBlocked) return 'partially_blocked';
+        return 'available';
+    };
+
     const selectedDateJobs = getJobsForDate(selectedDate);
     const isToday = (date) => formatDateKey(date) === formatDateKey(new Date());
     const isSelected = (date) => formatDateKey(date) === formatDateKey(selectedDate);
     const isCurrentMonth = (date) => date.getMonth() === currentDate.getMonth();
+
+    // Combined Timeline Items (Jobs + Blocks)
+    const getTimelineItems = (date) => {
+        if (view === 'month') {
+            // In month view, show all jobs for the currently VIEWED month (currentDate), not just the selected date
+            const currentMonth = currentDate.getMonth();
+            const currentYear = currentDate.getFullYear();
+
+            const monthJobs = jobs.filter(job => {
+                const jobDate = new Date(job.date);
+                return jobDate.getMonth() === currentMonth && jobDate.getFullYear() === currentYear;
+            }).map(j => ({ ...j, type: 'job' }));
+
+            // Sort by date then startTime
+            return monthJobs.sort((a, b) => {
+                const dateCompare = a.date.localeCompare(b.date);
+                if (dateCompare !== 0) return dateCompare;
+                return a.startTime.localeCompare(b.startTime);
+            });
+        }
+
+        const dateKey = formatDateKey(date);
+        const dayJobs = getJobsForDate(date).map(j => ({ ...j, type: 'job' }));
+        const dayBlocks = blockedSlots[dateKey] || {};
+        const items = [...dayJobs];
+
+        // Add blocks
+        // Time approximations: Morning=8:00, Afternoon=12:00, Evening=16:00
+        if (dayBlocks.morning === 'unavailable') {
+            items.push({ id: 'blk-m-' + dateKey, type: 'block', shift: 'Morning', startTime: '08:00', endTime: '12:00', label: 'Time Off' });
+        }
+        if (dayBlocks.afternoon === 'unavailable') {
+            items.push({ id: 'blk-a-' + dateKey, type: 'block', shift: 'Afternoon', startTime: '12:00', endTime: '16:00', label: 'Time Off' });
+        }
+        if (dayBlocks.evening === 'unavailable') {
+            items.push({ id: 'blk-e-' + dateKey, type: 'block', shift: 'Evening', startTime: '16:00', endTime: '20:00', label: 'Time Off' });
+        }
+
+        // Sort by startTime
+        return items.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    };
+
+    const timelineItems = getTimelineItems(selectedDate);
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -335,25 +397,25 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
             </div>
 
             {/* Stats Summary */}
-            <div className="bg-gradient-to-br from-secondary-500 to-secondary-600 text-white px-6 py-4">
+            <div className="bg-black text-white px-6 py-6 pb-8 rounded-b-[1.5rem] shadow-xl relative z-10">
                 <div className="grid grid-cols-3 gap-4">
                     <div className="text-center">
-                        <p className="text-2xl font-bold">${todayEarnings}</p>
-                        <p className="text-xs text-secondary-100">Today</p>
+                        <p className="text-2xl font-bold">${todayEarnings.toFixed(2)}</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mt-1">Today</p>
                     </div>
-                    <div className="text-center border-x border-white/20">
-                        <p className="text-2xl font-bold">${weekEarnings}</p>
-                        <p className="text-xs text-secondary-100">This Week</p>
+                    <div className="text-center border-x border-gray-800">
+                        <p className="text-2xl font-bold">${weekEarnings.toFixed(2)}</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mt-1">This Week</p>
                     </div>
                     <div className="text-center">
                         <p className="text-2xl font-bold">{upcomingCount}</p>
-                        <p className="text-xs text-secondary-100">Upcoming</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mt-1">Upcoming</p>
                     </div>
                 </div>
             </div>
 
             {/* View Toggle */}
-            <div className="bg-white border-b border-gray-100 px-6 py-3">
+            <div className="bg-white border-b border-gray-100 px-6 py-3 mt-4">
                 <div className="flex items-center justify-between">
                     <div className="flex gap-2">
                         <button
@@ -414,28 +476,41 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                         {weekDates.map((date, i) => {
                             const dayJobs = getJobsForDate(date);
                             const hasJobs = dayJobs.length > 0;
+                            const blockedStatus = getBlockedStatus(date);
+                            const isFullyBlocked = blockedStatus === 'fully_blocked';
+                            const isPartiallyBlocked = blockedStatus === 'partially_blocked';
 
                             return (
                                 <button
                                     key={i}
                                     onClick={() => setSelectedDate(date)}
-                                    className={`flex-1 py-2 px-1 rounded-xl text-center transition-all
+                                    className={`flex-1 py-2 px-1 rounded-xl text-center transition-all relative
                                         ${isSelected(date) ? 'bg-secondary-500 text-white' :
                                             isToday(date) ? 'bg-secondary-100 text-secondary-700' :
-                                                'hover:bg-gray-100'}`}
+                                                'hover:bg-gray-100'}
+                                        ${isFullyBlocked && !isSelected(date) ? 'bg-gray-100 text-gray-400' : ''}`}
                                 >
                                     <p className={`text-xs font-medium mb-1
                                         ${isSelected(date) ? 'text-white/80' : 'text-gray-500'}`}>
                                         {DAYS[i]}
                                     </p>
                                     <p className={`text-lg font-bold
-                                        ${isSelected(date) ? '' : 'text-gray-900'}`}>
+                                        ${isSelected(date) ? '' : 'text-gray-900'}
+                                        ${isFullyBlocked && !isSelected(date) ? 'line-through opacity-50' : ''}`}>
                                         {date.getDate()}
                                     </p>
-                                    {hasJobs && (
-                                        <div className={`mt-1 mx-auto w-1.5 h-1.5 rounded-full
-                                            ${isSelected(date) ? 'bg-white' : 'bg-secondary-500'}`} />
-                                    )}
+
+                                    {/* Indicators */}
+                                    <div className="flex justify-center gap-0.5 mt-1 h-1.5">
+                                        {hasJobs && (
+                                            <div className={`w-1.5 h-1.5 rounded-full
+                                                ${isSelected(date) ? 'bg-white' : 'bg-secondary-500'}`} />
+                                        )}
+                                        {isPartiallyBlocked && !hasJobs && (
+                                            <div className={`w-1.5 h-1.5 rounded-full
+                                                ${isSelected(date) ? 'bg-white/50' : 'bg-gray-300'}`} />
+                                        )}
+                                    </div>
                                 </button>
                             );
                         })}
@@ -459,6 +534,8 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                         {monthDates.map((date, i) => {
                             const dayJobs = getJobsForDate(date);
                             const hasJobs = dayJobs.length > 0;
+                            const blockedStatus = getBlockedStatus(date);
+                            const isFullyBlocked = blockedStatus === 'fully_blocked';
 
                             return (
                                 <button
@@ -468,9 +545,12 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                                         ${isSelected(date) ? 'bg-secondary-500 text-white' :
                                             isToday(date) ? 'bg-secondary-100 text-secondary-700' :
                                                 isCurrentMonth(date) ? 'hover:bg-gray-100' : 'text-gray-300'}
-                                        ${!isCurrentMonth(date) ? 'opacity-50' : ''}`}
+                                        ${!isCurrentMonth(date) ? 'opacity-50' : ''}
+                                        ${isFullyBlocked && isCurrentMonth(date) && !isSelected(date) ? 'bg-gray-50 text-gray-400' : ''}`}
                                 >
-                                    <span className="text-sm font-medium">{date.getDate()}</span>
+                                    <span className={`text-sm font-medium ${isFullyBlocked && !isSelected(date) ? 'line-through' : ''}`}>
+                                        {date.getDate()}
+                                    </span>
                                     {hasJobs && isCurrentMonth(date) && (
                                         <div className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full
                                             ${isSelected(date) ? 'bg-white' : 'bg-secondary-500'}`} />
@@ -482,52 +562,83 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                 </div>
             )}
 
-            {/* Selected Date Jobs */}
+            {/* Selected Date Timeline */}
             <div className="px-6 py-4">
                 <h3 className="font-semibold text-gray-900 mb-3">
-                    {isToday(selectedDate) ? 'Today' :
-                        selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    {view === 'month'
+                        ? `All Jobs in ${MONTHS[currentDate.getMonth()]}`
+                        : (isToday(selectedDate) ? 'Today' : selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }))
+                    }
                 </h3>
 
-                {selectedDateJobs.length === 0 ? (
+                {timelineItems.length === 0 ? (
                     <div className="card p-6 text-center">
                         <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                        <p className="font-medium text-gray-900 mb-1">No jobs scheduled</p>
-                        <p className="text-sm text-gray-500">Check available jobs to fill this day</p>
+                        <p className="font-medium text-gray-900 mb-1">No schedule items</p>
+                        <p className="text-sm text-gray-500">
+                            {view === 'month' ? 'No jobs scheduled for this month' : 'Day is completely open'}
+                        </p>
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {selectedDateJobs.map(job => (
-                            <button
-                                key={job.id}
-                                onClick={() => setSelectedJob(job)}
-                                className={`card w-full text-left hover:shadow-md transition-all
-                                    ${job.status === 'in_progress' ? 'border-l-4 border-l-secondary-500' : ''}`}
-                            >
-                                <div className="flex items-start justify-between mb-2">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-sm font-medium text-gray-600">
-                                                {job.startTime} - {job.endTime}
-                                            </span>
-                                            <span className={`badge text-xs ${job.status === 'completed' ? 'badge-success' :
-                                                job.status === 'in_progress' ? 'badge-secondary' :
-                                                    'badge-primary'
-                                                }`}>
-                                                {job.status === 'in_progress' ? 'In Progress' : job.status}
-                                            </span>
+                        {timelineItems.map(item => {
+                            if (item.type === 'block') {
+                                return (
+                                    <div key={item.id} className="card bg-gray-50 border-gray-200 border-l-4 border-l-gray-400 p-4 opacity-75">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-500 mb-1">
+                                                    {item.startTime} - {item.endTime}
+                                                </p>
+                                                <p className="font-semibold text-gray-700">{item.shift} - {item.label}</p>
+                                            </div>
+                                            <div className="bg-gray-200 p-2 rounded-full">
+                                                <Clock className="w-5 h-5 text-gray-500" />
+                                            </div>
                                         </div>
-                                        <h4 className="font-semibold text-gray-900">{job.serviceType}</h4>
                                     </div>
-                                    <span className="font-bold text-secondary-600">${job.earnings}</span>
-                                </div>
+                                );
+                            }
 
-                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                    <MapPin className="w-4 h-4" />
-                                    <span className="truncate">{job.address.street}</span>
-                                </div>
-                            </button>
-                        ))}
+                            // Job Item
+                            const job = item;
+                            return (
+                                <button
+                                    key={job.id}
+                                    onClick={() => setSelectedJob(job)}
+                                    className={`card w-full text-left hover:shadow-md transition-all
+                                        ${job.status === 'in_progress' ? 'border-l-4 border-l-secondary-500' : ''}`}
+                                >
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                {view === 'month' && (
+                                                    <span className="text-sm font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
+                                                        {new Date(job.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                    </span>
+                                                )}
+                                                <span className="text-sm font-medium text-gray-600">
+                                                    {job.startTime} - {job.endTime}
+                                                </span>
+                                                <span className={`badge text-xs ${job.status === 'completed' ? 'badge-success' :
+                                                    job.status === 'in_progress' ? 'badge-secondary' :
+                                                        'badge-primary'
+                                                    }`}>
+                                                    {job.status === 'in_progress' ? 'In Progress' : job.status}
+                                                </span>
+                                            </div>
+                                            <h4 className="font-semibold text-gray-900">{job.serviceType}</h4>
+                                        </div>
+                                        <span className="font-bold text-secondary-600">${job.earnings}</span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                                        <MapPin className="w-4 h-4" />
+                                        <span className="truncate">{job.address.street}</span>
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
             </div>

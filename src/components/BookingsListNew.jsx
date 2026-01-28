@@ -37,7 +37,7 @@ export default function BookingsListNew() {
 
     const getHouseName = (houseId) => {
         const house = houses.find(h => h.id === houseId);
-        return house ? house.name : 'Unknown Property';
+        return house ? (house.name || house.address?.street || 'Unknown Property') : 'Unknown Property';
     };
 
     const getHouseAddress = (houseId) => {

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     ArrowLeft, Home, Sparkles, Calendar, Clock, CreditCard,
-    CheckCircle2, Loader2, Plus, Check, X, ChevronLeft, ChevronRight
+    CheckCircle2, Loader2, Plus, Check, X, ChevronLeft, ChevronRight, Star
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { validatePromoCode } from '../storage';
@@ -20,11 +20,12 @@ const TIME_SLOTS = [
 ];
 
 export default function BookingFlowNew({ onBack, onComplete }) {
-    const { user, getUserHouses, serviceTypes, addOns, createBooking } = useApp();
+    const { user, getUserHouses, serviceTypes, addOns, createBooking, findEligibleCleaners } = useApp();
 
     // Current step (1-6)
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [notifiedCleaners, setNotifiedCleaners] = useState([]);
 
     // Step 1: Property
     const [houses, setHouses] = useState([]);
@@ -138,7 +139,7 @@ export default function BookingFlowNew({ onBack, onComplete }) {
     const calculateTotal = () => {
         if (!selectedHouse || !selectedService) return 0;
 
-        let total = selectedHouse.sqft * selectedService.rate;
+        let total = (selectedHouse.size || selectedHouse.sqft || 0) * selectedService.rate;
 
         selectedAddOnsData.forEach(addon => {
             total += addon.price;
@@ -167,7 +168,8 @@ export default function BookingFlowNew({ onBack, onComplete }) {
         try {
             setLoading(true);
             // Calculate subtotal for validation (before existing discount)
-            const currentSubtotal = selectedHouse.sqft * selectedService.rate +
+            const houseSize = selectedHouse.size || selectedHouse.sqft || 0;
+            const currentSubtotal = houseSize * selectedService.rate +
                 selectedAddOnsData.reduce((sum, a) => sum + a.price, 0);
 
             const result = await validatePromoCode(code, user?.uid, selectedServiceId, currentSubtotal);
@@ -276,10 +278,16 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                 discount: discount
             });
 
+            // Fetch eligible cleaners to show who was notified
+            try {
+                const eligible = await findEligibleCleaners(selectedHouseId, selectedServiceId);
+                setNotifiedCleaners(eligible || []);
+            } catch (err) {
+                console.warn('Failed to fetch notified cleaners', err);
+            }
+
             setStep(7); // Confirmation
-            setTimeout(() => {
-                onComplete(booking);
-            }, 2000);
+            // Removed auto-redirect so user can see the notified cleaners table
 
         } catch (error) {
             console.error('Booking error:', error);
@@ -312,7 +320,7 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                                     <div className="flex-1">
                                         <div className="font-bold">{house.name}</div>
                                         <div className="text-sm text-gray-500">{house.address.street}</div>
-                                        <div className="text-sm text-gray-400">{house.sqft} sqft</div>
+                                        <div className="text-sm text-gray-400">{house.size || house.sqft} sqft</div>
                                     </div>
                                     {selectedHouseId === house.id && (
                                         <CheckCircle2 className="w-6 h-6 text-teal-600" />
@@ -358,7 +366,7 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                             <div className="p-4 bg-gray-50 rounded-xl">
                                 <div className="text-sm text-gray-600">Estimated base price</div>
                                 <div className="text-2xl font-bold text-gray-900">
-                                    ${(selectedHouse.sqft * selectedService.rate).toFixed(2)}
+                                    ${((selectedHouse.size || selectedHouse.sqft || 0) * selectedService.rate).toFixed(2)}
                                 </div>
                             </div>
                         )}
@@ -622,6 +630,80 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                             <div className="text-sm text-gray-600">Booking ID</div>
                             <div className="text-xl font-bold text-teal-700">BKG-{Date.now().toString().slice(-6)}</div>
                         </div>
+
+                        {/* Notified Cleaners Table */}
+                        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm mt-6">
+                            <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                                <h3 className="font-semibold text-gray-900 text-sm">Notified Cleaners</h3>
+                                <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full font-medium">
+                                    {notifiedCleaners.length} Sent
+                                </span>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead>
+                                        <tr className="text-gray-400 font-medium border-b border-gray-50">
+                                            <th className="px-4 py-3 font-medium">Cleaner</th>
+                                            <th className="px-4 py-3 font-medium">Distance</th>
+                                            <th className="px-4 py-3 font-medium">Rating</th>
+                                            <th className="px-4 py-3 font-medium text-right">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {notifiedCleaners.length > 0 ? (
+                                            notifiedCleaners.map((cleaner) => (
+                                                <tr key={cleaner.id} className="hover:bg-gray-50/50 transition-colors">
+                                                    <td className="px-4 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 font-bold overflow-hidden">
+                                                                {cleaner.photoURL ? (
+                                                                    <img src={cleaner.photoURL} alt="" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    cleaner.name?.[0] || 'C'
+                                                                )}
+                                                            </div>
+                                                            <span className="font-medium text-gray-900">{cleaner.name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-gray-600">
+                                                        {cleaner.distance ? `${cleaner.distance} mi` : '--'}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-gray-600">
+                                                        <div className="flex items-center gap-1">
+                                                            <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                                                            <span>{cleaner.stats?.rating || 'New'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-right">
+                                                        <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-md font-medium">
+                                                            Notified
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="4" className="px-4 py-8 text-center text-gray-400 italic">
+                                                    Broadcasting to all cleaners in your area...
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <p className="text-sm text-gray-500 mt-6 flex items-center justify-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
+                            Waiting for a cleaner to accept...
+                        </p>
+
+                        <button
+                            onClick={() => onComplete(null)} // Pass null or booking if needed
+                            className="btn btn-primary w-full mt-6"
+                        >
+                            View My Bookings
+                        </button>
                     </div>
                 );
 

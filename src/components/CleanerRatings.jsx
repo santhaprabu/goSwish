@@ -248,32 +248,32 @@ export default function CleanerRatings({ onBack }) {
             </div>
 
             {/* Overall Rating Card */}
-            <div className="bg-gradient-to-br from-yellow-400 via-yellow-500 to-orange-500 text-white px-6 py-6">
+            <div className="bg-black text-white px-6 py-8 rounded-b-[1.5rem] shadow-xl relative z-10">
                 <div className="flex items-center gap-6">
                     <div className="text-center">
-                        <p className="text-5xl font-bold">{displayStats.avgRating}</p>
+                        <p className="text-5xl font-bold tracking-tight">{Number(displayStats.avgRating).toFixed(1)}</p>
                         <div className="flex gap-1 mt-2 justify-center">
                             {[1, 2, 3, 4, 5].map(i => (
-                                <Star key={i} className={`w-5 h-5 ${i <= Math.round(displayStats.avgRating) ? 'fill-current' : 'opacity-50'}`} />
+                                <Star key={i} className={`w-4 h-4 ${i <= Math.round(displayStats.avgRating) ? 'fill-white text-white' : 'text-gray-700'}`} />
                             ))}
                         </div>
-                        <p className="text-sm text-white/80 mt-1">{displayStats.totalReviews} reviews</p>
+                        <p className="text-xs text-gray-400 mt-2 font-medium uppercase tracking-wider">{displayStats.totalReviews} reviews</p>
                     </div>
 
-                    <div className="flex-1 space-y-1.5">
+                    <div className="flex-1 space-y-2">
                         {[5, 4, 3, 2, 1].map(rating => {
                             const count = displayStats.distribution[rating];
                             const percentage = displayStats.totalReviews > 0 ? (count / displayStats.totalReviews) * 100 : 0;
                             return (
-                                <div key={rating} className="flex items-center gap-2">
-                                    <span className="text-xs w-3">{rating}</span>
-                                    <div className="flex-1 h-2 bg-white/30 rounded-full overflow-hidden">
+                                <div key={rating} className="flex items-center gap-3">
+                                    <span className="text-xs w-3 text-gray-400 font-medium">{rating}</span>
+                                    <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-white rounded-full transition-all"
                                             style={{ width: `${percentage}%` }}
                                         />
                                     </div>
-                                    <span className="text-xs w-6 text-right">{count}</span>
+                                    <span className="text-xs w-6 text-right text-gray-400">{count}</span>
                                 </div>
                             );
                         })}

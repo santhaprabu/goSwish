@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
     ArrowLeft, MapPin, Home, Ruler, Layers, Bed, Bath,
     Dog, Cat, Bird, AlertCircle, Check, Loader2, X,
-    Plus, ChevronRight, Star, Trash2, Edit2
+    Plus, ChevronRight, Star, Trash2, Edit2, Sparkles
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -169,35 +169,33 @@ export function AddHouseForm({ onBack, onComplete, editingHouse = null }) {
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             {/* Header */}
-            <div className="app-bar">
-                <div className="flex items-center justify-between px-4 py-3">
+            <div className="bg-black text-white px-5 pt-6 pb-8 rounded-b-[2rem] shadow-xl relative z-10 mb-6">
+                <div className="flex items-center justify-between mb-6">
                     <button
                         onClick={step > 1 ? () => setStep(step - 1) : onBack}
-                        className="btn-ghost p-2 -ml-2 rounded-xl"
+                        className="bg-gray-800 p-2 rounded-full hover:bg-gray-700 transition-colors"
                     >
-                        <ArrowLeft className="w-6 h-6" />
+                        <ArrowLeft className="w-6 h-6 text-white" />
                     </button>
-                    <h1 className="text-lg font-semibold">
+                    <h1 className="text-xl font-bold">
                         {editingHouse ? 'Edit Property' : 'Add Property'}
                     </h1>
                     <div className="w-10" />
                 </div>
 
                 {/* Progress */}
-                <div className="px-4 pb-3">
-                    <div className="flex gap-2">
+                <div className="px-1">
+                    <div className="flex gap-2 mb-3">
                         {[1, 2, 3].map((s) => (
                             <div
                                 key={s}
-                                className={`flex-1 h-1.5 rounded-full transition-colors ${s <= step ? 'bg-primary-500' : 'bg-gray-200'
+                                className={`flex-1 h-1.5 rounded-full transition-colors ${s <= step ? 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'bg-gray-800'
                                     }`}
                             />
                         ))}
                     </div>
-                    <p className="text-sm text-gray-500 mt-2">
-                        Step {step} of 3: {
-                            step === 1 ? 'Address' : step === 2 ? 'Property Details' : 'Additional Info'
-                        }
+                    <p className="text-sm font-medium text-gray-400 text-center">
+                        Step {step}: <span className="text-white">{step === 1 ? 'Location' : step === 2 ? 'Details' : 'Extras'}</span>
                     </p>
                 </div>
             </div>
@@ -490,11 +488,11 @@ export function AddHouseForm({ onBack, onComplete, editingHouse = null }) {
             </div>
 
             {/* Footer */}
-            <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 pb-safe">
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 p-5 pb-8 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
                 {step < 3 ? (
                     <button
                         onClick={nextStep}
-                        className="btn btn-primary w-full py-4"
+                        className="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-teal-500/20 hover:bg-teal-700 hover:scale-[1.02] active:scale-[0.98] transition-all"
                     >
                         Continue
                     </button>
@@ -502,10 +500,10 @@ export function AddHouseForm({ onBack, onComplete, editingHouse = null }) {
                     <button
                         onClick={handleSubmit}
                         disabled={loading}
-                        className="btn btn-primary w-full py-4"
+                        className="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-teal-500/20 hover:bg-teal-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:scale-100"
                     >
                         {loading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <Loader2 className="w-6 h-6 animate-spin text-white" />
                         ) : editingHouse ? (
                             'Save Changes'
                         ) : (
@@ -518,7 +516,7 @@ export function AddHouseForm({ onBack, onComplete, editingHouse = null }) {
     );
 }
 
-export function HouseList({ onAddHouse, onEditHouse, onSelectHouse }) {
+export function HouseList({ onAddHouse, onEditHouse, onSelectHouse, navigateTo }) {
     const { getUserHouses, setDefaultHouse, deleteHouse } = useApp();
     const [houses, setHouses] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -595,102 +593,120 @@ export function HouseList({ onAddHouse, onEditHouse, onSelectHouse }) {
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-5">
             {houses.map((house) => (
                 <div
                     key={house.id}
-                    className="card group relative border-2 border-teal-600"
+                    onClick={() => onSelectHouse?.(house)}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden relative transition-all hover:shadow-md group cursor-pointer"
                 >
-                    {/* Default star */}
-                    <button
-                        onClick={() => handleSetDefault(house.id)}
-                        className={`absolute top-4 right-4 p-2 rounded-full transition-colors
-              ${house.isDefault
-                                ? 'text-yellow-500'
-                                : 'text-gray-300 hover:text-yellow-400'}`}
-                        title={house.isDefault ? 'Default property' : 'Set as default'}
-                    >
-                        <Star className={`w-5 h-5 ${house.isDefault ? 'fill-current' : ''}`} />
-                    </button>
+                    {/* Slim Gradient Stripe */}
+                    <div className="h-1 w-full bg-gradient-to-r from-teal-500 to-teal-400"></div>
 
-                    <div
-                        onClick={() => onSelectHouse?.(house)}
-                        className="cursor-pointer"
-                    >
-                        <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                                <Home className="w-6 h-6 text-primary-500" />
+                    <div className="p-3.5 flex gap-3.5 items-start">
+                        {/* Compact Thumbnail & Star */}
+                        <div className="relative">
+                            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-sm flex-shrink-0 text-white relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-8 h-8 bg-white/20 rounded-full blur-lg -mr-2 -mt-2"></div>
+                                <Home className="w-6 h-6 relative z-10" />
+                            </div>
+                            {/* Star Overlay */}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSetDefault(house.id);
+                                }}
+                                className={`absolute -top-1.5 -left-1.5 p-1 rounded-full bg-white shadow-sm border border-gray-100 transition-transform hover:scale-110 z-20
+                                    ${house.isDefault ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-400'}`}
+                            >
+                                <Star className={`w-3.5 h-3.5 ${house.isDefault ? 'fill-current' : ''}`} />
+                            </button>
+                        </div>
+
+                        {/* Content: Info & Stats */}
+                        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                            <div>
+                                <h3 className="font-bold text-gray-900 text-[15px] leading-tight truncate">
+                                    {house.name}
+                                </h3>
+                                <p className="text-xs text-gray-500 leading-snug line-clamp-2 mt-0.5">
+                                    {house.address?.street}, {house.address?.city}, {house.address?.state} {house.address?.zip}
+                                </p>
                             </div>
 
-                            <div className="flex-1 min-w-0 pr-8">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="font-semibold text-gray-900 truncate">
-                                        {house.name}
-                                    </h3>
-                                    {house.isDefault && (
-                                        <span className="badge badge-primary text-xs">Default</span>
-                                    )}
+                            <div className="flex flex-wrap items-center gap-2">
+                                {/* Stats Pill */}
+                                <div className="flex items-center gap-2 text-[10px] font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
+                                    <span>{(house.size || house.sqft || 0).toLocaleString()} sqft</span>
+                                    <span className="text-gray-300">|</span>
+                                    <span>{house.bedrooms || 0} bd</span>
+                                    <span className="text-gray-300">|</span>
+                                    <span>{house.bathrooms || 0} ba</span>
                                 </div>
-                                <p className="text-sm text-gray-500 truncate">
-                                    {house.address.street}
-                                </p>
-                                <p className="text-sm text-gray-400">
-                                    {house.address.city}, {house.address.state} {house.address.zip}
-                                </p>
+                                {/* Last Cleaned Badge */}
+                                <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                                    <Sparkles className="w-3 h-3 text-teal-500" />
+                                    <span>{house.lastCleaned ? new Date(house.lastCleaned).toLocaleDateString() : 'New'}</span>
+                                </div>
+                            </div>
+                        </div>
 
-                                <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
-                                    <span className="flex items-center gap-1">
-                                        <Ruler className="w-4 h-4" />
-                                        {house.sqft.toLocaleString()} sqft
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <Bed className="w-4 h-4" />
-                                        {house.bedrooms} bed
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <Bath className="w-4 h-4" />
-                                        {house.bathrooms} bath
-                                    </span>
-                                </div>
+                        {/* Right: Actions */}
+                        <div className="flex flex-col items-end gap-2">
+                            {/* Book Button */}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    console.log('Book clicked for house:', house.id);
+                                    if (navigateTo) {
+                                        navigateTo('booking', { houseId: house.id });
+                                    } else {
+                                        console.error('NavigateTo function is missing!');
+                                    }
+                                }}
+                                className="bg-black text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-sm hover:bg-gray-800 flex items-center gap-1.5 transition-colors whitespace-nowrap"
+                            >
+                                Book a Clean
+                            </button>
+
+                            {/* Edit/Delete */}
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEditHouse(house);
+                                    }}
+                                    className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                                >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setConfirmDelete(house.id);
+                                    }}
+                                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-                        <button
-                            onClick={() => onEditHouse(house)}
-                            className="btn btn-ghost flex-1 gap-2 text-sm"
-                        >
-                            <Edit2 className="w-4 h-4" />
-                            Edit
-                        </button>
-                        <button
-                            onClick={() => setConfirmDelete(house.id)}
-                            className="btn btn-ghost flex-1 gap-2 text-sm text-error-500 hover:bg-error-50"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                            Delete
-                        </button>
-                    </div>
-
-                    {/* Delete confirmation */}
+                    {/* Delete Confirmation Overlay */}
                     {confirmDelete === house.id && (
-                        <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-2xl 
-                            flex flex-col items-center justify-center p-6 animate-fade-in">
-                            <p className="text-center font-medium text-gray-900 mb-4">
-                                Delete "{house.name}"?
-                            </p>
-                            <div className="flex gap-3">
+                        <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-30 flex flex-col items-center justify-center p-6 animate-fade-in">
+                            <h4 className="font-bold text-gray-900 text-sm mb-1">Delete Property?</h4>
+                            <div className="flex gap-2 w-full max-w-[200px] mt-2">
                                 <button
                                     onClick={() => setConfirmDelete(null)}
-                                    className="btn btn-ghost px-6"
+                                    className="flex-1 py-1.5 rounded-lg text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={() => handleDelete(house.id)}
-                                    className="btn bg-error-500 text-white hover:bg-error-600 px-6"
+                                    className="flex-1 py-1.5 rounded-lg text-xs font-bold text-white bg-red-500 hover:bg-red-600"
                                 >
                                     Delete
                                 </button>
@@ -704,23 +720,21 @@ export function HouseList({ onAddHouse, onEditHouse, onSelectHouse }) {
             {houses.length < 20 && (
                 <button
                     onClick={onAddHouse}
-                    className="w-full p-4 border-2 border-dashed border-gray-200 rounded-2xl
-                     flex items-center justify-center gap-2 text-gray-500
-                     hover:border-primary-300 hover:text-primary-500 transition-colors"
+                    className="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-teal-500/20 hover:bg-teal-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-6 h-6" />
                     Add Another Property
                 </button>
             )}
 
-            <p className="text-center text-xs text-gray-400">
-                {houses.length} of 20 properties
+            <p className="text-center text-xs text-gray-400 font-medium pt-2">
+                You have {houses.length} properties
             </p>
         </div>
     );
 }
 
-export default function HouseManagement({ onBack }) {
+export default function HouseManagement({ onBack, navigateTo }) {
     const [view, setView] = useState('list'); // 'list' | 'add' | 'edit'
     const [editingHouse, setEditingHouse] = useState(null);
 
@@ -750,26 +764,27 @@ export default function HouseManagement({ onBack }) {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="min-h-screen bg-gray-50 flex flex-col pb-6">
             {/* Header */}
-            <div className="app-bar">
-                <div className="flex items-center justify-between px-4 py-3">
+            <div className="bg-black text-white px-5 pt-8 pb-8 rounded-b-[2rem] shadow-xl relative z-10 mb-2">
+                <div className="flex items-center justify-between">
                     <button
                         onClick={onBack}
-                        className="btn-ghost p-2 -ml-2 rounded-xl"
+                        className="bg-gray-800 p-2 rounded-full hover:bg-gray-700 transition-colors"
                     >
-                        <ArrowLeft className="w-6 h-6" />
+                        <ArrowLeft className="w-6 h-6 text-white" />
                     </button>
-                    <h1 className="text-lg font-semibold">My Properties</h1>
+                    <h1 className="text-2xl font-bold">My Properties</h1>
                     <div className="w-10" />
                 </div>
             </div>
 
             {/* Content */}
-            <div className="flex-1 px-6 py-6 overflow-y-auto">
+            <div className="flex-1 px-5 pt-4 pb-24 overflow-y-auto">
                 <HouseList
                     onAddHouse={handleAddHouse}
                     onEditHouse={handleEditHouse}
+                    navigateTo={navigateTo}
                 />
             </div>
         </div>

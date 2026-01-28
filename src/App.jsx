@@ -25,6 +25,7 @@ import CustomerMessaging from './components/CustomerMessaging';
 import CustomerActiveJob from './components/CustomerActiveJob';
 import CleanerRatings from './components/CleanerRatings';
 import CleanerMessaging from './components/CleanerMessaging';
+import RoleSelection from './components/RoleSelection';
 import EarningsDashboard from './components/EarningsDashboard';
 import ShiftManagement from './components/ShiftManagement';
 import CleanerProfileEnhanced from './components/CleanerProfileEnhanced';
@@ -39,6 +40,7 @@ import { initDB, initializeDatabase } from './storage';
 import { seedAllData, getSeedingStats } from './storage/seedData';
 import { migrateUserData } from './storage/migration';
 import AdminDashboard from './admin/AdminDashboard';
+import NotificationTest from './components/NotificationTest';
 import './index.css';
 
 // Main app component with all navigation logic
@@ -56,6 +58,7 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState('splash');
   const [activeTab, setActiveTab] = useState('home');
   const [activeJobBooking, setActiveJobBooking] = useState(null);
+  const [navigationParams, setNavigationParams] = useState({});
 
   // Auto-initialize database and seed data on first load
   useEffect(() => {
@@ -165,7 +168,9 @@ function AppContent() {
   };
 
   // Navigation helpers
-  const navigateTo = (screen) => {
+  const navigateTo = (screen, params = {}) => {
+    console.log(`NavigateTo: ${screen}`, params);
+    setNavigationParams(params);
     setCurrentScreen(screen);
   };
 
@@ -197,8 +202,30 @@ function AppContent() {
     }
 
     switch (currentScreen) {
+      case 'role-selection':
+        return (
+          <RoleSelection
+            onRoleSelect={(role) => {
+              // We need to update role in context maybe? 
+              // Or usually RoleSelection navigates to AuthScreen
+              // Let's assume RoleSelection passes the role to a callback
+              // that sets role and goes to auth.
+              handleRoleSelected(role);
+            }}
+            onLogin={() => setCurrentScreen('auth')}
+          />
+        );
+
       case 'welcome':
         return <WelcomeScreen onSuccess={handleAuthSuccess} />;
+
+      case 'auth':
+        return (
+          <AuthScreen
+            onSuccess={handleAuthSuccess}
+            onBack={() => setCurrentScreen('welcome')}
+          />
+        );
 
 
 
@@ -214,6 +241,11 @@ function AppContent() {
           <ProfileSetup
             onComplete={handleProfileComplete}
           />
+        );
+
+      case 'notification-test':
+        return (
+          <NotificationTest />
         );
 
       case 'edit-profile':
@@ -248,6 +280,7 @@ function AppContent() {
               setCurrentScreen('main');
               setActiveTab('profile');
             }}
+            onRunTest={() => setCurrentScreen('notification-test')}
           />
         );
 
@@ -268,16 +301,19 @@ function AppContent() {
               setCurrentScreen('main');
               setActiveTab('home');
             }}
+            navigateTo={navigateTo}
           />
         );
 
       case 'booking':
         return (
           <BookingFlow
+            initialHouseId={navigationParams?.houseId}
             onBack={goBack}
             onComplete={() => {
               setCurrentScreen('main');
               setActiveTab('bookings');
+              setNavigationParams({});
             }}
           />
         );
@@ -286,6 +322,7 @@ function AppContent() {
         return (
           <HouseManagement
             onBack={goBack}
+            navigateTo={navigateTo}
           />
         );
 
@@ -454,19 +491,7 @@ function AppContent() {
               />
             )}
             {activeTab === 'houses' && (
-              <div className="h-[calc(100vh-80px)] bg-gray-50 flex flex-col">
-                <div className="app-bar flex-none z-10 sticky top-0">
-                  <div className="px-4 py-3">
-                    <h1 className="text-lg font-semibold text-center">My Properties</h1>
-                  </div>
-                </div>
-                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scroll-smooth">
-                  <HouseListInline
-                    onAddHouse={() => navigateTo('houses')}
-                    onEditHouse={() => navigateTo('houses')}
-                  />
-                </div>
-              </div>
+              <HouseManagement onBack={() => setActiveTab('home')} navigateTo={navigateTo} />
             )}
             {activeTab === 'bookings' && (
               <BookingsList onTrackJob={setActiveJobBooking} />
@@ -493,6 +518,8 @@ function AppContent() {
                 onMessaging={() => setCurrentScreen('cleaner-messaging')}
                 onRatings={() => setCurrentScreen('cleaner-ratings')}
                 onViewJobs={() => setActiveTab('jobs')}
+                onViewEarnings={() => setActiveTab('earnings')}
+                onViewHistory={() => setActiveTab('earnings')}
               />
             )}
             {activeTab === 'jobs' && <JobOffers />}
@@ -523,6 +550,8 @@ function AppContent() {
                 onTermsPrivacy={() => setCurrentScreen('terms-privacy')}
                 onNotifications={() => setCurrentScreen('cleaner-notifications')}
                 onMessaging={() => setCurrentScreen('cleaner-messaging')}
+                onViewRatings={() => setCurrentScreen('cleaner-ratings')}
+                onViewEarnings={() => setActiveTab('earnings')}
               />
             )}
           </>
@@ -545,163 +574,7 @@ function AppContent() {
   );
 }
 
-// Inline house list for tab
-function HouseListInline({ onAddHouse, onEditHouse }) {
-  const { getUserHouses, setDefaultHouse, deleteHouse } = useApp();
-  const [houses, setHouses] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [confirmDelete, setConfirmDelete] = useState(null);
 
-  useEffect(() => {
-    async function loadHouses() {
-      try {
-        const housesData = await getUserHouses();
-        setHouses(housesData || []);
-      } catch (error) {
-        console.error('Error loading houses:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadHouses();
-  }, [getUserHouses]);
-
-  const handleSetDefault = async (houseId, e) => {
-    e.stopPropagation();
-    await setDefaultHouse(houseId);
-    // Reload houses to reflect the change
-    const housesData = await getUserHouses();
-    setHouses(housesData || []);
-  };
-
-  const handleDelete = async (houseId) => {
-    await deleteHouse(houseId);
-    setConfirmDelete(null);
-    // Reload houses after deletion
-    const housesData = await getUserHouses();
-    setHouses(housesData || []);
-  };
-
-  if (houses.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-3xl">🏠</span>
-        </div>
-        <h3 className="font-semibold text-gray-900 mb-2">No Properties Yet</h3>
-        <p className="text-gray-500 text-sm mb-4">Add your first property to get started</p>
-        <button onClick={onAddHouse} className="btn btn-primary">
-          Add Property
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {houses.map((house) => (
-        <div
-          key={house.id}
-          className="card relative"
-        >
-          {/* Default star */}
-          <button
-            onClick={(e) => handleSetDefault(house.id, e)}
-            className={`absolute top-4 right-4 p-2 rounded-full transition-colors
-              ${house.isDefault ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}`}
-          >
-            <svg
-              className={`w-5 h-5 ${house.isDefault ? 'fill-current' : ''}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-            </svg>
-          </button>
-
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
-              <span className="text-2xl">🏠</span>
-            </div>
-
-            <div className="flex-1 min-w-0 pr-8">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-gray-900 truncate">{house.name}</h3>
-                {house.isDefault && (
-                  <span className="badge badge-primary text-xs">Default</span>
-                )}
-              </div>
-              <p className="text-sm text-gray-500 truncate">{house.address.street}</p>
-              <p className="text-sm text-gray-400">
-                {house.address.city}, {house.address.state} {house.address.zip}
-              </p>
-
-              <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
-                <span>{house.sqft.toLocaleString()} sqft</span>
-                <span>{house.bedrooms} bed</span>
-                <span>{house.bathrooms} bath</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-            <button
-              onClick={() => onEditHouse(house)}
-              className="btn btn-ghost flex-1 text-sm"
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => setConfirmDelete(house.id)}
-              className="btn btn-ghost flex-1 text-sm text-error-500 hover:bg-error-50"
-            >
-              Delete
-            </button>
-          </div>
-
-          {/* Delete confirmation overlay */}
-          {confirmDelete === house.id && (
-            <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-2xl 
-                            flex flex-col items-center justify-center p-6 animate-fade-in z-10">
-              <p className="text-center font-medium text-gray-900 mb-4">
-                Delete "{house.name}"?
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setConfirmDelete(null)}
-                  className="btn btn-ghost px-6"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(house.id)}
-                  className="btn bg-error-500 text-white hover:bg-error-600 px-6"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
-
-      {houses.length < 20 && (
-        <button
-          onClick={onAddHouse}
-          className="w-full p-4 border-2 border-dashed border-gray-200 rounded-2xl
-                     flex items-center justify-center gap-2 text-gray-500
-                     hover:border-primary-300 hover:text-primary-500 transition-colors"
-        >
-          <span className="text-xl">+</span>
-          Add Another Property
-        </button>
-      )}
-    </div>
-  );
-}
 
 // Root App with Provider
 function App() {

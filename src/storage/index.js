@@ -110,6 +110,7 @@ export {
     getUserNotifications,
     markNotificationAsRead,
     markAllNotificationsAsRead,
+    deleteNotification,
 
     // Messages
     createConversation,
@@ -143,6 +144,8 @@ export {
     checkVerificationAndStart,
     submitJobForApproval,
     approveJob,
+    rateCustomer,
+    checkCleanerConflict, // Added export
 } from './helpers.js';
 
 // Aliases for consistency

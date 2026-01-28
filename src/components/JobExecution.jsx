@@ -10,8 +10,10 @@ import {
     verifyJobCode,
     checkVerificationAndStart,
     submitJobForApproval,
-    getBookingWithTracking
+    getBookingWithTracking,
+    rateCustomer
 } from '../storage';
+import { Star } from 'lucide-react';
 
 // Job Execution - Complete workflow for cleaners
 export default function JobExecution({ job, onComplete, onBack }) {
@@ -20,6 +22,11 @@ export default function JobExecution({ job, onComplete, onBack }) {
     const [verificationStatus, setVerificationStatus] = useState({ cleanerVerified: false, waitingForCustomer: false });
     const [myCode, setMyCode] = useState(null);
     const [inputCode, setInputCode] = useState('');
+
+    // Rating State
+    const [customerRating, setCustomerRating] = useState(0);
+    const [ratingComment, setRatingComment] = useState('');
+    const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
     // ... Existing State ...
     const [jobStatus, setJobStatus] = useState('not_started');
@@ -399,12 +406,72 @@ export default function JobExecution({ job, onComplete, onBack }) {
     if (currentStep === 'waiting_approval') {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col justify-center px-6 text-center">
-                <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Clock className="w-12 h-12 text-blue-600 animate-pulse" />
-                </div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Waiting for Approval</h1>
-                <p className="text-gray-600 mb-8">Awesome work! The customer has been notified and will review your cleaning shortly.</p>
-                <button onClick={onComplete} className="btn bg-gray-200 text-gray-700 w-full py-4">Back to Dashboard</button>
+                {!ratingSubmitted ? (
+                    <>
+                        <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Clock className="w-12 h-12 text-blue-600 animate-pulse" />
+                        </div>
+                        <h1 className="text-2xl font-bold text-gray-900 mb-2">Waiting for Approval</h1>
+                        <p className="text-gray-600 mb-8">Awesome work! The customer has been notified and will review your cleaning shortly.</p>
+
+                        {/* Rate Customer Card */}
+                        <div className="card p-6 mb-6 text-left">
+                            <h3 className="font-semibold text-gray-900 mb-4 text-center">How was the customer?</h3>
+                            <div className="flex justify-center gap-2 mb-4">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                        key={star}
+                                        onClick={() => setCustomerRating(star)}
+                                        className="transition-transform hover:scale-110 focus:outline-none"
+                                    >
+                                        <Star
+                                            className={`w-8 h-8 ${star <= customerRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+                            <textarea
+                                value={ratingComment}
+                                onChange={(e) => setRatingComment(e.target.value)}
+                                placeholder="Any comments about the customer or property? (Optional)"
+                                className="input w-full h-24 mb-4"
+                            />
+                            <button
+                                onClick={async () => {
+                                    if (customerRating === 0) {
+                                        alert("Please select a star rating");
+                                        return;
+                                    }
+                                    try {
+                                        await rateCustomer(job.id, {
+                                            rating: customerRating,
+                                            comment: ratingComment,
+                                            tags: []
+                                        });
+                                        setRatingSubmitted(true);
+                                    } catch (e) {
+                                        console.error(e);
+                                        alert("Failed to submit rating");
+                                    }
+                                }}
+                                className="btn btn-primary w-full"
+                            >
+                                Submit Rating
+                            </button>
+                        </div>
+
+                        <button onClick={onComplete} className="btn bg-gray-200 text-gray-700 w-full py-4">Back to Dashboard</button>
+                    </>
+                ) : (
+                    <>
+                        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Check className="w-12 h-12 text-green-600" />
+                        </div>
+                        <h1 className="text-2xl font-bold text-gray-900 mb-2">Review Submitted!</h1>
+                        <p className="text-gray-600 mb-8">Thank you for your feedback. We'll let you know when the customer approves the job.</p>
+                        <button onClick={onComplete} className="btn btn-secondary w-full py-4">Back to Dashboard</button>
+                    </>
+                )}
             </div>
         );
     }

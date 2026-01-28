@@ -68,16 +68,26 @@ const TIME_SLOTS = [
     { id: 'evening', label: 'Evening', time: '3 PM - 6 PM', icon: '🌆' },
 ];
 
-export default function BookingFlow({ onBack, onComplete }) {
+export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
+    console.log('BookingFlow mounted. InitialHouseId:', initialHouseId);
     const {
         user, getUserHouses, serviceTypes, addOns: availableAddOns,
-        calculatePrice, validatePromoCode, createBooking
+        calculatePrice, validatePromoCode, createBooking, findEligibleCleaners
     } = useApp();
 
 
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useState(initialHouseId ? 2 : 1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [notifiedCleaners, setNotifiedCleaners] = useState([]);
+
+    useEffect(() => {
+        if (initialHouseId) {
+            console.log('Force updating step to 2 for house:', initialHouseId);
+            setStep(2);
+            setSelectedHouseId(initialHouseId);
+        }
+    }, [initialHouseId]);
 
     // Debug: Log step changes
     useEffect(() => {
@@ -114,8 +124,8 @@ export default function BookingFlow({ onBack, onComplete }) {
         };
     }, [getUserHouses]);
 
-    const defaultHouse = houses.find(h => h.isDefault) || houses[0];
-    const [selectedHouseId, setSelectedHouseId] = useState(defaultHouse?.id || '');
+    const defaultHouse = houses.find(h => h.id === initialHouseId) || houses.find(h => h.isDefault) || houses[0];
+    const [selectedHouseId, setSelectedHouseId] = useState(initialHouseId || '');
 
     // Update selectedHouseId when houses load
     useEffect(() => {
@@ -346,6 +356,15 @@ export default function BookingFlow({ onBack, onComplete }) {
             });
 
             setBookingResult(booking);
+
+            // Fetch eligible cleaners to show who was notified
+            try {
+                const eligible = await findEligibleCleaners(selectedHouseId, selectedServiceType);
+                setNotifiedCleaners(eligible || []);
+            } catch (err) {
+                console.warn('Failed to fetch notified cleaners', err);
+            }
+
             setStep(7);
         } catch (err) {
             setError(err.message);
@@ -1048,9 +1067,71 @@ export default function BookingFlow({ onBack, onComplete }) {
                             </div>
                         </div>
 
+                        {/* Notified Cleaners Table */}
+                        <div className="card mb-6 overflow-hidden">
+                            <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                                <h3 className="font-semibold text-gray-900 text-sm">Notified Cleaners</h3>
+                                <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-medium">
+                                    {notifiedCleaners.length} Sent
+                                </span>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead>
+                                        <tr className="text-gray-400 font-medium border-b border-gray-50">
+                                            <th className="px-4 py-3 font-medium">Cleaner</th>
+                                            <th className="px-4 py-3 font-medium">Distance</th>
+                                            <th className="px-4 py-3 font-medium">Rating</th>
+                                            <th className="px-4 py-3 font-medium text-right">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {notifiedCleaners.length > 0 ? (
+                                            notifiedCleaners.map((cleaner) => (
+                                                <tr key={cleaner.id} className="hover:bg-gray-50/50 transition-colors">
+                                                    <td className="px-4 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center text-primary-600 font-bold overflow-hidden">
+                                                                {cleaner.photoURL ? (
+                                                                    <img src={cleaner.photoURL} alt="" className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    cleaner.name?.[0] || 'C'
+                                                                )}
+                                                            </div>
+                                                            <span className="font-medium text-gray-900">{cleaner.name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-gray-600">
+                                                        {cleaner.distance ? `${cleaner.distance} mi` : '--'}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-gray-600">
+                                                        <div className="flex items-center gap-1">
+                                                            <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                                                            <span>{cleaner.stats?.rating || 'New'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-right">
+                                                        <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-md font-medium">
+                                                            Notified
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="4" className="px-4 py-8 text-center text-gray-400 italic">
+                                                    Broadcasting to all cleaners in your area...
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                         <p className="text-sm text-gray-500 mb-6 flex items-center justify-center gap-2">
                             <Loader2 className="w-4 h-4 animate-spin text-primary-500" />
-                            Finding your perfect cleaner...
+                            Waiting for a cleaner to accept...
                         </p>
 
                         {/* Actions */}

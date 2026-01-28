@@ -97,7 +97,7 @@ const CLEANER_FAQS = [
     }
 ];
 
-export default function HelpCenter({ onBack }) {
+export default function HelpCenter({ onBack, onRunTest }) {
     const { selectedRole } = useApp();
     const [searchQuery, setSearchQuery] = useState('');
     const [expandedQuestion, setExpandedQuestion] = useState(null);
@@ -276,6 +276,16 @@ export default function HelpCenter({ onBack }) {
                             </button>
                         )}
                     </div>
+                )}
+
+                {onRunTest && (
+                    <button
+                        onClick={onRunTest}
+                        className="w-full mt-2 p-3 bg-gray-900 text-white rounded-xl font-medium flex items-center justify-center gap-2"
+                    >
+                        <span>🛠️</span>
+                        Test Notification Flow
+                    </button>
                 )}
             </div>
         </div>

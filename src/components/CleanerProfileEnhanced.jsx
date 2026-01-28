@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useApp } from '../context/AppContext';
+import { getCleanerByUserId, getCleanerReviewsWithStats } from '../storage';
 import {
     User, Camera, Star, MapPin, Clock, Briefcase, Award,
     ChevronRight, ChevronLeft, Edit2, Plus, Trash2, Check,
     Shield, Calendar, DollarSign, Languages, Wrench, Image
 } from 'lucide-react';
 
-// Mock cleaner profile data
+// Mock cleaner profile data (kept as initial state template)
 const mockCleanerProfile = {
     id: 'cleaner-001',
     userId: 'user-001',
@@ -16,9 +18,9 @@ const mockCleanerProfile = {
     headline: 'Professional Home Cleaner with 5+ Years Experience',
     bio: 'Passionate about creating spotless, healthy living spaces. I take pride in my attention to detail and always go the extra mile for my clients.',
     experience: '5+ years',
-    rating: 4.9,
-    reviewCount: 156,
-    completedJobs: 423,
+    rating: 0,
+    reviewCount: 0,
+    completedJobs: 0,
     responseTime: '< 1 hour',
     joinedDate: '2024-03-15',
     verified: true,
@@ -58,8 +60,8 @@ const mockCleanerProfile = {
     stats: {
         onTimeRate: 98,
         repeatClients: 72,
-        avgJobRating: 4.9,
-        totalEarnings: 68420
+        avgJobRating: 0,
+        totalEarnings: 0
     }
 };
 
@@ -75,10 +77,73 @@ const languageOptions = [
 ];
 
 export default function CleanerProfileEnhanced({ onBack, onEdit }) {
+    const { user } = useApp();
     const [profile, setProfile] = useState(mockCleanerProfile);
     const [activeSection, setActiveSection] = useState(null);
     const [editingField, setEditingField] = useState(null);
     const [tempValue, setTempValue] = useState('');
+    const [loading, setLoading] = useState(true);
+
+    // Fetch real profile data
+    useEffect(() => {
+        async function loadProfile() {
+            if (!user?.uid) return;
+
+            try {
+                setLoading(true);
+                const cleanerProfile = await getCleanerByUserId(user.uid);
+
+                if (cleanerProfile) {
+                    const [{ reviews, stats: reviewStats }, allJobs] = await Promise.all([
+                        getCleanerReviewsWithStats(cleanerProfile.id),
+                        getCleanerJobs(cleanerProfile.id)
+                    ]);
+
+                    // Calculate rating
+                    const calculatedRating = reviews && reviews.length > 0
+                        ? Math.round((reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length) * 10) / 10
+                        : 0;
+
+                    // Calculate real earnings (YTD) and job counts
+                    const currentYear = new Date().getFullYear();
+                    const completedJobsCount = allJobs.filter(j => j.status === 'completed').length;
+                    const calculatedEarnings = allJobs
+                        .filter(j => {
+                            if (j.status !== 'completed') return false;
+                            // Use completedAt, or scheduledDate, or date, or createdAt as fallback
+                            const dateStr = j.completedAt || j.scheduledDate || j.date || j.createdAt;
+                            if (!dateStr) return false;
+                            const jobDate = new Date(dateStr);
+                            return jobDate.getFullYear() === currentYear;
+                        })
+                        .reduce((sum, j) => sum + (j.amount || j.earnings || 0), 0);
+
+                    // Merge real data
+                    setProfile(prev => ({
+                        ...prev,
+                        ...cleanerProfile,
+                        name: user.name || cleanerProfile.name || prev.name,
+                        email: user.email || cleanerProfile.email || prev.email,
+                        photoURL: user.photoURL || cleanerProfile.photoURL || prev.photoURL,
+                        rating: reviewStats?.averageRating || calculatedRating || cleanerProfile.stats?.rating || cleanerProfile.rating || 0,
+                        reviewCount: reviewStats?.totalReviews || reviews?.length || 0,
+                        completedJobs: completedJobsCount || cleanerProfile.completedJobs || 0,
+                        stats: {
+                            ...prev.stats,
+                            ...cleanerProfile.stats,
+                            totalEarnings: calculatedEarnings || cleanerProfile.stats?.totalEarnings || 0
+                        }
+                    }));
+                }
+            } catch (error) {
+                console.error("Error loading profile:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        loadProfile();
+    }, [user?.uid]);
 
     const handleSaveField = (field) => {
         setProfile(prev => ({ ...prev, [field]: tempValue }));
@@ -240,33 +305,33 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
             </div>
 
             {/* Profile Header */}
-            <div className="bg-gradient-to-br from-secondary-500 to-secondary-600 text-white px-6 pt-6 pb-12">
+            <div className="bg-black text-white px-6 pt-6 pb-8 rounded-b-[1.5rem] shadow-xl relative z-10">
                 <div className="flex items-center gap-4">
                     <div className="relative">
-                        <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
+                        <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center border-2 border-gray-700 overflow-hidden">
                             {profile.photoURL ? (
                                 <img src={profile.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
                             ) : (
-                                <User className="w-10 h-10 text-white" />
+                                <User className="w-8 h-8 text-white/70" />
                             )}
                         </div>
                         <button className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full shadow-lg">
-                            <Camera className="w-4 h-4 text-secondary-600" />
+                            <Camera className="w-3.5 h-3.5 text-secondary-600" />
                         </button>
                     </div>
                     <div className="flex-1">
                         <h2 className="text-xl font-bold">{profile.name}</h2>
                         <div className="flex items-center gap-2 mt-1">
-                            <div className="flex items-center gap-1">
-                                <Star className="w-4 h-4 fill-current text-yellow-400" />
-                                <span className="font-semibold">{profile.rating}</span>
+                            <div className="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full">
+                                <Star className="w-3.5 h-3.5 fill-current text-yellow-500" />
+                                <span className="font-semibold text-sm">{Number(profile.rating).toFixed(1)}</span>
                             </div>
                             <span className="text-white/60">•</span>
-                            <span className="text-white/80">{profile.reviewCount} reviews</span>
+                            <span className="text-white/80 text-sm">{profile.reviewCount} reviews</span>
                         </div>
                         {profile.verified && (
-                            <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 bg-white/20 rounded-full text-xs">
-                                <Shield className="w-3 h-3" />
+                            <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 bg-green-500/20 text-green-300 border border-green-500/30 rounded-full text-[10px] font-medium">
+                                <Shield className="w-2.5 h-2.5" />
                                 Verified
                             </div>
                         )}
@@ -275,7 +340,7 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
             </div>
 
             {/* Stats */}
-            <div className="px-6 -mt-6">
+            <div className="px-6 mt-6">
                 <div className="card grid grid-cols-4 divide-x divide-gray-100">
                     <div className="p-3 text-center">
                         <p className="text-lg font-bold text-gray-900">{profile.completedJobs}</p>
@@ -290,8 +355,8 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
                         <p className="text-xs text-gray-500">Repeat</p>
                     </div>
                     <div className="p-3 text-center">
-                        <p className="text-lg font-bold text-secondary-600">${Math.round(profile.stats.totalEarnings / 1000)}k</p>
-                        <p className="text-xs text-gray-500">Earned</p>
+                        <p className="text-lg font-bold text-secondary-600">${profile.stats.totalEarnings.toLocaleString()}</p>
+                        <p className="text-xs text-gray-500">Earned in {new Date().getFullYear()}</p>
                     </div>
                 </div>
             </div>

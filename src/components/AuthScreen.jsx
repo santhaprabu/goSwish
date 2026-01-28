@@ -30,7 +30,7 @@ export default function AuthScreen({ mode: initialMode = 'login', role, onBack, 
 
         try {
             if (mode === 'login') {
-                const result = login(email, password);
+                const result = await login(email, password);
                 if (result.success) {
                     onSuccess(result.user);
                 } else {
@@ -48,7 +48,7 @@ export default function AuthScreen({ mode: initialMode = 'login', role, onBack, 
                     return;
                 }
 
-                const result = signup({
+                const result = await signup({
                     email,
                     password,
                     role: role || selectedRole,
@@ -96,7 +96,7 @@ export default function AuthScreen({ mode: initialMode = 'login', role, onBack, 
         if (result.success) {
             onSuccess(result.user);
         } else {
-            const loginResult = login(mockEmail, 'SocialAuth123');
+            const loginResult = await login(mockEmail, 'SocialAuth123');
             if (loginResult.success) {
                 onSuccess(loginResult.user);
             } else {

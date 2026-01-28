@@ -3,7 +3,7 @@
  * Provides user authentication with persistent sessions
  */
 
-import { COLLECTIONS, addDoc, setDoc, getDoc, getDocs, queryDocs, generateId } from './db.js';
+import { COLLECTIONS, addDoc, setDoc, updateDoc, getDoc, getDocs, queryDocs, generateId } from './db.js';
 
 const CURRENT_USER_KEY = 'goswish_current_user';
 const SESSION_KEY = 'goswish_session';
@@ -181,6 +181,11 @@ export const signUpWithEmail = async (email, password, userData = {}) => {
             emailVerified: false,
             role: userData.role || 'customer',
             status: 'active',
+            name: userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            photoURL: userData.photoURL || '',
+            phone: userData.phone || '',
             profile: {
                 name: userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
                 firstName: userData.firstName || '',
@@ -496,5 +501,37 @@ export const deleteUserAccount = async (userId, password) => {
             success: false,
             error: error.message || 'Failed to delete account',
         };
+    }
+};
+
+/**
+ * Force reset all cleaner passwords (Maintenance Tool)
+ */
+export const forceResetCleanerPasswords = async () => {
+    try {
+        console.log("🔄 FORCE RESET: Updating all cleaner passwords...");
+        const users = await getDocs(COLLECTIONS.USERS);
+        const cleaners = users.filter(u => u.role === 'cleaner');
+
+        if (cleaners.length === 0) {
+            console.log("⚠️ No cleaners found to reset.");
+            return { success: true, count: 0 };
+        }
+
+        const newHash = await hashPassword('Cleaner123!');
+        let count = 0;
+
+        for (const cleaner of cleaners) {
+            await updateDoc(COLLECTIONS.USERS, cleaner.id, {
+                password: newHash
+            });
+            count++;
+        }
+
+        console.log(`✅ SUCCESS: Reset passwords for ${count} cleaners to 'Cleaner123!'`);
+        return { success: true, count };
+    } catch (error) {
+        console.error("❌ Failed to reset passwords:", error);
+        return { success: false, error: error.message };
     }
 };

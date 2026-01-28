@@ -7,7 +7,7 @@ import { signUpWithEmail } from './auth.js';
 import {
     createCleanerProfile, createHouse, createPromoCode,
     createReview, createNotification, createConversation, sendMessage,
-    getCleanerByUserId
+    getCleanerByUserId, createTransaction
 } from './helpers.js';
 import { COLLECTIONS, setDoc, generateId } from './db.js';
 
@@ -90,6 +90,18 @@ const STREET_NAMES = [
     'River Rd', 'Forest Ln', 'Meadow Dr', 'Spring St', 'Summer Ave',
 ];
 
+// Photo Assets
+const FEMALE_PHOTOS = Array.from({ length: 50 }, (_, i) => `https://xsgames.co/randomusers/assets/avatars/female/${i}.jpg`);
+const MALE_PHOTOS = Array.from({ length: 50 }, (_, i) => `https://xsgames.co/randomusers/assets/avatars/male/${i}.jpg`);
+
+const getGenderPhoto = (role, index) => {
+    // Customers: 1:M, 2:F, 3:M, 4:F...
+    // Cleaners: 1:F, 2:M, 3:F, 4:M...
+    const isMale = role === 'customer' ? (index % 2 !== 0) : (index % 2 === 0);
+    const photoList = isMale ? MALE_PHOTOS : FEMALE_PHOTOS;
+    return photoList[Math.floor(index / 2) % photoList.length];
+};
+
 /**
  * Get random item from array
  */
@@ -155,6 +167,7 @@ export const createCustomerProfiles = async () => {
                 lastName: name.split(' ').slice(1).join(' '),
                 role: 'customer',
                 phone,
+                photoURL: getGenderPhoto('customer', i),
             });
 
             if (result.success) {
@@ -267,6 +280,7 @@ export const createCleanerProfiles = async () => {
                 lastName: name.split(' ').slice(1).join(' '),
                 role: 'cleaner',
                 phone,
+                photoURL: getGenderPhoto('cleaner', i),
             });
 
             if (result.success) {
@@ -302,7 +316,7 @@ export const createCleanerProfiles = async () => {
                     yearsExperience,
                     specialties,
                     languages,
-                    photoURL: `https://i.pravatar.cc/300?img=${i}`,
+                    photoURL: getGenderPhoto('cleaner', i),
                     baseLocation: address,
                     serviceRadius: getRandomNumber(15, 30),
                     serviceTypes: ['regular', 'deep', 'move', 'windows'].slice(0, getRandomNumber(2, 4)),
@@ -614,6 +628,37 @@ const seedCleanerJobs = async (cleanerProfiles, customerUsers) => {
     return jobCount;
 };
 
+/**
+ * Seed transactions (payouts) for cleaners
+ */
+const seedCleanerTransactions = async (cleanerProfiles) => {
+    console.log('🚀 Creating payout transactions for cleaners...');
+    let txnCount = 0;
+
+    for (const cleaner of cleanerProfiles) {
+        // Create 1-3 payouts for each cleaner
+        const numTxns = getRandomNumber(1, 3);
+
+        for (let i = 0; i < numTxns; i++) {
+            const amount = getRandomNumber(200, 500);
+            const daysAgo = getRandomNumber(5, 45);
+            const date = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+
+            await createTransaction(cleaner.id, {
+                type: 'payout',
+                amount: amount,
+                description: 'Withdrawal to Bank Account',
+                status: 'paid',
+                createdAt: date.toISOString()
+            });
+            txnCount++;
+        }
+    }
+
+    console.log(`✅ Created ${txnCount} payout transactions`);
+    return txnCount;
+};
+
 
 /**
  * Seed all data (customers + cleaners)
@@ -661,6 +706,10 @@ export const seedAllData = async () => {
 
         // Create conversations and messages
         await seedCleanerMessages(cleanerUsers, customerUsers);
+        console.log('');
+
+        // Create payout transactions
+        await seedCleanerTransactions(cleanerProfiles);
         console.log('');
 
         const endTime = Date.now();

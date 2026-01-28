@@ -76,12 +76,12 @@ export default function WelcomeScreen({ onSuccess }) {
 
         setMode('login');
 
-        // Trigger OTP send
-        try {
-            await requestOtp(identifier);
-        } catch (e) {
-            console.error('OTP request error (silent):', e);
-        }
+        // Trigger OTP send - User preference: Don't auto send OTP
+        // try {
+        //     await requestOtp(identifier);
+        // } catch (e) {
+        //     console.error('OTP request error (silent):', e);
+        // }
     };
 
     const handleSignup = async (e, role) => {
@@ -226,7 +226,7 @@ export default function WelcomeScreen({ onSuccess }) {
                             }}
                             className="flex-1 py-3 bg-white border border-gray-200 text-black font-semibold rounded-xl hover:bg-gray-50 hover:border-black/20 transition-all text-sm shadow-sm"
                         >
-                            Sign up as Customer
+                            Sign up as Home Owner
                         </button>
                         <button
                             onClick={() => {
@@ -237,6 +237,74 @@ export default function WelcomeScreen({ onSuccess }) {
                         >
                             Sign up as Cleaner
                         </button>
+                    </div>
+                    {/* DEV HELPER FOR WELCOME SCREEN */}
+                    <div className="mt-4 pt-4 border-t border-gray-200/50 text-center space-y-2">
+                        <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Developer Tools</p>
+                        <div className="flex flex-wrap justify-center gap-2">
+                            <button
+                                onClick={async (e) => {
+                                    const btn = e.target;
+                                    const originalText = btn.innerText;
+                                    btn.innerText = "Resetting...";
+                                    btn.disabled = true;
+
+                                    try {
+                                        const { clearDatabase } = await import('../storage/db.js');
+                                        const { seedAllData } = await import('../storage/seedData.js');
+                                        await clearDatabase();
+                                        await seedAllData();
+                                        alert("✅ Database Reset Complete! Click OK to reload.");
+                                        window.location.reload();
+                                    } catch (e) {
+                                        alert("Error: " + e.message);
+                                        btn.innerText = originalText;
+                                        btn.disabled = false;
+                                    }
+                                }}
+                                className="px-2 py-1 bg-red-50 hover:bg-red-100 text-xs text-red-600 rounded border border-red-200"
+                            >
+                                Wipe & Reseed
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    /* Debug Cleaner1 Logic */
+                                    try {
+                                        const { queryDocs, COLLECTIONS } = await import('../storage/db.js');
+                                        const email = 'cleaner1@goswish.com';
+                                        const users = await queryDocs(COLLECTIONS.USERS, 'email', email);
+                                        if (users.length === 0) { alert(`❌ User '${email}' NOT FOUND in DB.`); return; }
+                                        const user = users[0];
+                                        const { signInWithEmail } = await import('../storage/auth.js');
+                                        const result = await signInWithEmail(email, 'Cleaner123!');
+
+                                        if (result.success) alert(`✅ Login PASSED!\nRole: ${user.role}\nStatus: ${user.status}`);
+                                        else alert(`❌ Login FAILED: ${result.error}\nRole: ${user.role}\nStatus: ${user.status}`);
+                                    } catch (e) { alert("Error: " + e.message); }
+                                }}
+                                className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-xs text-blue-600 rounded border border-blue-200"
+                            >
+                                Debug Cleaner1
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    console.log('Dev: Logging in as Cleaner...');
+                                    localStorage.clear();
+                                    try {
+                                        const res = await login('cleaner1@goswish.com', 'Cleaner123!');
+                                        if (res.success) {
+                                            // onSuccess(res.user); 
+                                            // Directly reload to force state update if onSuccess isn't enough
+                                            window.location.reload();
+                                        }
+                                        else alert('Dev Login Failed: ' + res.error);
+                                    } catch (e) { alert(e.message) }
+                                }}
+                                className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-xs text-gray-600 rounded border border-gray-300"
+                            >
+                                Force Login
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -272,10 +340,12 @@ export default function WelcomeScreen({ onSuccess }) {
                         <p className="text-gray-500">
                             Sign in to <strong>{email}</strong>
                         </p>
+                        {/* 
                         <p className="text-sm text-green-600 mt-2 flex items-center gap-2 bg-green-50 p-2 rounded-lg w-fit">
                             <Sparkles className="w-4 h-4" />
                             OTP sent to your email
-                        </p>
+                        </p> 
+                        */}
                     </div>
 
                     {error && (
@@ -343,6 +413,73 @@ export default function WelcomeScreen({ onSuccess }) {
                             </div>
                         </form>
                     </div>
+
+                    {/* DEV HELPER - Added to fix auth issues */}
+                    <div className="mt-8 pt-6 border-t border-gray-200 text-center">
+                        <p className="text-xs text-gray-400 font-bold mb-2 uppercase tracking-wider">Developer Tools</p>
+                        <div className="flex justify-center gap-3">
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    try {
+                                        const { forceResetCleanerPasswords } = await import('../storage/auth.js');
+                                        const res = await forceResetCleanerPasswords();
+                                        alert(`✅ Reset ${res.count} passwords to 'Cleaner123!'`);
+                                    } catch (e) { alert(e.message); }
+                                }}
+                                className="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded text-gray-700"
+                            >
+                                Reset Passwords
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    if (confirm("Wipe DB and Reseed?")) {
+                                        try {
+                                            const { clearDatabase } = await import('../storage/db.js');
+                                            const { seedAllData } = await import('../storage/seedData.js');
+                                            await clearDatabase();
+                                            await seedAllData();
+                                            alert("✅ Database Reset! Refreshing...");
+                                            window.location.reload();
+                                        } catch (e) { alert(e.message); }
+                                    }
+                                }}
+                                className="text-xs bg-red-50 hover:bg-red-100 px-3 py-2 rounded text-red-600"
+                            >
+                                Wipe & Reseed
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    try {
+                                        const { queryDocs, COLLECTIONS } = await import('../storage/db.js');
+                                        const email = 'cleaner1@goswish.com';
+                                        const users = await queryDocs(COLLECTIONS.USERS, 'email', email);
+
+                                        if (users.length === 0) {
+                                            alert(`❌ User '${email}' NOT FOUND.`);
+                                            return;
+                                        }
+
+                                        const user = users[0];
+                                        const { signInWithEmail } = await import('../storage/auth.js');
+                                        const result = await signInWithEmail(email, 'Cleaner123!');
+
+                                        if (result.success) {
+                                            alert("✅ Login PASSED! Credentials are correct.");
+                                        } else {
+                                            alert(`❌ Login FAILED: ${result.error}\nUser Role: ${user.role}\nStatus: ${user.status}`);
+                                        }
+
+                                    } catch (e) { alert("Debug Error: " + e.message); }
+                                }}
+                                className="text-xs bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded text-blue-600"
+                            >
+                                Debug Cleaner1
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         );
@@ -376,7 +513,7 @@ export default function WelcomeScreen({ onSuccess }) {
                         className="h-10 mb-4 object-contain -ml-2"
                     />
                     <h1 className="text-3xl font-bold text-black mb-2">
-                        {isCustomerSignup ? 'Customer Sign Up' : 'Cleaner Sign Up'}
+                        {isCustomerSignup ? 'Home Owner Sign Up' : 'Cleaner Sign Up'}
                     </h1>
                     <p className="text-gray-500">
                         {isCustomerSignup ? 'Create an account to book cleaning services' : 'Create an account to start earning'}
