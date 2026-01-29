@@ -46,15 +46,21 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                     const startHour = scheduledDate.getHours();
                     const duration = job.duration || 2;
 
+                    const formatTime = (h) => {
+                        const period = h >= 12 ? 'PM' : 'AM';
+                        const hour12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+                        return `${hour12}:00 ${period}`;
+                    };
+
                     return {
                         id: job.id,
                         customerId: job.customerId,
                         date: scheduledDate.toISOString().split('T')[0],
-                        startTime: `${startHour}:00`,
-                        endTime: `${startHour + duration}:00`,
+                        startTime: formatTime(startHour),
+                        endTime: formatTime(startHour + duration),
                         duration: duration,
-                        serviceType: job.serviceType || 'Cleaning',
-                        earnings: job.amount || job.earnings || 0,
+                        serviceType: (job.serviceType || 'Cleaning').replace('-', ' '),
+                        earnings: Number(job.amount || job.earnings || 0),
                         status: job.status || 'scheduled',
                         customer: {
                             name: job.customerName || 'Home Owner',
@@ -79,7 +85,21 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                 formattedJobs.sort((a, b) => {
                     const dateCompare = a.date.localeCompare(b.date);
                     if (dateCompare !== 0) return dateCompare;
-                    return a.startTime.localeCompare(b.startTime);
+
+                    // Helper to parse "8:00 AM"
+                    const getMinutes = (timeStr) => {
+                        if (!timeStr) return 0;
+                        const parts = timeStr.split(' ');
+                        if (parts.length < 2) return 0;
+
+                        const [time, period] = parts;
+                        let [h, m] = time.split(':').map(Number);
+                        if (period === 'PM' && h !== 12) h += 12;
+                        if (period === 'AM' && h === 12) h = 0;
+                        return h * 60 + (m || 0);
+                    };
+
+                    return getMinutes(a.startTime) - getMinutes(b.startTime);
                 });
 
                 setJobs(formattedJobs);
@@ -185,7 +205,21 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
             return monthJobs.sort((a, b) => {
                 const dateCompare = a.date.localeCompare(b.date);
                 if (dateCompare !== 0) return dateCompare;
-                return a.startTime.localeCompare(b.startTime);
+
+                // Helper to parse "8:00 AM"
+                const getMinutes = (timeStr) => {
+                    if (!timeStr) return 0;
+                    const parts = timeStr.split(' ');
+                    if (parts.length < 2) return 0; // Guard against existing data issues
+
+                    const [time, period] = parts;
+                    let [h, m] = time.split(':').map(Number);
+                    if (period === 'PM' && h !== 12) h += 12;
+                    if (period === 'AM' && h === 12) h = 0;
+                    return h * 60 + (m || 0);
+                };
+
+                return getMinutes(a.startTime) - getMinutes(b.startTime);
             });
         }
 
@@ -197,17 +231,35 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
         // Add blocks
         // Time approximations: Morning=8:00, Afternoon=12:00, Evening=16:00
         if (dayBlocks.morning === 'unavailable') {
-            items.push({ id: 'blk-m-' + dateKey, type: 'block', shift: 'Morning', startTime: '08:00', endTime: '12:00', label: 'Time Off' });
+            items.push({ id: 'blk-m-' + dateKey, type: 'block', shift: 'Morning', startTime: '8:00 AM', endTime: '12:00 PM', label: 'Time Off' });
         }
         if (dayBlocks.afternoon === 'unavailable') {
-            items.push({ id: 'blk-a-' + dateKey, type: 'block', shift: 'Afternoon', startTime: '12:00', endTime: '16:00', label: 'Time Off' });
+            items.push({ id: 'blk-a-' + dateKey, type: 'block', shift: 'Afternoon', startTime: '12:00 PM', endTime: '4:00 PM', label: 'Time Off' });
         }
         if (dayBlocks.evening === 'unavailable') {
-            items.push({ id: 'blk-e-' + dateKey, type: 'block', shift: 'Evening', startTime: '16:00', endTime: '20:00', label: 'Time Off' });
+            items.push({ id: 'blk-e-' + dateKey, type: 'block', shift: 'Evening', startTime: '4:00 PM', endTime: '8:00 PM', label: 'Time Off' });
         }
 
         // Sort by startTime
-        return items.sort((a, b) => a.startTime.localeCompare(b.startTime));
+        return items.sort((a, b) => {
+            // Helper to parse "8:00 AM" safely
+            const getMinutes = (timeStr) => {
+                if (!timeStr) return 0;
+                const parts = timeStr.split(' ');
+                if (parts.length < 2) return 0;
+
+                const [time, period] = parts;
+                if (!time) return 0;
+                const timeParts = time.split(':');
+                let h = parseInt(timeParts[0]) || 0;
+                let m = parseInt(timeParts[1]) || 0;
+
+                if (period === 'PM' && h !== 12) h += 12;
+                if (period === 'AM' && h === 12) h = 0;
+                return h * 60 + m;
+            };
+            return getMinutes(a.startTime) - getMinutes(b.startTime);
+        });
     };
 
     const timelineItems = getTimelineItems(selectedDate);
@@ -283,7 +335,7 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                             </div>
                             <div className="text-right">
                                 <p className="text-sm text-gray-500 mb-1">Earnings</p>
-                                <p className="text-2xl font-bold text-secondary-600">${selectedJob.earnings}</p>
+                                <p className="text-2xl font-bold text-secondary-600">${selectedJob.earnings.toFixed(2)}</p>
                             </div>
                         </div>
                     </div>
@@ -389,9 +441,9 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                     <h1 className="text-lg font-semibold">Schedule</h1>
                     <button
                         onClick={onManageAvailability}
-                        className="text-sm font-medium text-secondary-600 bg-secondary-50 px-3 py-1.5 rounded-lg hover:bg-secondary-100 transition-colors"
+                        className="text-xs font-bold text-white bg-secondary-600 px-4 py-2 rounded-full shadow-md hover:bg-secondary-700 transition-colors uppercase tracking-wide"
                     >
-                        Availability
+                        Manage my Availability
                     </button>
                 </div>
             </div>
@@ -627,9 +679,9 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                                                     {job.status === 'in_progress' ? 'In Progress' : job.status}
                                                 </span>
                                             </div>
-                                            <h4 className="font-semibold text-gray-900">{job.serviceType}</h4>
+                                            <h4 className="font-semibold text-gray-900 capitalize">{job.serviceType}</h4>
                                         </div>
-                                        <span className="font-bold text-secondary-600">${job.earnings}</span>
+                                        <span className="font-bold text-secondary-600">${job.earnings.toFixed(2)}</span>
                                     </div>
 
                                     <div className="flex items-center gap-2 text-sm text-gray-500">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { getCleanerByUserId, getCleanerReviewsWithStats } from '../storage';
+import { getCleanerByUserId, getCleanerReviewsWithStats, updateCleanerProfile, getCleanerJobs } from '../storage';
 import {
     User, Camera, Star, MapPin, Clock, Briefcase, Award,
     ChevronRight, ChevronLeft, Edit2, Plus, Trash2, Check,
@@ -172,8 +172,8 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
     if (activeSection === 'specialties') {
         return (
             <div className="min-h-screen bg-gray-50 pb-24">
-                <div className="app-bar">
-                    <button onClick={() => setActiveSection(null)} className="p-2">
+                <div className="app-bar flex items-center justify-between px-4 py-3">
+                    <button onClick={() => setActiveSection(null)} className="p-2" aria-label="Back">
                         <ChevronLeft className="w-6 h-6" />
                     </button>
                     <h1 className="text-lg font-semibold">Edit Specialties</h1>
@@ -211,11 +211,104 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
         );
     }
 
+    if (activeSection === 'edit-address') {
+        return (
+            <div className="min-h-screen bg-gray-50 pb-24">
+                <div className="app-bar flex items-center justify-between px-4 py-3">
+                    <button onClick={() => setActiveSection(null)} className="p-2" aria-label="Back">
+                        <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <h1 className="text-lg font-semibold">Edit Address</h1>
+                    <button
+                        onClick={async () => {
+                            // Update local state
+                            const newLocation = { ...profile.location, ...tempValue };
+                            setProfile(prev => ({ ...prev, location: newLocation }));
+
+                            // Save to DB
+                            try {
+                                await updateCleanerProfile(profile.id, { location: newLocation });
+                            } catch (e) {
+                                console.error('Failed to update cleaner address', e);
+                            }
+
+                            setActiveSection(null);
+                        }}
+                        className="p-2 text-secondary-600 font-medium"
+                    >
+                        Save
+                    </button>
+                </div>
+
+                <div className="px-6 py-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+                        <input
+                            type="text"
+                            value={tempValue.street}
+                            onChange={(e) => setTempValue({ ...tempValue, street: e.target.value })}
+                            className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-500"
+                            placeholder="123 Main St"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                            <input
+                                type="text"
+                                value={tempValue.city}
+                                onChange={(e) => setTempValue({ ...tempValue, city: e.target.value })}
+                                className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-500"
+                                placeholder="Dallas"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                            <input
+                                type="text"
+                                value={tempValue.state}
+                                onChange={(e) => setTempValue({ ...tempValue, state: e.target.value })}
+                                className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-500"
+                                placeholder="TX"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Zip Code</label>
+                        <input
+                            type="text"
+                            value={tempValue.zipcode}
+                            onChange={(e) => setTempValue({ ...tempValue, zipcode: e.target.value })}
+                            className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary-500"
+                            placeholder="75201"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Service Radius (miles)</label>
+                        <input
+                            type="range"
+                            min="5"
+                            max="100"
+                            step="5"
+                            value={tempValue.radius}
+                            onChange={(e) => setTempValue({ ...tempValue, radius: parseInt(e.target.value) })}
+                            className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>5 miles</span>
+                            <span className="font-bold text-secondary-600">{tempValue.radius} miles</span>
+                            <span>100 miles</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
     if (activeSection === 'languages') {
         return (
             <div className="min-h-screen bg-gray-50 pb-24">
-                <div className="app-bar">
-                    <button onClick={() => setActiveSection(null)} className="p-2">
+                <div className="app-bar flex items-center justify-between px-4 py-3">
+                    <button onClick={() => setActiveSection(null)} className="p-2" aria-label="Back">
                         <ChevronLeft className="w-6 h-6" />
                     </button>
                     <h1 className="text-lg font-semibold">Languages</h1>
@@ -253,8 +346,8 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
     if (activeSection === 'portfolio') {
         return (
             <div className="min-h-screen bg-gray-50 pb-24">
-                <div className="app-bar">
-                    <button onClick={() => setActiveSection(null)} className="p-2">
+                <div className="app-bar flex items-center justify-between px-4 py-3">
+                    <button onClick={() => setActiveSection(null)} className="p-2" aria-label="Back">
                         <ChevronLeft className="w-6 h-6" />
                     </button>
                     <h1 className="text-lg font-semibold">Portfolio</h1>
@@ -269,20 +362,20 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
                             <div key={item.id} className="relative">
                                 <div className="aspect-square bg-gray-100 rounded-xl flex items-center justify-center">
                                     {item.url ? (
-                                        <img src={item.url} alt="" className="w-full h-full object-cover rounded-xl" />
+                                        <img src={item.url} alt={item.caption || "Portfolio item"} className="w-full h-full object-cover rounded-xl" />
                                     ) : (
                                         <Image className="w-10 h-10 text-gray-300" />
                                     )}
                                 </div>
                                 <p className="text-xs text-gray-500 mt-1 text-center">{item.caption}</p>
-                                <button className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-sm">
+                                <button className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-sm" aria-label="Delete item">
                                     <Trash2 className="w-4 h-4 text-error-500" />
                                 </button>
                             </div>
                         ))}
 
                         {/* Add new */}
-                        <button className="aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center hover:border-secondary-400 hover:bg-secondary-50 transition-colors">
+                        <button className="aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center hover:border-secondary-400 hover:bg-secondary-50 transition-colors" aria-label="Add Photo">
                             <Plus className="w-8 h-8 text-gray-400 mb-1" />
                             <span className="text-xs text-gray-500">Add Photo</span>
                         </button>
@@ -294,12 +387,12 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
-            <div className="app-bar">
-                <button onClick={onBack} className="p-2">
+            <div className="app-bar flex items-center justify-between px-4 py-3">
+                <button onClick={onBack} className="p-2" aria-label="Back">
                     <ChevronLeft className="w-6 h-6" />
                 </button>
                 <h1 className="text-lg font-semibold">My Profile</h1>
-                <button onClick={onEdit} className="p-2">
+                <button onClick={onEdit} className="p-2" aria-label="Edit Profile">
                     <Edit2 className="w-5 h-5 text-gray-600" />
                 </button>
             </div>
@@ -315,7 +408,7 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
                                 <User className="w-8 h-8 text-white/70" />
                             )}
                         </div>
-                        <button className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full shadow-lg">
+                        <button className="absolute bottom-0 right-0 p-1.5 bg-white rounded-full shadow-lg" aria-label="Change photo">
                             <Camera className="w-3.5 h-3.5 text-secondary-600" />
                         </button>
                     </div>
@@ -386,7 +479,7 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
                 <div className="card p-6">
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="font-semibold text-gray-900">Specialties</h3>
-                        <button onClick={() => setActiveSection('specialties')} className="text-secondary-600">
+                        <button onClick={() => setActiveSection('specialties')} className="text-secondary-600" aria-label="Edit Specialties">
                             <Edit2 className="w-4 h-4" />
                         </button>
                     </div>
@@ -405,7 +498,7 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
                 <div className="card p-6">
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="font-semibold text-gray-900">Languages</h3>
-                        <button onClick={() => setActiveSection('languages')} className="text-secondary-600">
+                        <button onClick={() => setActiveSection('languages')} className="text-secondary-600" aria-label="Edit Languages">
                             <Edit2 className="w-4 h-4" />
                         </button>
                     </div>
@@ -420,25 +513,39 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
             <div className="px-6 mt-4">
                 <div className="card p-6">
                     <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-gray-900">Service Area</h3>
-                        <button className="text-secondary-600">
+                        <h3 className="font-semibold text-gray-900">Address & Service Area</h3>
+                        <button
+                            onClick={() => {
+                                setEditingField('address');
+                                setTempValue({
+                                    street: profile.location?.street || '',
+                                    city: profile.location?.city || '',
+                                    state: profile.location?.state || '',
+                                    zipcode: profile.location?.zipcode || '',
+                                    radius: profile.location?.serviceRadius || 25
+                                });
+                                setActiveSection('edit-address');
+                            }}
+                            className="text-secondary-600"
+                            aria-label="Edit Address"
+                        >
                             <Edit2 className="w-4 h-4" />
                         </button>
                     </div>
-                    <div className="space-y-2">
-                        <div className="flex items-start gap-2">
+                    <div className="space-y-4">
+                        <div className="flex items-start gap-3">
                             <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
                             <div>
-                                <p className="text-gray-700">{profile.serviceArea.baseLocation}</p>
-                                <p className="text-sm text-gray-500">{profile.serviceArea.radius} mile radius</p>
+                                <p className="text-gray-900 font-medium">
+                                    {profile.location?.street || 'No street address'}
+                                </p>
+                                <p className="text-gray-600">
+                                    {profile.location?.city || ''}, {profile.location?.state || ''} {profile.location?.zipcode || ''}
+                                </p>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Service Radius: {profile.location?.serviceRadius || profile.serviceArea?.radius || 25} miles
+                                </p>
                             </div>
-                        </div>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                            {profile.serviceArea.cities.map(city => (
-                                <span key={city} className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                                    {city}
-                                </span>
-                            ))}
                         </div>
                     </div>
                 </div>
@@ -449,7 +556,7 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
                 <div className="card p-6">
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="font-semibold text-gray-900">Certifications</h3>
-                        <button className="text-secondary-600">
+                        <button className="text-secondary-600" aria-label="Add Certification">
                             <Plus className="w-4 h-4" />
                         </button>
                     </div>
@@ -498,6 +605,7 @@ export default function CleanerProfileEnhanced({ onBack, onEdit }) {
                         <button
                             onClick={() => setActiveSection('portfolio')}
                             className="w-24 flex-shrink-0 aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center"
+                            aria-label="Add to Portfolio"
                         >
                             <Plus className="w-6 h-6 text-gray-400" />
                         </button>

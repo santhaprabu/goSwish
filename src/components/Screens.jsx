@@ -3,12 +3,12 @@ import {
     Home, MapPin, Calendar, User, Sparkles, Plus,
     ChevronRight, Bell, Clock, CheckCircle2, Star,
     TrendingUp, Wallet, Search, MessageSquare, Settings,
-    ShieldCheck, Share2, LogOut, Heart, HelpCircle
+    ShieldCheck, Share2, LogOut, Heart, HelpCircle, Building
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export function BottomNavigation({ activeTab, onTabChange, role }) {
-    const isCustomer = role === 'customer';
+    const isCustomer = role === 'homeowner';
 
     const customerTabs = [
         { id: 'home', label: 'Home', icon: Home },
@@ -114,199 +114,195 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNot
     }, [user, getUserHouses, getUserBookings]);
 
     const recentBookings = bookings.slice(0, 3);
-    const defaultHouse = houses.find(h => h.isDefault);
+    const defaultHouse = houses.find(h => h.isDefault) || houses[0];
+    const activeBookingsCount = bookings.filter(b => ['confirmed', 'matched', 'scheduled'].includes(b.status)).length;
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-24">
-            {/* Header */}
-            <div className="bg-black text-white px-5 pt-3 pb-8 rounded-b-[2rem] shadow-2xl relative z-20">
-                <div className="flex justify-between items-start mb-8">
+        <div className="min-h-screen bg-gray-100 pb-24 font-sans">
+            {/* Uber-style Black Header */}
+            <div className="bg-black text-white px-5 pt-3 pb-5 rounded-b-[1.5rem] shadow-2xl relative z-20">
+                <div className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-full bg-gray-800 border-2 border-gray-700 overflow-hidden p-0.5 flex-shrink-0">
+                        {/* Profile Icon */}
+                        <div className="w-16 h-16 rounded-full bg-gray-800 border-2 border-gray-700 overflow-hidden p-0.5 flex-shrink-0">
                             {user?.photoURL ? (
                                 <img src={user.photoURL} alt={user.name} className="w-full h-full rounded-full object-cover" />
                             ) : (
                                 <div className="w-full h-full bg-gray-700 flex items-center justify-center rounded-full">
-                                    <User className="w-7 h-7 text-white/70" />
+                                    <User className="w-8 h-8 text-white/70" />
                                 </div>
                             )}
                         </div>
                         <div>
-                            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider">Welcome back,</p>
+                            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-0.5">Welcome Back</p>
                             <h2 className="text-xl font-bold text-white leading-tight">{user?.name?.split(' ')[0] || 'Friend'}</h2>
-                            <p className="text-gray-500 text-xs mt-0.5">{user?.email}</p>
+                            < div className="flex items-center gap-2 mt-2">
+                                <span className="bg-gray-800 border border-gray-700 text-gray-300 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                    Home Owner
+                                </span>
+                            </div>
                         </div>
                     </div>
+
+                    {/* Notification Bell */}
                     <button
                         onClick={onNotifications}
-                        className="relative p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors active:scale-95"
+                        className="relative p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors active:scale-95 mt-1"
+                        aria-label="Notifications"
                     >
                         <Bell className="w-5 h-5 text-white" />
                         {notificationCount > 0 && (
-                            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-gray-800" />
+                            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-gray-800" />
                         )}
                     </button>
                 </div>
 
-                {/* Quick book card */}
+                {/* Primary "Book" Action Button */}
                 <button
                     onClick={onNewBooking}
-                    className="w-full bg-white text-gray-900 rounded-2xl p-5 shadow-xl shadow-black/20 text-left 
-                       hover:scale-[1.02] active:scale-[0.98] transition-all group relative overflow-hidden"
+                    className="w-full bg-secondary-600 hover:bg-secondary-700 text-white font-bold text-lg py-3 rounded-2xl shadow-xl shadow-secondary-900/30 flex items-center justify-center gap-3 transition-transform active:scale-[0.98] relative overflow-hidden group"
                 >
-                    <div className="absolute top-0 right-0 p-4 opacity-5">
-                        <Sparkles className="w-24 h-24" />
-                    </div>
-                    <div className="flex items-center gap-4 relative z-10">
-                        <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center shadow-lg group-hover:bg-gray-900 transition-colors">
-                            <Plus className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-lg font-bold">Book a Cleaning</h3>
-                            <p className="text-gray-500 text-sm font-medium">
-                                {defaultHouse ? defaultHouse.name : 'Schedule your next clean'}
-                            </p>
-                        </div>
-                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-gray-200 transition-colors">
-                            <ChevronRight className="w-5 h-5 text-gray-600" />
-                        </div>
-                    </div>
+                    <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                    <Sparkles className="w-5 h-5 relative z-10" />
+                    <span className="relative z-10">
+                        Book a Cleaning
+                    </span>
                 </button>
             </div>
 
-            {/* Content */}
-            <div className="px-6 mt-6 space-y-6">
+            {/* Stats Grid */}
+            <div className="px-4 mt-3 relative z-30">
+                <div className="bg-white rounded-2xl shadow-lg p-5 grid grid-cols-3 gap-4 divide-x divide-gray-100">
+                    <button onClick={onViewHouses} className="text-center group flex flex-col items-center">
+                        <div className="flex items-center justify-center gap-1 mb-1">
+                            <span className="text-xl font-bold text-gray-900">{houses.length}</span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest group-hover:text-gray-800">Properties</p>
+                    </button>
+                    <button onClick={onViewBookings} className="text-center group flex flex-col items-center">
+                        <p className="text-xl font-bold text-gray-900 mb-1">{activeBookingsCount}</p>
+                        <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest group-hover:text-gray-800">Active</p>
+                    </button>
+                    <div className="text-center flex flex-col items-center">
+                        <p className="text-xl font-bold text-gray-900 mb-1">0</p>
+                        <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Rewards</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="px-5 mt-4 space-y-5">
+
                 {/* My Properties */}
                 <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-bold text-gray-900">My Properties</h2>
-                        <button
-                            onClick={onViewHouses}
-                            className="text-primary-600 text-sm font-medium flex items-center gap-1"
-                        >
-                            View all <ChevronRight className="w-4 h-4" />
-                        </button>
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider opacity-70">Properties</h3>
+                        <button onClick={onViewHouses} className="text-xs font-bold text-primary-600">View All</button>
                     </div>
 
                     {houses.length > 0 ? (
-                        <div className="space-y-3 overflow-y-auto pr-2 max-h-[220px] scrollbar-thin">
+                        <div className="space-y-3">
                             {houses.map((house) => (
                                 <div
                                     key={house.id}
-                                    className="w-full card group cursor-pointer hover:shadow-lg transition-shadow border border-gray-100"
+                                    className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between cursor-pointer hover:border-primary-100 transition-colors"
                                     onClick={onViewHouses}
                                 >
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
                                             <Home className="w-6 h-6 text-primary-500" />
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between">
-                                                <h3 className="font-semibold text-gray-900 truncate">{house.nickname}</h3>
-                                                {house.isDefault && <Star className="w-4 h-4 text-yellow-500 fill-current" />}
-                                            </div>
-                                            <p className="text-sm text-gray-500 truncate">{house.address.street}</p>
-                                            <p className="text-xs text-gray-400 mt-1">{house.size.toLocaleString()} sqft</p>
+                                        <div className="min-w-0">
+                                            <h3 className="text-sm font-bold text-gray-900 truncate pr-4">{house.nickname}</h3>
+                                            <p className="text-gray-500 text-[10px] truncate max-w-[200px]">{house.address?.street || 'No Address'}</p>
                                         </div>
                                     </div>
+                                    {house.isDefault && <Star className="w-5 h-5 text-yellow-500 flex-shrink-0" />}
                                 </div>
                             ))}
-
-                            {/* Add new property button */}
                             <button
                                 onClick={onViewHouses}
-                                className="w-full py-3 border-2 border-dashed border-gray-200 rounded-2xl
+                                className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl
                            flex items-center justify-center gap-2 text-gray-400
                            hover:border-primary-300 hover:text-primary-500 transition-colors"
                             >
                                 <Plus className="w-5 h-5" />
-                                <span className="text-sm font-medium">Add New Property</span>
+                                <span className="text-sm font-medium">Add Property</span>
                             </button>
                         </div>
                     ) : (
                         <button
                             onClick={onViewHouses}
-                            className="w-full card flex items-center gap-4 hover:shadow-lg transition-shadow"
+                            className="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex items-center justify-center gap-4 hover:shadow-md transition-shadow"
                         >
-                            <div className="w-14 h-14 bg-primary-50 rounded-xl flex items-center justify-center">
-                                <Plus className="w-7 h-7 text-primary-400" />
+                            <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center">
+                                <Plus className="w-6 h-6 text-primary-500" />
                             </div>
-                            <div className="flex-1 text-left">
-                                <h3 className="font-semibold text-gray-900">Add Your First Property</h3>
-                                <p className="text-sm text-gray-500">Get started with booking a cleaning</p>
+                            <div className="text-left">
+                                <h3 className="font-bold text-gray-900">Add First Property</h3>
+                                <p className="text-sm text-gray-500">To enable bookings</p>
                             </div>
-                            <ChevronRight className="w-5 h-5 text-gray-400" />
                         </button>
                     )}
                 </div>
 
-                {/* Services */}
-                <div>
-                    <h2 className="text-lg font-bold text-gray-900 mb-4">Our Services</h2>
-                    <div className="grid grid-cols-2 gap-3">
-                        {serviceTypes.map((service) => (
-                            <button
-                                key={service.id}
-                                onClick={onNewBooking}
-                                className="card text-left hover:shadow-lg transition-all hover:-translate-y-0.5"
-                            >
-
-                                <h3 className="font-semibold text-gray-900 text-sm">{service.name}</h3>
-                                <p className="text-xs text-gray-500 mt-1 line-clamp-2">{service.description}</p>
-                                <p className="text-primary-600 font-bold text-sm mt-2">${service.rate}/sqft</p>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
                 {/* Recent Bookings */}
-                {recentBookings.length > 0 && (
-                    <div>
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-bold text-gray-900">Recent Bookings</h2>
-                            <button
-                                onClick={onViewBookings}
-                                className="text-primary-600 text-sm font-medium flex items-center gap-1"
-                            >
-                                View all <ChevronRight className="w-4 h-4" />
-                            </button>
-                        </div>
+                <div>
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider opacity-70">Recent Bookings</h3>
+                        {recentBookings.length > 0 && (
+                            <button onClick={onViewBookings} className="text-xs font-bold text-primary-600">View All</button>
+                        )}
+                    </div>
 
+                    {recentBookings.length > 0 ? (
                         <div className="space-y-3">
                             {recentBookings.map((booking) => {
                                 const service = serviceTypes.find(s => s.id === booking.serviceType);
                                 return (
                                     <div
                                         key={booking.id}
-                                        className="card flex items-center gap-4"
+                                        className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between"
                                     >
-                                        <div className="w-12 h-12 bg-success-50 rounded-xl flex items-center justify-center">
-                                            <CheckCircle2 className="w-6 h-6 text-success-500" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold text-gray-900">{service?.name}</h3>
-                                                <span className="badge badge-success text-xs">{booking.status}</span>
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                                                <Calendar className="w-6 h-6 text-gray-400" />
                                             </div>
-                                            <p className="text-sm text-gray-500 font-mono">{booking.id}</p>
+                                            <div>
+                                                <h3 className="text-sm font-bold text-gray-900">{service?.name || 'Cleaning'}</h3>
+                                                <p className="text-[10px] text-gray-500 font-mono">{booking.id}</p>
+                                                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase mt-1 ${booking.status === 'confirmed' ? 'bg-green-50 text-green-600' :
+                                                    booking.status === 'completed' ? 'bg-gray-100 text-gray-600' :
+                                                        'bg-blue-50 text-blue-600'
+                                                    }`}>
+                                                    {booking.status}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <span className="font-bold text-gray-900">${booking.pricing?.total?.toFixed(2)}</span>
+                                        <div className="text-right">
+                                            <p className="font-bold text-gray-900">${(booking.pricing?.total || booking.totalAmount || 0).toFixed(2)}</p>
+                                        </div>
                                     </div>
                                 );
                             })}
                         </div>
-                    </div>
-                )}
-
-                {/* Promo banner */}
-                <div className="card bg-gradient-to-br from-primary-500 to-primary-600 text-white border-0">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                            <TrendingUp className="w-7 h-7" />
+                    ) : (
+                        <div className="text-center py-8 bg-white rounded-xl border border-dashed border-gray-200">
+                            <p className="text-sm text-gray-400">No bookings yet</p>
                         </div>
-                        <div className="flex-1">
-                            <h3 className="font-bold text-lg">Save 20% on first clean!</h3>
-                            <p className="text-secondary-100 text-sm">Use code WELCOME20 at checkout</p>
+                    )}
+                </div>
+
+                {/* Promo Banner */}
+                <div className="bg-gradient-to-br from-primary-600 to-primary-800 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                    <div className="relative z-10 flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
+                            <TrendingUp className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg">First Clean 20% Off</h3>
+                            <p className="text-primary-100 text-xs">Use code <span className="font-mono font-bold text-white">WELCOME20</span></p>
                         </div>
                     </div>
                 </div>
@@ -353,9 +349,11 @@ export function BookingsList() {
     if (bookings.length === 0) {
         return (
             <div className="min-h-screen bg-gray-50 pb-24">
-                <div className="app-bar">
-                    <div className="px-4 py-3">
-                        <h1 className="text-lg font-semibold text-center">My Bookings</h1>
+                <div className="bg-black text-white px-5 pt-12 pb-8 rounded-b-[2rem] shadow-xl relative z-10 mb-6">
+                    <div className="flex items-center justify-between">
+                        <div className="w-10" />
+                        <h1 className="text-lg font-bold">My Bookings</h1>
+                        <div className="w-10" />
                     </div>
                 </div>
 
@@ -374,9 +372,11 @@ export function BookingsList() {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
-            <div className="app-bar">
-                <div className="px-4 py-3">
-                    <h1 className="text-lg font-semibold text-center">My Bookings</h1>
+            <div className="bg-black text-white px-5 pt-12 pb-8 rounded-b-[2rem] shadow-xl relative z-10 mb-6">
+                <div className="flex items-center justify-between">
+                    <div className="w-10" />
+                    <h1 className="text-lg font-bold">My Bookings</h1>
+                    <div className="w-10" />
                 </div>
             </div>
 
@@ -404,7 +404,7 @@ export function BookingsList() {
                             <div className="space-y-2 mb-4">
                                 <div className="flex items-center gap-2 text-sm text-gray-600">
                                     <MapPin className="w-4 h-4 text-gray-400" />
-                                    {house?.name} - {house?.address.street}
+                                    {house?.name} - {house?.address?.street || 'No Address'}
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-gray-600">
                                     <Calendar className="w-4 h-4 text-gray-400" />
@@ -419,7 +419,7 @@ export function BookingsList() {
                             <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                                 <span className="text-gray-500">Total Paid</span>
                                 <span className="text-lg font-bold text-primary-600">
-                                    ${booking.pricing?.total?.toFixed(2)}
+                                    ${(booking.pricing?.total || booking.totalAmount || 0).toFixed(2)}
                                 </span>
                             </div>
                         </div>
@@ -430,7 +430,7 @@ export function BookingsList() {
     );
 }
 
-export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJobs, onViewHistory, onViewEarnings }) {
+export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJobs, onViewHistory, onViewEarnings, onViewUpcoming }) {
     const { user } = useApp();
     const [loading, setLoading] = useState(true);
     const [dashboardData, setDashboardData] = useState({
@@ -441,7 +441,9 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
         unreadMessages: 0,
         hoursThisWeek: 0,
         todaySchedule: [],
-        notificationCount: 0
+        upcomingSchedule: [],
+        notificationCount: 0,
+        availableJobsCount: 0
     });
 
     // Load dashboard data from database
@@ -471,19 +473,24 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                     allJobs,
                     reviewsData,
                     notifications,
-                    conversations
+                    conversations,
+                    availableBookings
                 ] = await Promise.all([
                     storage.getCleanerEarnings(cleanerProfile.id, 'week'),
                     storage.getCleanerJobs(cleanerProfile.id),
                     storage.getCleanerReviewsWithStats(cleanerProfile.id),
                     storage.getUserNotifications(user.uid),
-                    storage.getUserConversations(user.uid)
+                    storage.getUserConversations(user.uid),
+                    storage.getAvailableBookings()
                 ]);
 
                 // Calculate stats
                 const today = new Date().toISOString().split('T')[0];
                 const todayJobs = allJobs.filter(job => {
-                    const jobDate = new Date(job.scheduledDate || job.createdAt);
+                    const dateVal = job.scheduledDate || job.createdAt;
+                    if (!dateVal) return false;
+                    const jobDate = new Date(dateVal);
+                    if (isNaN(jobDate.getTime())) return false;
                     return jobDate.toISOString().split('T')[0] === today;
                 });
 
@@ -493,7 +500,10 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
 
                 const completedThisWeek = allJobs.filter(job => {
                     if (job.status !== 'completed') return false;
-                    const jobDate = new Date(job.completedAt || job.scheduledDate);
+                    const dateVal = job.completedAt || job.scheduledDate;
+                    if (!dateVal) return false;
+                    const jobDate = new Date(dateVal);
+                    if (isNaN(jobDate.getTime())) return false;
                     const weekAgo = new Date();
                     weekAgo.setDate(weekAgo.getDate() - 7);
                     return jobDate >= weekAgo;
@@ -502,12 +512,43 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                 const unreadNotifications = notifications.filter(n => !n.read).length;
                 const unreadMessages = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
 
-                // Format today's schedule
-                const todaySchedule = todayJobs.map(job => {
-                    const startTime = new Date(job.scheduledDate || job.startTime);
+                // Filter out dismissed jobs locally
+                let validAvailableBookings = availableBookings || [];
+                try {
+                    const dismissed = JSON.parse(localStorage.getItem(`dismissed_jobs_${user.uid}`) || '[]');
+                    if (dismissed.length > 0) {
+                        validAvailableBookings = validAvailableBookings.filter(b => !dismissed.includes(b.id));
+                    }
+                } catch (e) {
+                    console.error('Error parsing dismissed jobs in Home', e);
+                }
+
+                const availableJobsCount = validAvailableBookings.length;
+
+                const upcomingJobs = allJobs.filter(job => {
+                    const dateVal = job.scheduledDate || job.startTime;
+                    if (!dateVal) return false;
+                    const jobDate = new Date(dateVal);
+                    if (isNaN(jobDate.getTime())) return false;
+                    const jobDateStr = jobDate.toISOString().split('T')[0];
+                    return jobDateStr > today && (job.status === 'scheduled' || job.status === 'confirmed');
+                }).sort((a, b) => {
+                    const dateA = new Date(a.scheduledDate || a.startTime || 0);
+                    const dateB = new Date(b.scheduledDate || b.startTime || 0);
+                    return dateA - dateB;
+                });
+
+                // Format job for display
+                const formatJobForSchedule = (job) => {
+                    const dateVal = job.scheduledDate || job.startTime || new Date();
+                    const startTime = new Date(dateVal);
+                    const validDate = !isNaN(startTime.getTime()) ? startTime : new Date();
                     const hours = startTime.getHours();
                     const duration = job.duration || 2;
                     const endHours = hours + duration;
+
+                    // Format date for upcoming jobs
+                    const dateStr = startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
                     const formatTime = (h) => {
                         const period = h >= 12 ? 'PM' : 'AM';
@@ -517,13 +558,17 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
 
                     return {
                         id: job.id,
+                        date: dateStr,
                         timeRange: `${formatTime(hours)} - ${formatTime(endHours)}`,
                         serviceType: job.serviceType || 'Cleaning',
                         address: job.address || 'Address pending',
-                        earnings: job.amount || job.earnings || 0,
+                        earnings: (job.amount || job.earnings || 50).toFixed(2), // Format to 2 decimal places
                         status: job.status
                     };
-                });
+                };
+
+                const todaySchedule = todayJobs.map(formatJobForSchedule);
+                const upcomingSchedule = upcomingJobs.slice(0, 5).map(formatJobForSchedule); // Show next 5 upcoming jobs
 
                 // Calculate rating from reviews if stats are missing
                 const calculatedRating = reviewsData.reviews && reviewsData.reviews.length > 0
@@ -539,7 +584,9 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                         unreadMessages,
                         hoursThisWeek: weekEarnings.hours,
                         todaySchedule,
-                        notificationCount: unreadNotifications
+                        upcomingSchedule,
+                        notificationCount: unreadNotifications,
+                        availableJobsCount
                     });
                 }
             } catch (error) {
@@ -564,7 +611,9 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
         unreadMessages,
         hoursThisWeek,
         todaySchedule,
-        notificationCount
+        upcomingSchedule,
+        notificationCount,
+        availableJobsCount
     } = dashboardData;
 
     return (
@@ -601,6 +650,7 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                     <button
                         onClick={onNotifications}
                         className="relative p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors active:scale-95 mt-1"
+                        aria-label="Notifications"
                     >
                         <Bell className="w-5 h-5 text-white" />
                         {notificationCount > 0 && (
@@ -626,12 +676,9 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                     className="w-full bg-secondary-600 hover:bg-secondary-700 text-white font-bold text-lg py-3 rounded-2xl shadow-xl shadow-secondary-900/30 flex items-center justify-center gap-3 transition-transform active:scale-[0.98] relative overflow-hidden group"
                 >
                     <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                    <span className="relative z-10">Find Jobs</span>
-                    {pendingJobs > 0 && (
-                        <span className="relative z-10 bg-white text-secondary-600 px-2.5 py-0.5 rounded text-sm font-bold shadow-sm">
-                            {pendingJobs} New
-                        </span>
-                    )}
+                    <span className="relative z-10">
+                        Available Jobs {availableJobsCount > 0 ? `(${availableJobsCount})` : ''}
+                    </span>
                 </button>
             </div>
 
@@ -698,7 +745,6 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                 {/* Today's Schedule */}
                 <div>
                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2 opacity-70">Today's Plan</h3>
-
                     {todaySchedule.length > 0 ? (
                         <div className="space-y-4">
                             {todaySchedule.map((job, index) => (
@@ -707,13 +753,13 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                                     className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between"
                                 >
                                     <div className="flex items-start gap-4">
-                                        <div className="flex flex-col items-center justify-center w-12 pt-1">
-                                            <p className="text-xs font-bold text-gray-500 mb-0.5">{job.timeRange.split(' ')[0]}</p>
-                                            <div className="h-8 w-0.5 bg-gray-200 my-1"></div>
-                                            <p className="text-xs font-bold text-gray-500 mt-0.5">{job.timeRange.split(' - ')[1]}</p>
+                                        <div className="flex flex-col items-center justify-center w-14 pt-1">
+                                            <p className="text-[10px] font-bold text-gray-500 mb-0.5 whitespace-nowrap">{job.timeRange.split(' - ')[0]}</p>
+                                            <div className="h-6 w-0.5 bg-gray-200 my-0.5"></div>
+                                            <p className="text-[10px] font-bold text-gray-500 mt-0.5 whitespace-nowrap">{job.timeRange.split(' - ')[1]}</p>
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-gray-900 text-lg">{job.serviceType}</h4>
+                                            <h4 className="font-bold text-gray-900 text-lg capitalize">{job.serviceType.replace('-', ' ')}</h4>
                                             <p className="text-gray-500 text-sm mb-2">{job.address}</p>
                                             {job.status === 'in_progress' && (
                                                 <span className="inline-block px-2 py-0.5 bg-secondary-100 text-secondary-700 text-xs font-bold rounded-full">
@@ -730,10 +776,51 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-300">
+                        <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-200">
                             <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                             <p className="font-medium text-gray-900">You're all caught up</p>
-                            <p className="text-sm text-gray-400 mt-1">Check "Find Jobs" for upcoming requests</p>
+                            <p className="text-sm text-gray-400 mt-1">Check "Available Jobs" for upcoming requests</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Upcoming Schedule */}
+                <div>
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider opacity-70">Upcoming Jobs</h3>
+                        {upcomingSchedule.length > 0 && (
+                            <button onClick={onViewUpcoming} className="text-xs font-bold text-secondary-600">View All</button>
+                        )}
+                    </div>
+
+                    {upcomingSchedule.length > 0 ? (
+                        <div className="space-y-3">
+                            {upcomingSchedule.map((job) => (
+                                <div
+                                    key={job.id}
+                                    className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="bg-gray-50 px-3 py-2 rounded-lg text-center min-w-[60px]">
+                                            <p className="text-[10px] font-black uppercase text-gray-400 leading-none mb-1">{job.date.split(' ')[0]}</p>
+                                            <p className="text-lg font-bold text-gray-900 leading-none">{job.date.split(' ')[1]}</p>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-gray-900">{job.serviceType}</h4>
+                                            <p className="text-gray-500 text-xs">{job.timeRange}</p>
+                                            <p className="text-gray-400 text-[10px] mt-0.5 truncate max-w-[150px]">{job.address}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-bold text-gray-900">${job.earnings}</p>
+                                        <span className="text-[10px] bg-green-50 text-green-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">Confirmed</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 bg-white rounded-xl border border-dashed border-gray-200">
+                            <p className="text-sm text-gray-400">No upcoming jobs scheduled</p>
                         </div>
                     )}
                 </div>
@@ -755,7 +842,7 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
     );
 }
 
-export function ProfileScreen({ onLogout, onBecomeCleanerClick, onEditProfile, onPaymentMethods, onHelpCenter, onTermsPrivacy, onNotifications, onMessaging, onViewRatings, onViewEarnings }) {
+export function ProfileScreen({ onLogout, onBecomeCleanerClick, onEditProfile, onPaymentMethods, onBankInfo, onHelpCenter, onTermsPrivacy, onNotifications, onMessaging, onViewRatings, onViewEarnings, onViewBookings, onViewHouses }) {
     const { user, selectedRole, setRole } = useApp();
     const [stats, setStats] = useState({
         bookings: 0,
@@ -765,7 +852,7 @@ export function ProfileScreen({ onLogout, onBecomeCleanerClick, onEditProfile, o
         reviews: 0
     });
 
-    const isCustomer = selectedRole === 'customer';
+    const isCustomer = selectedRole === 'homeowner';
 
     useEffect(() => {
         async function loadStats() {
@@ -810,9 +897,17 @@ export function ProfileScreen({ onLogout, onBecomeCleanerClick, onEditProfile, o
             <div className="bg-black text-white px-6 pt-12 pb-10 rounded-b-[2.5rem] shadow-xl relative z-10 mb-6">
                 <div className="flex justify-between items-start mb-6">
                     <h1 className="text-3xl font-bold">Account</h1>
-                    <button onClick={onEditProfile} className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors">
-                        <Settings className="w-5 h-5 text-gray-300" />
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={onLogout}
+                            className="bg-secondary-600 hover:bg-secondary-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider transition-colors flex items-center"
+                        >
+                            Sign Out
+                        </button>
+                        <button onClick={onEditProfile} className="p-2 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors">
+                            <Settings className="w-5 h-5 text-gray-300" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-5">
@@ -855,14 +950,14 @@ export function ProfileScreen({ onLogout, onBecomeCleanerClick, onEditProfile, o
                 <div className="grid grid-cols-3 gap-3">
                     {isCustomer ? (
                         <>
-                            <div className="card p-4 text-center bg-black text-white border border-gray-800 shadow-lg shadow-black/10">
+                            <button onClick={onViewBookings} className="card p-4 text-center bg-black text-white border border-gray-800 shadow-lg shadow-black/10 hover:bg-gray-900 transition-colors">
                                 <p className="text-xl font-black">{stats.bookings}</p>
                                 <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-1">Bookings</p>
-                            </div>
-                            <div className="card p-4 text-center bg-black text-white border border-gray-800 shadow-lg shadow-black/10">
+                            </button>
+                            <button onClick={onViewHouses} className="card p-4 text-center bg-black text-white border border-gray-800 shadow-lg shadow-black/10 hover:bg-gray-900 transition-colors">
                                 <p className="text-xl font-black">{stats.houses}</p>
                                 <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-1">Houses</p>
-                            </div>
+                            </button>
                             <div className="card p-4 text-center bg-black text-white border border-gray-800 shadow-lg shadow-black/10">
                                 <p className="text-xl font-black">{new Date(user?.createdAt || user?.metadata?.creationTime || Date.now()).getFullYear()}</p>
                                 <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-1">Member Since</p>
@@ -917,6 +1012,16 @@ export function ProfileScreen({ onLogout, onBecomeCleanerClick, onEditProfile, o
                             <ChevronRight className="w-5 h-5 text-gray-300" />
                         </button>
 
+                        {!isCustomer && (
+                            <button onClick={onBankInfo} className="w-full px-5 py-4 flex items-center gap-4 text-left hover:bg-gray-50 transition-colors">
+                                <div className="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center">
+                                    <Building className="w-5 h-5 text-gray-900" />
+                                </div>
+                                <span className="flex-1 font-medium text-gray-700">Bank Information</span>
+                                <ChevronRight className="w-5 h-5 text-gray-300" />
+                            </button>
+                        )}
+
                         <button onClick={onPaymentMethods} className="w-full px-5 py-4 flex items-center gap-4 text-left hover:bg-gray-50 transition-colors">
                             <div className="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center">
                                 <Wallet className="w-5 h-5 text-gray-900" />
@@ -947,7 +1052,7 @@ export function ProfileScreen({ onLogout, onBecomeCleanerClick, onEditProfile, o
                         {/* Role switcher */}
                         {user?.role === 'both' && (
                             <button
-                                onClick={() => setRole(isCustomer ? 'cleaner' : 'customer')}
+                                onClick={() => setRole(isCustomer ? 'cleaner' : 'homeowner')}
                                 className={`w-full px-5 py-4 flex items-center gap-4 text-left hover:bg-gray-50 transition-colors`}
                             >
                                 <div className="w-9 h-9 bg-black rounded-xl flex items-center justify-center text-white">
@@ -1003,6 +1108,7 @@ export function ProfileScreen({ onLogout, onBecomeCleanerClick, onEditProfile, o
 
                 <div className="flex flex-col items-center pt-2 pb-8">
                     <p className="text-xs text-gray-300 font-medium">GoSwish Premium v1.2.0 • Build 2026.01</p>
+                    <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest mt-1 opacity-50">Powered by Trivine</p>
                     <div className="flex gap-4 mt-2">
                         <button className="text-[10px] text-gray-400 font-bold uppercase tracking-widest hover:text-gray-600 transition-colors line-through decoration-primary-500/50">Privacy</button>
                         <button className="text-[10px] text-gray-400 font-bold uppercase tracking-widest hover:text-gray-600 transition-colors">Terms</button>
@@ -1018,6 +1124,12 @@ export function BecomeCleanerScreen({ onBack, onSubmit }) {
     const { user, updateUser } = useApp();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [address, setAddress] = useState({
+        street: '',
+        city: '',
+        state: '',
+        zipcode: ''
+    });
 
     const handleSubmit = async () => {
         setLoading(true);
@@ -1027,6 +1139,7 @@ export function BecomeCleanerScreen({ onBack, onSubmit }) {
             uid: user.uid,
             role: 'both',
             cleanerStatus: 'pending',
+            location: address
         });
 
         setLoading(false);
@@ -1036,12 +1149,12 @@ export function BecomeCleanerScreen({ onBack, onSubmit }) {
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             {step < 3 && (
-                <div className="app-bar">
-                    <div className="flex items-center justify-between px-4 py-3">
-                        <button onClick={onBack} className="btn-ghost p-2 -ml-2 rounded-xl">
-                            <ChevronRight className="w-6 h-6 rotate-180" />
+                <div className="bg-black text-white px-5 pt-12 pb-8 rounded-b-[2rem] shadow-xl relative z-10 mb-6">
+                    <div className="flex items-center justify-between">
+                        <button onClick={onBack} className="bg-gray-800 p-2 rounded-full hover:bg-gray-700 transition-colors">
+                            <ChevronRight className="w-6 h-6 rotate-180 text-white" />
                         </button>
-                        <h1 className="text-lg font-semibold">Become a Cleaner</h1>
+                        <h1 className="text-lg font-bold">Become a Cleaner</h1>
                         <div className="w-10" />
                     </div>
                 </div>
@@ -1099,31 +1212,63 @@ export function BecomeCleanerScreen({ onBack, onSubmit }) {
 
                 {step === 2 && (
                     <div className="space-y-6 animate-fade-in">
-                        <h2 className="text-xl font-bold text-gray-900">Application Details</h2>
+                        <div className="flex items-center gap-2 mb-2">
+                            <h2 className="text-xl font-bold text-gray-900">Application Details</h2>
+                            <span className="bg-primary-100 text-primary-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Step 2 of 2</span>
+                        </div>
 
-                        <div className="card">
-                            <p className="text-sm text-gray-500 mb-4">
-                                For this demo, we'll skip the full application process. In production,
-                                this would include:
+                        <div className="card space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+                                <input
+                                    type="text"
+                                    value={address.street}
+                                    onChange={(e) => setAddress({ ...address, street: e.target.value })}
+                                    className="input-field"
+                                    placeholder="123 Main St"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                                    <input
+                                        type="text"
+                                        value={address.city}
+                                        onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                                        className="input-field"
+                                        placeholder="Dallas"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                                    <input
+                                        type="text"
+                                        value={address.state}
+                                        onChange={(e) => setAddress({ ...address, state: e.target.value })}
+                                        className="input-field"
+                                        placeholder="TX"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Zip Code</label>
+                                <input
+                                    type="text"
+                                    value={address.zipcode}
+                                    onChange={(e) => setAddress({ ...address, zipcode: e.target.value })}
+                                    className="input-field"
+                                    placeholder="75201"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="card bg-gray-50 border border-gray-100">
+                            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-2">Note</p>
+                            <p className="text-xs text-gray-600 italic">
+                                For this demo, we'll skip the bank verification and background check steps.
                             </p>
-                            <ul className="text-sm text-gray-600 space-y-2">
-                                <li className="flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4 text-gray-400" />
-                                    Personal information verification
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4 text-gray-400" />
-                                    Background check consent
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4 text-gray-400" />
-                                    Bank account connection (Stripe)
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4 text-gray-400" />
-                                    Service area selection
-                                </li>
-                            </ul>
                         </div>
                     </div>
                 )}
@@ -1152,8 +1297,8 @@ export function BecomeCleanerScreen({ onBack, onSubmit }) {
                 <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 pb-safe">
                     <button
                         onClick={step === 1 ? () => setStep(2) : handleSubmit}
-                        disabled={loading}
-                        className="btn btn-secondary w-full py-4"
+                        disabled={loading || (step === 2 && (!address.street || !address.city || !address.state || !address.zipcode))}
+                        className="btn btn-secondary w-full py-4 shadow-lg shadow-secondary-500/20"
                     >
                         {loading ? (
                             <span className="flex items-center gap-2">

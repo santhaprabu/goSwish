@@ -292,7 +292,7 @@ export default function ShiftManagement({ onBack }) {
                         >
                             <ChevronLeft className="w-6 h-6" />
                         </button>
-                        <h1 className="text-lg font-semibold">Manage Availability</h1>
+                        <h1 className="text-lg font-semibold">Manage my Availability</h1>
                         <div className="w-10" />
                     </div>
                 </div>

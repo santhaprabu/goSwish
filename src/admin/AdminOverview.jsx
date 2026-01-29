@@ -46,7 +46,7 @@ export default function AdminOverview() {
         const loadStats = async () => {
             try {
                 const users = await getDocs(COLLECTIONS.USERS);
-                const customers = users.filter(u => u.role === 'customer').length;
+                const customers = users.filter(u => u.role === 'homeowner').length;
                 const cleaners = users.filter(u => u.role === 'cleaner').length; // or from CLEANERS collection
 
                 const bookings = await getDocs(COLLECTIONS.BOOKINGS);
@@ -98,7 +98,7 @@ export default function AdminOverview() {
                     trend="up"
                 />
                 <StatCard
-                    title="Total Customers"
+                    title="Total Home Owners"
                     value={stats.users}
                     subValue="+8 new"
                     icon={Users}

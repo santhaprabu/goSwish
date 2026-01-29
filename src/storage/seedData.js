@@ -3,7 +3,7 @@
  * Creates 30 customers and 30 cleaners with realistic Texas data
  */
 
-import { signUpWithEmail } from './auth.js';
+import { signUpWithEmail, forceResetUserPassword } from './auth.js';
 import {
     createCleanerProfile, createHouse, createPromoCode,
     createReview, createNotification, createConversation, sendMessage,
@@ -17,26 +17,36 @@ const TEXAS_CITIES = {
         state: 'TX',
         zip: ['75201', '75202', '75203', '75204', '75205', '75206'],
         neighborhoods: ['Downtown', 'Uptown', 'Oak Lawn', 'Deep Ellum', 'Bishop Arts', 'Highland Park'],
+        lat: 32.7767,
+        lng: -96.7970,
     },
     'Fort Worth': {
         state: 'TX',
         zip: ['76101', '76102', '76103', '76104', '76105', '76106'],
         neighborhoods: ['Downtown', 'Sundance Square', 'Cultural District', 'Near Southside', 'West 7th', 'TCU'],
+        lat: 32.7555,
+        lng: -97.3308,
     },
     Austin: {
         state: 'TX',
         zip: ['78701', '78702', '78703', '78704', '78705', '78731'],
         neighborhoods: ['Downtown', 'South Congress', 'East Austin', 'West Lake Hills', 'Hyde Park', 'Zilker'],
+        lat: 30.2672,
+        lng: -97.7431,
     },
     'San Antonio': {
         state: 'TX',
         zip: ['78201', '78202', '78203', '78204', '78205', '78209'],
         neighborhoods: ['Downtown', 'Alamo Heights', 'Stone Oak', 'The Dominion', 'Southtown', 'King William'],
+        lat: 29.4241,
+        lng: -98.4936,
     },
     Houston: {
         state: 'TX',
         zip: ['77001', '77002', '77003', '77004', '77005', '77006'],
         neighborhoods: ['Downtown', 'Montrose', 'The Heights', 'Midtown', 'River Oaks', 'Memorial'],
+        lat: 29.7604,
+        lng: -95.3698,
     },
 };
 
@@ -97,7 +107,7 @@ const MALE_PHOTOS = Array.from({ length: 50 }, (_, i) => `https://xsgames.co/ran
 const getGenderPhoto = (role, index) => {
     // Customers: 1:M, 2:F, 3:M, 4:F...
     // Cleaners: 1:F, 2:M, 3:F, 4:M...
-    const isMale = role === 'customer' ? (index % 2 !== 0) : (index % 2 === 0);
+    const isMale = role === 'homeowner' ? (index % 2 !== 0) : (index % 2 === 0);
     const photoList = isMale ? MALE_PHOTOS : FEMALE_PHOTOS;
     return photoList[Math.floor(index / 2) % photoList.length];
 };
@@ -132,12 +142,19 @@ const generateAddress = (city) => {
     const zip = getRandom(cityData.zip);
     const neighborhood = getRandom(cityData.neighborhoods);
 
+    // Add a small random offset to the city coordinates (approx 0.05 degrees ~ 3-5 miles)
+    const latOffset = (Math.random() - 0.5) * 0.1;
+    const lngOffset = (Math.random() - 0.5) * 0.1;
+
     return {
         street: `${streetNumber} ${street}`,
         city,
         state: cityData.state,
         zip,
+        zipcode: zip,
         neighborhood,
+        lat: cityData.lat + latOffset,
+        lng: cityData.lng + lngOffset,
     };
 };
 
@@ -152,22 +169,23 @@ export const createCustomerProfiles = async () => {
 
     for (let i = 1; i <= 30; i++) {
         try {
-            const email = `customer${i}@goswish.com`;
-            const password = 'Customer123!';
-            const name = CUSTOMER_NAMES[i - 1];
+            const email = `homeowner${i}@goswish.com`;
+            const password = 'HomeOwner123!';
+            const name = CUSTOMER_NAMES[i - 1]; // Keep variable name for now
             const city = cities[(i - 1) % cities.length]; // Distribute across cities
             const phone = generatePhone();
 
-            console.log(`Creating customer ${i}/30: ${name} (${email})`);
+            console.log(`Creating homeowner ${i}/30: ${name} (${email})`);
 
             // Create user account
             const result = await signUpWithEmail(email, password, {
                 name,
                 firstName: name.split(' ')[0],
                 lastName: name.split(' ').slice(1).join(' '),
-                role: 'customer',
+                role: 'homeowner',
                 phone,
-                photoURL: getGenderPhoto('customer', i),
+                photoURL: getGenderPhoto('homeowner', i),
+                location: generateAddress(city),
             });
 
             if (result.success) {
@@ -191,29 +209,38 @@ export const createCustomerProfiles = async () => {
                     const propertyType = getRandom(PROPERTY_TYPES);
 
                     // Vary sizes based on property type
-                    let size, bedrooms, bathrooms;
+                    let sqft, bedrooms, bathrooms;
                     if (propertyType === 'apartment') {
-                        size = getRandomNumber(600, 1500);
+                        sqft = getRandomNumber(600, 1500);
                         bedrooms = getRandomNumber(1, 3);
                         bathrooms = getRandomNumber(1, 2);
                     } else if (propertyType === 'condo') {
-                        size = getRandomNumber(800, 2000);
+                        sqft = getRandomNumber(800, 2000);
                         bedrooms = getRandomNumber(1, 3);
                         bathrooms = getRandomNumber(1, 2);
                     } else if (propertyType === 'townhouse') {
-                        size = getRandomNumber(1200, 2500);
+                        sqft = getRandomNumber(1200, 2500);
                         bedrooms = getRandomNumber(2, 4);
                         bathrooms = getRandomNumber(2, 3);
                     } else { // house
-                        size = getRandomNumber(1500, 4000);
+                        sqft = getRandomNumber(1500, 4000);
                         bedrooms = getRandomNumber(2, 5);
                         bathrooms = getRandomNumber(2, 4);
                     }
 
+                    const hasPets = Math.random() > 0.6;
+                    const petNotes = hasPets ? getRandom([
+                        'One friendly dog',
+                        'Two cats',
+                        'Small dog',
+                        'Large dog - friendly',
+                        'Cat - shy',
+                    ]) : 'No pets';
+
                     await createHouse(result.user.uid, {
                         nickname,
                         address,
-                        size,
+                        sqft,
                         bedrooms,
                         bathrooms,
                         propertyType,
@@ -231,13 +258,12 @@ export const createCustomerProfiles = async () => {
                             'Visitor parking in lot',
                             'No parking restrictions',
                         ]),
-                        petInfo: Math.random() > 0.6 ? getRandom([
-                            'One friendly dog',
-                            'Two cats',
-                            'Small dog',
-                            'Large dog - friendly',
-                            'Cat - shy',
-                        ]) : 'No pets',
+                        pets: {
+                            hasPets,
+                            notes: petNotes
+                        },
+                        hasPets,
+                        petInfo: petNotes,
                     });
                 }
 
@@ -281,6 +307,7 @@ export const createCleanerProfiles = async () => {
                 role: 'cleaner',
                 phone,
                 photoURL: getGenderPhoto('cleaner', i),
+                location: generateAddress(city),
             });
 
             if (result.success) {
@@ -316,8 +343,10 @@ export const createCleanerProfiles = async () => {
                     yearsExperience,
                     specialties,
                     languages,
+                    petFriendly: Math.random() > 0.2, // 80% are pet friendly
                     photoURL: getGenderPhoto('cleaner', i),
-                    baseLocation: address,
+                    location: result.user.location,
+                    baseLocation: result.user.location,
                     serviceRadius: getRandomNumber(15, 30),
                     serviceTypes: ['regular', 'deep', 'move', 'windows'].slice(0, getRandomNumber(2, 4)),
                     availability: {
@@ -663,13 +692,69 @@ const seedCleanerTransactions = async (cleanerProfiles) => {
 /**
  * Seed all data (customers + cleaners)
  */
+
+/**
+ * Create admin user
+ */
+export const createAdminUser = async () => {
+    console.log('👤 Creating admin user...');
+    try {
+        const result = await signUpWithEmail('admin@goswish.com', 'Admin123!', 'GoSwish Admin');
+
+        if (result.success && result.user) {
+            // Update role to admin
+            await setDoc(COLLECTIONS.USERS, result.user.uid, {
+                ...result.user,
+                role: 'admin',
+                isAdmin: true
+            });
+            console.log('✅ Admin user created: admin@goswish.com');
+            return result.user;
+        } else if (result.error && (result.error.includes('registered') || result.error.includes('in use'))) {
+            console.log('⚠️ Admin user exists. Ensuring credentials and role...');
+            // Force reset password and role
+            try {
+                // Reset password
+                await forceResetUserPassword('admin@goswish.com', 'Admin123!');
+
+                // Ensure role is admin
+                // We need to find the user ID first
+                const { queryDocs, updateDoc } = await import('./db.js');
+                const users = await queryDocs(COLLECTIONS.USERS, 'email', 'admin@goswish.com');
+                if (users.length > 0) {
+                    await updateDoc(COLLECTIONS.USERS, users[0].id, {
+                        role: 'admin',
+                        isAdmin: true
+                    });
+                    console.log('✅ Admin account recovered and updated');
+                }
+            } catch (recoveryError) {
+                console.error('❌ Failed to recover admin account:', recoveryError);
+            }
+        } else {
+            console.log('❌ Failed to create admin user:', result.error);
+        }
+    } catch (error) {
+        console.log('❌ Unexpected error creating admin user:', error.message);
+    }
+    return null;
+};
+
+/**
+ * Seed all data (customers + cleaners)
+ */
 export const seedAllData = async () => {
     console.log('🌱 Starting data seeding...');
+
     console.log('');
 
     const startTime = Date.now();
 
     try {
+        // Create admin
+        await createAdminUser();
+        console.log('');
+
         // Create customers
         const customers = await createCustomerProfiles();
         console.log('');
@@ -754,7 +839,7 @@ export const getSeedingStats = async () => {
     const cleaners = await getDocs(COLLECTIONS.CLEANERS);
     const houses = await getDocs(COLLECTIONS.HOUSES);
 
-    const customers = users.filter(u => u.role === 'customer');
+    const customers = users.filter(u => u.role === 'homeowner');
     const cleanerUsers = users.filter(u => u.role === 'cleaner');
 
     // Count by city

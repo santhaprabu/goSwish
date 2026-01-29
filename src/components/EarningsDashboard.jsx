@@ -4,12 +4,13 @@ import {
     getCleanerEarnings,
     getCleanerDailyEarnings,
     getCleanerByUserId,
-    getCleanerJobs
+    getCleanerJobs,
+    updateCleanerProfile
 } from '../storage';
 import {
     DollarSign, TrendingUp, TrendingDown, Calendar, Download,
     ChevronRight, ChevronLeft, Clock, MapPin, Filter, ArrowUp,
-    ArrowDown, Briefcase, Star, Award, Target, Zap, Loader
+    ArrowDown, Briefcase, Star, Award, Target, Zap, Loader, Edit2, Check, X
 } from 'lucide-react';
 
 const StatCard = ({ icon: Icon, label, value, subValue, trend, bgColor = 'bg-gray-100', iconColor = 'text-gray-600' }) => (
@@ -36,6 +37,10 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
     const [period, setPeriod] = useState('week');
     const [showBreakdown, setShowBreakdown] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [isEditingGoal, setIsEditingGoal] = useState(false);
+    const [goalInput, setGoalInput] = useState('2000');
+    const [cleanerId, setCleanerId] = useState(null);
+
     const [earningsData, setEarningsData] = useState({
         today: { earnings: 0, jobs: 0, hours: 0, tips: 0 },
         week: { earnings: 0, jobs: 0, hours: 0, tips: 0, trend: 0 },
@@ -59,6 +64,7 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
                     setLoading(false);
                     return;
                 }
+                setCleanerId(cleanerProfile.id);
 
                 // Get earnings for different periods
                 const [todayData, weekData, monthData] = await Promise.all([
@@ -72,6 +78,25 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
 
                 // Get recent jobs as transactions
                 const allJobs = await getCleanerJobs(cleanerProfile.id);
+
+                // Calculate Year Earnings (Current Year)
+                const currentYear = new Date().getFullYear();
+                const yearJobs = allJobs.filter(j => {
+                    if (j.status !== 'completed') return false;
+                    const d = new Date(j.completedAt || j.endTime || j.createdAt);
+                    return d.getFullYear() === currentYear;
+                });
+                const yearEarnings = yearJobs.reduce((sum, j) => sum + (j.amount || j.earnings || 0), 0);
+                const yearTips = yearJobs.reduce((sum, j) => sum + (j.tip || 0), 0);
+                const yearHours = yearJobs.reduce((sum, j) => sum + (j.duration || 2), 0);
+
+                // Helper to calculate trend
+                const calculateTrend = (currentEarnings, jobs, daysLookback) => {
+                    // This is a simplified trend. ideally we'd fetch the exact previous period.
+                    // For now, we'll set it to null to avoid fake data, or implementation can be added later.
+                    return null;
+                };
+
                 const recentJobs = allJobs
                     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                     .slice(0, 10)
@@ -101,23 +126,31 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
                         jobs: weekData.jobs,
                         hours: weekData.hours,
                         tips: weekData.tips,
-                        trend: 12.5 // Would calculate from previous week comparison
+                        trend: null // Removed hardcoded 12.5
                     },
                     month: {
                         earnings: monthData.earnings,
                         jobs: monthData.jobs,
                         hours: monthData.hours,
                         tips: monthData.tips,
-                        trend: 8.3
+                        trend: null // Removed hardcoded 8.3
                     },
-                    year: { earnings: monthData.earnings * 12, jobs: monthData.jobs * 12, hours: monthData.hours * 12, tips: monthData.tips * 12 },
+                    year: {
+                        earnings: yearEarnings,
+                        jobs: yearJobs.length,
+                        hours: yearHours,
+                        tips: yearTips
+                    },
                     dailyEarnings,
                     transactions: recentJobs,
                     goals: {
-                        weekly: { target: 2000, current: weekData.earnings },
-                        monthly: { target: 8000, current: monthData.earnings }
+                        // Use settings if available, else defaults
+                        weekly: { target: cleanerProfile.settings?.weeklyGoal || 2000, current: weekData.earnings },
+                        monthly: { target: cleanerProfile.settings?.monthlyGoal || 8000, current: monthData.earnings }
                     }
                 });
+
+                setGoalInput((cleanerProfile.settings?.weeklyGoal || 2000).toString());
             } catch (error) {
                 console.error('Error loading earnings:', error);
             } finally {
@@ -130,7 +163,12 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
 
     const data = earningsData;
     const periodData = data[period] || data.week;
-    const maxDailyEarning = Math.max(...(data.dailyEarnings?.map(d => d.earnings) || [1]), 1);
+
+    // Calculate max earning for scaling
+    const actualMaxEarning = Math.max(...(data.dailyEarnings?.map(d => Number(d.earnings) || 0) || [0]), 0);
+    // User requested Y-axis top to be 2x the highest earning of the day, rounded to nearest 50
+    let yAxisMax = actualMaxEarning > 0 ? actualMaxEarning * 2 : 100;
+    yAxisMax = Math.ceil(yAxisMax / 50) * 50;
 
     const goalProgress = data.goals.weekly.target > 0
         ? (data.goals.weekly.current / data.goals.weekly.target) * 100
@@ -138,7 +176,7 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
-            <div className="app-bar">
+            <div className="app-bar flex items-center justify-between px-4 py-3">
                 <button onClick={onBack} className="p-2">
                     <ChevronLeft className="w-6 h-6" />
                 </button>
@@ -208,9 +246,68 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
                             <Target className="w-5 h-5 text-secondary-500" />
                             <h3 className="font-semibold text-gray-900">Weekly Goal</h3>
                         </div>
-                        <span className="text-sm text-gray-500">
-                            ${data.goals.weekly.current} / ${data.goals.weekly.target}
-                        </span>
+                        {isEditingGoal ? (
+                            <div className="flex items-center gap-2">
+                                <div className="relative">
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                                    <input
+                                        type="number"
+                                        value={goalInput}
+                                        onChange={(e) => setGoalInput(e.target.value)}
+                                        className="w-20 pl-4 py-1 text-sm border rounded"
+                                    />
+                                </div>
+                                <button
+                                    onClick={async () => {
+                                        if (!cleanerId) return;
+                                        const newGoal = parseInt(goalInput);
+                                        if (isNaN(newGoal) || newGoal <= 0) return;
+
+                                        // Update local state
+                                        const newData = { ...earningsData };
+                                        newData.goals.weekly.target = newGoal;
+                                        setEarningsData(newData);
+                                        setIsEditingGoal(false);
+
+                                        // Persist
+                                        try {
+                                            const cleanerProfile = await getCleanerByUserId(user.uid); // refetch to get current settings
+                                            // Ideally we merge with existing settings
+                                            const currentSettings = cleanerProfile.settings || {};
+                                            await updateCleanerProfile(cleanerId, {
+                                                settings: { ...currentSettings, weeklyGoal: newGoal }
+                                            });
+                                        } catch (e) {
+                                            console.error("Failed to save goal", e);
+                                        }
+                                    }}
+                                    className="p-1 text-green-600 bg-green-100 rounded hover:bg-green-200"
+                                >
+                                    <Check className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setGoalInput(earningsData.goals.weekly.target.toString());
+                                        setIsEditingGoal(false);
+                                    }}
+                                    className="p-1 text-red-600 bg-red-100 rounded hover:bg-red-200"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-500">
+                                    ${data.goals.weekly.current} / ${data.goals.weekly.target}
+                                </span>
+                                <button
+                                    onClick={() => setIsEditingGoal(true)}
+                                    className="text-gray-400 hover:text-secondary-600 p-1"
+                                >
+                                    <Edit2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        )}
                     </div>
                     <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                         <div
@@ -242,27 +339,77 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
                     </div>
 
                     {/* Bar Chart */}
-                    <div className="flex items-end justify-between h-32 gap-2">
-                        {data.dailyEarnings.map((day, i) => {
-                            const height = maxDailyEarning > 0 ? (day.earnings / maxDailyEarning) * 100 : 0;
-                            const isToday = i === new Date().getDay() - 1 || (i === 6 && new Date().getDay() === 0);
+                    <div className="relative h-32 mt-6 mb-4">
+                        {/* Grid lines */}
+                        {/* Grid lines */}
+                        <div className="absolute inset-0 z-0">
+                            {/* Top Line (100%) */}
+                            <div className="absolute top-0 w-full border-b border-gray-100">
+                                <span className="absolute -top-2.5 left-0 text-[10px] text-gray-400 font-medium">
+                                    ${Math.round(yAxisMax)}
+                                </span>
+                            </div>
 
-                            return (
-                                <div key={day.day} className="flex-1 flex flex-col items-center gap-1">
-                                    <span className="text-xs text-gray-500 font-medium">
-                                        {day.earnings > 0 ? `$${day.earnings}` : '-'}
-                                    </span>
-                                    <div
-                                        className={`w-full rounded-t-lg transition-all ${isToday ? 'bg-secondary-500' : day.earnings > 0 ? 'bg-secondary-200' : 'bg-gray-100'
-                                            }`}
-                                        style={{ height: `${Math.max(height, 4)}%` }}
-                                    />
-                                    <span className={`text-xs ${isToday ? 'text-secondary-600 font-semibold' : 'text-gray-500'}`}>
-                                        {day.day}
-                                    </span>
-                                </div>
-                            );
-                        })}
+                            {/* Middle Line (50%) */}
+                            <div className="absolute top-1/2 w-full border-b border-gray-100 -translate-y-1/2">
+                                <span className="absolute -top-2.5 left-0 text-[10px] text-gray-400 font-medium">
+                                    ${Math.round(yAxisMax / 2)}
+                                </span>
+                            </div>
+
+                            {/* Bottom Line (0%) */}
+                            <div className="absolute bottom-0 w-full border-b border-gray-100">
+                                <span className="absolute -bottom-2.5 left-0 text-[10px] text-gray-400 font-medium">
+                                    $0
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Bars */}
+                        <div className="relative h-full flex items-end justify-between gap-3 z-10 px-6 sm:px-8">
+                            {data.dailyEarnings.map((day, i) => {
+                                const val = Number(day.earnings) || 0;
+                                const height = yAxisMax > 0 ? (val / yAxisMax) * 100 : 0;
+
+                                // Since array is ordered [Today-6, ..., Today], the last item is today.
+                                const isToday = i === data.dailyEarnings.length - 1;
+
+                                return (
+                                    <div key={day.day} className="flex-1 flex flex-col items-center group relative h-full justify-end">
+
+                                        {/* Tooltip-style Value Label */}
+                                        <div className={`absolute -top-8 transition-all duration-200 transform z-20
+                                            ${val > 0 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0'}
+                                        `}
+                                            style={{ bottom: `${height}%`, top: 'auto', marginBottom: '4px' }}
+                                        >
+                                            <span className="text-[10px] font-bold text-gray-600 bg-white shadow-md border border-gray-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                                ${val}
+                                            </span>
+                                        </div>
+
+                                        {/* The Bar */}
+                                        <div
+                                            className={`w-full max-w-[16px] rounded-t-full transition-all duration-700 ease-out relative
+                                                ${val > 0
+                                                    ? (isToday ? 'bg-secondary-600 shadow-lg shadow-secondary-200' : 'bg-secondary-300 hover:bg-secondary-400')
+                                                    : (isToday ? 'bg-gray-200' : 'bg-gray-100 hover:bg-gray-200')
+                                                }
+                                            `}
+                                            style={{ height: `${Math.max(height, 2)}%` }} // Min height 2%
+                                        >
+                                        </div>
+
+                                        {/* Day Label */}
+                                        <span className={`absolute -bottom-6 text-[10px] font-medium uppercase tracking-wider
+                                            ${isToday ? 'text-secondary-700 font-bold' : 'text-gray-400'}
+                                        `}>
+                                            {day.day[0]}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* Breakdown Details */}
@@ -311,7 +458,10 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
             <div className="px-6 mt-6">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-gray-900">Recent Activity</h3>
-                    <button className="text-sm text-secondary-600 font-medium flex items-center gap-1">
+                    <button
+                        onClick={onViewPayouts}
+                        className="text-sm text-secondary-600 font-medium flex items-center gap-1"
+                    >
                         View All <ChevronRight className="w-4 h-4" />
                     </button>
                 </div>
@@ -339,10 +489,10 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
                             </div>
                             <div className="text-right">
                                 <p className={`font-semibold ${txn.amount >= 0 ? 'text-success-600' : 'text-gray-900'}`}>
-                                    {txn.amount >= 0 ? '+' : ''}${Math.abs(txn.amount)}
+                                    {txn.amount >= 0 ? '+' : ''}${Math.abs(txn.amount).toFixed(2)}
                                 </p>
                                 {txn.tip > 0 && (
-                                    <p className="text-xs text-yellow-600">+${txn.tip} tip</p>
+                                    <p className="text-xs text-yellow-600">+${Number(txn.tip).toFixed(2)} tip</p>
                                 )}
                             </div>
                         </div>

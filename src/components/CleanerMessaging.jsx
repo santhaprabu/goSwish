@@ -45,6 +45,7 @@ export default function CleanerMessaging({ onBack }) {
     const [newMessage, setNewMessage] = useState('');
     const [showQuickReplies, setShowQuickReplies] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'unread' | 'jobs'
     const [loading, setLoading] = useState(true);
     const [sendingMessage, setSendingMessage] = useState(false);
     const messagesEndRef = useRef(null);
@@ -96,7 +97,7 @@ export default function CleanerMessaging({ onBack }) {
                 const formattedMsgs = msgs.map(msg => ({
                     id: msg.id,
                     conversationId: msg.conversationId,
-                    senderId: msg.senderId === user?.uid ? 'cleaner' : 'customer',
+                    senderId: msg.senderId === user?.uid ? 'cleaner' : 'homeowner',
                     text: msg.content,
                     timestamp: msg.createdAt,
                     status: msg.status || 'delivered'
@@ -115,10 +116,19 @@ export default function CleanerMessaging({ onBack }) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const filteredConversations = conversations.filter(conv =>
-        conv.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (conv.bookingId || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredConversations = conversations.filter(conv => {
+        const matchesSearch =
+            conv.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            conv.lastMessage.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (conv.bookingId || '').toLowerCase().includes(searchQuery.toLowerCase());
+
+        const matchesFilter =
+            activeFilter === 'all' ||
+            (activeFilter === 'unread' && conv.unreadCount > 0) ||
+            (activeFilter === 'jobs' && conv.bookingId && conv.bookingId !== 'N/A');
+
+        return matchesSearch && matchesFilter;
+    });
 
     const handleSendMessage = async () => {
         if (!newMessage.trim() || !selectedConvo?.id || !user?.uid) return;
@@ -331,9 +341,25 @@ export default function CleanerMessaging({ onBack }) {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search conversations..."
+                        placeholder="Search by name, message or job..."
                         className="w-full pl-10 pr-4 py-2.5 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-secondary-500"
                     />
+                </div>
+
+                {/* Filters */}
+                <div className="flex gap-2 mt-4">
+                    {['all', 'unread', 'jobs'].map((filter) => (
+                        <button
+                            key={filter}
+                            onClick={() => setActiveFilter(filter)}
+                            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${activeFilter === filter
+                                    ? 'bg-secondary-500 text-white shadow-sm'
+                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                }`}
+                        >
+                            {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                        </button>
+                    ))}
                 </div>
             </div>
 

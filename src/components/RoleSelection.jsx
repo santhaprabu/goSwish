@@ -24,7 +24,7 @@ export default function RoleSelection({ onRoleSelected }) {
             <div className="flex-1 px-6 pb-8 flex flex-col justify-center gap-5 max-w-md mx-auto w-full">
                 {/* Customer Card */}
                 <button
-                    onClick={() => handleRoleSelect('customer')}
+                    onClick={() => handleRoleSelect('homeowner')}
                     className="card card-interactive p-6 flex items-start gap-5 text-left group
                      bg-gradient-to-br from-primary-500 to-primary-600 border border-gray-100
                      hover:border-primary-200 hover:shadow-primary-100/50"
@@ -80,7 +80,13 @@ export default function RoleSelection({ onRoleSelected }) {
             </div>
 
             {/* Footer */}
-            <div className="px-6 pb-8 text-center">
+            <div className="px-6 pb-8 text-center space-y-4">
+                <button
+                    onClick={onLogin}
+                    className="text-primary-600 font-semibold hover:text-primary-700 transition-colors"
+                >
+                    Already have an account? Log in
+                </button>
                 <p className="text-sm text-gray-400">
                     By continuing, you agree to our{' '}
                     <a href="#" className="text-primary-500 hover:underline">Terms of Service</a>

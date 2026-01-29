@@ -19,7 +19,7 @@ export default function AuthScreen({ mode: initialMode = 'login', role, onBack, 
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
-    const isCustomer = (role || selectedRole) === 'customer';
+    const isCustomer = (role || selectedRole) === 'homeowner';
 
     const handleSubmit = async (e) => {
         e.preventDefault();

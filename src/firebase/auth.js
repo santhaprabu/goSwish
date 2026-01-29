@@ -29,7 +29,7 @@ export const signUpWithEmail = async (email, password, userData) => {
         await setDoc(doc(db, 'users', user.uid), {
             uid: user.uid,
             email: user.email,
-            role: userData.role || 'customer',
+            role: userData.role || 'homeowner',
             emailVerified: false,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
@@ -149,7 +149,7 @@ export const signInWithEmail = async (email, password) => {
 };
 
 // Sign in with Google
-export const signInWithGoogle = async (role = 'customer') => {
+export const signInWithGoogle = async (role = 'homeowner') => {
     try {
         const provider = new GoogleAuthProvider();
         const result = await signInWithPopup(auth, provider);

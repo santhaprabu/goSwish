@@ -5,7 +5,7 @@ const initialState = {
     // User authentication
     user: null,
     isAuthenticated: false,
-    selectedRole: null, // 'customer' | 'cleaner'
+    selectedRole: null, // 'homeowner' | 'cleaner'
 
     // UI State
     loading: false,
@@ -151,10 +151,9 @@ export function AppProvider({ children }) {
                     dispatch({ type: ActionTypes.SET_USER, payload: currentUser });
                 }
 
-                // Temporary: Reset Cleaners passwords
-                const { forceResetCleanerPasswords } = await import('../storage/auth.js');
-                window.resetCleaners = forceResetCleanerPasswords;
-                await forceResetCleanerPasswords();
+                // SECURITY: Dangerous admin functions removed
+                // Password reset functions should only be accessible to admins
+                // through secure admin panel with proper authentication
 
             } catch (error) {
                 console.error('Initialization error:', error);
@@ -311,7 +310,7 @@ export function AppProvider({ children }) {
                 }
 
                 const myName = state.user.name || 'User';
-                const isCustomer = state.selectedRole === 'customer' || state.user.role === 'customer';
+                const isCustomer = state.selectedRole === 'homeowner' || state.user.role === 'homeowner';
 
                 conversation = await createConversation([state.user.uid, targetUserId], {
                     ...metadata,

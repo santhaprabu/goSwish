@@ -31,6 +31,13 @@ export default function ProfileSetup({ onBack, onComplete, isEditing = false }) 
     const [photoURL, setPhotoURL] = useState(user?.photoURL || user?.profile?.photoURL || null);
     const [photoFile, setPhotoFile] = useState(null);
 
+    const [address, setAddress] = useState({
+        street: user?.location?.street || '',
+        city: user?.location?.city || '',
+        state: user?.location?.state || '',
+        zipcode: user?.location?.zipcode || ''
+    });
+
     const [loading, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
@@ -42,7 +49,7 @@ export default function ProfileSetup({ onBack, onComplete, isEditing = false }) 
     const firstNameValid = isValidName(firstName);
     const lastNameValid = isValidName(lastName);
     const phoneValid = isValidPhone(phone);
-    const isCustomer = selectedRole === 'customer';
+    const isCustomer = selectedRole === 'homeowner';
 
     const handlePhoneChange = (e) => {
         const formatted = formatPhoneNumber(e.target.value);
@@ -95,6 +102,7 @@ export default function ProfileSetup({ onBack, onComplete, isEditing = false }) 
                 phoneNumber: phone,
                 photoURL,
                 isProfileComplete: true,
+                location: !isCustomer ? address : user?.location
             });
 
             setSuccess(true);
@@ -259,6 +267,54 @@ export default function ProfileSetup({ onBack, onComplete, isEditing = false }) 
                         />
                         <p className="mt-1 text-xs text-gray-400">Email cannot be changed</p>
                     </div>
+
+                    {!isCustomer && (
+                        <div className="pt-4 border-t border-gray-100 space-y-4">
+                            <h3 className="font-bold text-gray-900">Professional Address</h3>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Street Address</label>
+                                <input
+                                    type="text"
+                                    value={address.street}
+                                    onChange={(e) => setAddress({ ...address, street: e.target.value })}
+                                    className="input-field"
+                                    placeholder="123 Main St"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                                    <input
+                                        type="text"
+                                        value={address.city}
+                                        onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                                        className="input-field"
+                                        placeholder="Dallas"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                                    <input
+                                        type="text"
+                                        value={address.state}
+                                        onChange={(e) => setAddress({ ...address, state: e.target.value })}
+                                        className="input-field"
+                                        placeholder="TX"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Zip Code</label>
+                                <input
+                                    type="text"
+                                    value={address.zipcode}
+                                    onChange={(e) => setAddress({ ...address, zipcode: e.target.value })}
+                                    className="input-field"
+                                    placeholder="75201"
+                                />
+                            </div>
+                        </div>
+                    )}
                 </form>
             </div>
 
@@ -266,7 +322,7 @@ export default function ProfileSetup({ onBack, onComplete, isEditing = false }) 
             <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 pb-safe">
                 <button
                     onClick={handleSubmit}
-                    disabled={loading || !firstNameValid || !lastNameValid}
+                    disabled={loading || !firstNameValid || !lastNameValid || (!isCustomer && (!address.street || !address.city || !address.state || !address.zipcode))}
                     className={`btn w-full py-4 ${isCustomer ? 'btn-primary' : 'btn-secondary'}`}
                 >
                     {loading ? (

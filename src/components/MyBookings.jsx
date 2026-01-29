@@ -287,8 +287,10 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
     if (error) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col">
-                <div className="bg-white border-b px-4 py-3">
-                    <h1 className="text-xl font-bold text-center">My Bookings</h1>
+                <div className="bg-black text-white px-5 pt-12 pb-8 rounded-b-[2rem] shadow-xl relative z-10 mb-6">
+                    <div className="flex items-center justify-center">
+                        <h1 className="text-lg font-bold">My Bookings</h1>
+                    </div>
                 </div>
                 <div className="flex-1 flex items-center justify-center px-6">
                     <div className="text-center">
@@ -308,15 +310,16 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
     if (bookings.length === 0) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col pb-20">
-                <div className="bg-white border-b px-4 py-3 sticky top-0 z-10">
+                <div className="bg-black text-white px-5 pt-12 pb-8 rounded-b-[2rem] shadow-xl relative z-10 mb-6">
                     <div className="flex items-center justify-between">
-                        <h1 className="text-xl font-bold">My Bookings</h1>
+                        <div className="w-10" />
+                        <h1 className="text-lg font-bold">My Bookings</h1>
                         <button
                             onClick={loadData}
                             disabled={refreshing}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                            className="bg-gray-800 p-2 rounded-full hover:bg-gray-700 transition-colors disabled:opacity-50"
                         >
-                            <RefreshCw className={`w-5 h-5 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} />
+                            <RefreshCw className={`w-6 h-6 text-gray-300 ${refreshing ? 'animate-spin' : ''}`} />
                         </button>
                     </div>
                 </div>
@@ -339,18 +342,17 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
         <div className="min-h-screen bg-gray-50 pb-24">
             {renderReviewModal()}
             {/* Header */}
-            <div className="bg-white border-b px-4 py-3 sticky top-0 z-10">
+            {/* Header */}
+            <div className="bg-black text-white px-5 pt-12 pb-8 rounded-b-[2rem] shadow-xl relative z-10 mb-6">
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900">My Bookings</h1>
-                        <p className="text-sm text-gray-500">{bookings.length} booking{bookings.length !== 1 ? 's' : ''}</p>
-                    </div>
+                    <div className="w-10" />
+                    <h1 className="text-lg font-bold">My Bookings</h1>
                     <button
                         onClick={loadData}
                         disabled={refreshing}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                        className="bg-gray-800 p-2 rounded-full hover:bg-gray-700 transition-colors disabled:opacity-50"
                     >
-                        <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin text-blue-500' : 'text-gray-600'}`} />
+                        <RefreshCw className={`w-6 h-6 ${refreshing ? 'animate-spin text-blue-400' : 'text-gray-300'}`} />
                     </button>
                 </div>
             </div>

@@ -29,6 +29,8 @@ import RoleSelection from './components/RoleSelection';
 import EarningsDashboard from './components/EarningsDashboard';
 import ShiftManagement from './components/ShiftManagement';
 import CleanerProfileEnhanced from './components/CleanerProfileEnhanced';
+import BankInformation from './components/BankInformation';
+import NotificationPreferences from './components/NotificationPreferences';
 import {
   BottomNavigation,
   CustomerHome,
@@ -36,8 +38,10 @@ import {
   ProfileScreen,
   BecomeCleanerScreen
 } from './components/Screens';
+import UpcomingJobs from './components/UpcomingJobs';
+import JobDetails from './components/JobDetails';
 import { initDB, initializeDatabase } from './storage';
-import { seedAllData, getSeedingStats } from './storage/seedData';
+import { seedAllData, getSeedingStats, createAdminUser } from './storage/seedData';
 import { migrateUserData } from './storage/migration';
 import AdminDashboard from './admin/AdminDashboard';
 import NotificationTest from './components/NotificationTest';
@@ -49,6 +53,7 @@ function AppContent() {
     user,
     isAuthenticated,
     selectedRole,
+    setRole, // Needed to sync role on login
     logout,
     getUserHouses
   } = useApp();
@@ -57,6 +62,8 @@ function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
   const [currentScreen, setCurrentScreen] = useState('splash');
   const [activeTab, setActiveTab] = useState('home');
+  const [selectedJobDetail, setSelectedJobDetail] = useState(null);
+  const [jobDetailsBackScreen, setJobDetailsBackScreen] = useState(null); // { screen: 'string', tab?: 'string' }
   const [activeJobBooking, setActiveJobBooking] = useState(null);
   const [navigationParams, setNavigationParams] = useState({});
 
@@ -71,6 +78,9 @@ function AppContent() {
         await initializeDatabase();
         await migrateUserData();
         console.log('✅ Database initialized');
+
+        // Ensure Admin User exists
+        await createAdminUser();
 
         // Check if we need to seed data
         const stats = await getSeedingStats();
@@ -87,7 +97,7 @@ function AppContent() {
             console.log(`   Cleaners: ${result.cleaners.length}`);
             console.log('');
             console.log('🔑 You can now login with:');
-            console.log('   customer1@goswish.com / Customer123!');
+            console.log('   homeowner1@goswish.com / HomeOwner123!');
             console.log('   cleaner1@goswish.com / Cleaner123!');
           }
         } else {
@@ -106,16 +116,16 @@ function AppContent() {
     if (!showSplash) {
       if (!isAuthenticated) {
         setCurrentScreen('welcome');
-      } else if (!user?.emailVerified) {
-        setCurrentScreen('email-verification');
-      } else if (!user?.name) {
-        setCurrentScreen('profile-setup');
       } else {
-        setCurrentScreen('main');
-        setActiveTab('home');
+        if (user?.email === 'admin@goswish.com' || user?.role === 'admin') {
+          setCurrentScreen('admin-dashboard');
+        } else {
+          setCurrentScreen('main');
+          setActiveTab('home');
+        }
       }
     }
-  }, [showSplash, isAuthenticated, user, selectedRole]);
+  }, [showSplash, isAuthenticated, selectedRole]);
 
   // Handle splash complete
   const handleSplashComplete = () => {
@@ -129,41 +139,36 @@ function AppContent() {
 
   // Handle auth success
   const handleAuthSuccess = (user) => {
-    if (!user.emailVerified) {
-      setCurrentScreen('email-verification');
-    } else if (!user.name) {
-      setCurrentScreen('profile-setup');
+    if (user.email === 'admin@goswish.com' || user.role === 'admin') {
+      setCurrentScreen('admin-dashboard');
     } else {
+      setRole(user.role); // Ensure context role matches user role
       setCurrentScreen('main');
-      setActiveTab('home');
+      setActiveTab('home'); // Everyone goes to home by default
     }
   };
 
   // Handle email verification
   const handleEmailVerified = () => {
-    if (!user?.name) {
-      setCurrentScreen('profile-setup');
-    } else {
-      setCurrentScreen('main');
-      setActiveTab(selectedRole === 'customer' ? 'home' : 'jobs');
-    }
+    setCurrentScreen('main');
+    setActiveTab('home');
   };
 
   // Handle profile setup complete
   const handleProfileComplete = async () => {
     const houses = await getUserHouses();
-    if (selectedRole === 'customer' && houses.length === 0) {
+    if (selectedRole === 'homeowner' && houses.length === 0) {
       setCurrentScreen('add-first-house');
     } else {
       setCurrentScreen('main');
-      setActiveTab(selectedRole === 'customer' ? 'home' : 'jobs');
+      setActiveTab(selectedRole === 'homeowner' ? 'home' : 'jobs');
     }
   };
 
   // Handle logout
   const handleLogout = () => {
     logout();
-    setCurrentScreen('role-selection');
+    setCurrentScreen('welcome');
     setActiveTab('home');
   };
 
@@ -202,17 +207,14 @@ function AppContent() {
     }
 
     switch (currentScreen) {
+      case 'admin-dashboard':
+        return <AdminDashboard onLogout={handleLogout} />;
+
       case 'role-selection':
         return (
-          <RoleSelection
-            onRoleSelect={(role) => {
-              // We need to update role in context maybe? 
-              // Or usually RoleSelection navigates to AuthScreen
-              // Let's assume RoleSelection passes the role to a callback
-              // that sets role and goes to auth.
-              handleRoleSelected(role);
-            }}
-            onLogin={() => setCurrentScreen('auth')}
+          <WelcomeScreen
+            onSuccess={handleAuthSuccess}
+            initialMode="welcome"
           />
         );
 
@@ -221,9 +223,9 @@ function AppContent() {
 
       case 'auth':
         return (
-          <AuthScreen
+          <WelcomeScreen
             onSuccess={handleAuthSuccess}
-            onBack={() => setCurrentScreen('welcome')}
+            initialMode="login"
           />
         );
 
@@ -333,6 +335,48 @@ function AppContent() {
             onSubmit={() => {
               setCurrentScreen('main');
               setActiveTab('home');
+            }}
+          />
+        );
+
+      case 'upcoming-jobs':
+        return (
+          <UpcomingJobs
+            onBack={() => {
+              setCurrentScreen('main');
+              setActiveTab('home');
+            }}
+            onViewJob={(job) => {
+              console.log('View job', job);
+              setSelectedJobDetail(job);
+              setJobDetailsBackScreen({ screen: 'upcoming-jobs' });
+              setCurrentScreen('job-details');
+            }}
+          />
+        );
+
+      case 'job-details':
+        return (
+          <JobDetails
+            job={selectedJobDetail}
+            onBack={() => {
+              // Navigate back to origin
+              if (jobDetailsBackScreen) {
+                if (jobDetailsBackScreen.tab) {
+                  setActiveTab(jobDetailsBackScreen.tab);
+                }
+                setCurrentScreen(jobDetailsBackScreen.screen);
+              } else {
+                // Default fallback
+                setCurrentScreen('upcoming-jobs');
+              }
+            }}
+            onMessaging={() => setCurrentScreen('cleaner-messaging')}
+            onStartJob={(job) => {
+              // Handle starting job (navigate to active job flow if exists, or schedule)
+              console.log('Start job', job);
+              setActiveTab('schedule');
+              setCurrentScreen('main');
             }}
           />
         );
@@ -447,6 +491,26 @@ function AppContent() {
           />
         );
 
+      case 'bank-information':
+        return (
+          <BankInformation
+            onBack={() => {
+              setCurrentScreen('main');
+              setActiveTab('profile');
+            }}
+          />
+        );
+
+      case 'notification-preferences':
+        return (
+          <NotificationPreferences
+            onBack={() => {
+              setCurrentScreen('main');
+              setActiveTab('profile');
+            }}
+          />
+        );
+
       case 'main':
       default:
         return renderMainContent();
@@ -474,7 +538,7 @@ function AppContent() {
       );
     }
 
-    const isCustomer = selectedRole === 'customer';
+    const isCustomer = selectedRole === 'homeowner';
 
     return (
       <div className="min-h-screen bg-gray-50">
@@ -504,8 +568,10 @@ function AppContent() {
                 onPaymentMethods={() => setCurrentScreen('payment-methods')}
                 onHelpCenter={() => setCurrentScreen('help-center')}
                 onTermsPrivacy={() => setCurrentScreen('terms-privacy')}
-                onNotifications={() => setCurrentScreen('customer-notifications')}
+                onNotifications={() => setCurrentScreen('notification-preferences')}
                 onMessaging={() => setCurrentScreen('customer-messaging')}
+                onViewBookings={() => setActiveTab('bookings')}
+                onViewHouses={() => setActiveTab('houses')}
               />
             )}
           </>
@@ -518,15 +584,24 @@ function AppContent() {
                 onMessaging={() => setCurrentScreen('cleaner-messaging')}
                 onRatings={() => setCurrentScreen('cleaner-ratings')}
                 onViewJobs={() => setActiveTab('jobs')}
+                onViewUpcoming={() => setCurrentScreen('upcoming-jobs')} // Navigate to new Upcoming Jobs list
                 onViewEarnings={() => setActiveTab('earnings')}
                 onViewHistory={() => setActiveTab('earnings')}
               />
             )}
-            {activeTab === 'jobs' && <JobOffers />}
+            {activeTab === 'jobs' && <JobOffers onViewUpcomingJob={(job) => {
+              console.log('View upcoming job:', job);
+              setSelectedJobDetail(job);
+              setJobDetailsBackScreen({ screen: 'main', tab: 'jobs' });
+              setCurrentScreen('job-details');
+            }} />}
             {activeTab === 'schedule' && (
               <CleanerSchedule
                 onViewJob={(job) => {
                   console.log('View job:', job);
+                  setSelectedJobDetail(job);
+                  setJobDetailsBackScreen({ screen: 'main', tab: 'schedule' });
+                  setCurrentScreen('job-details');
                 }}
                 onStartJob={(job) => {
                   console.log('Start job:', job);
@@ -546,9 +621,10 @@ function AppContent() {
                 onLogout={handleLogout}
                 onEditProfile={() => setCurrentScreen('edit-profile')}
                 onPaymentMethods={() => setCurrentScreen('payment-methods')}
+                onBankInfo={() => setCurrentScreen('bank-information')}
                 onHelpCenter={() => setCurrentScreen('help-center')}
                 onTermsPrivacy={() => setCurrentScreen('terms-privacy')}
-                onNotifications={() => setCurrentScreen('cleaner-notifications')}
+                onNotifications={() => setCurrentScreen('notification-preferences')}
                 onMessaging={() => setCurrentScreen('cleaner-messaging')}
                 onViewRatings={() => setCurrentScreen('cleaner-ratings')}
                 onViewEarnings={() => setActiveTab('earnings')}

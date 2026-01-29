@@ -1,7 +1,94 @@
 customer1@goswish.com / Customer123!
 customer2@goswish.com / Customer123!
-customer3@goswish.com / Customer123!
+customer3@goswish.com / Customer123!    
 ...
 customer30@goswish.com / Customer123!
 
 Cleaner123!
+
+
+Notified Cleaners
+6 Sent
+Cleaner	Distance	Rating	Status
+
+Antonio Mendoza
+0.7 mi	
+New
+Notified
+
+Pablo Chavez
+2.2 mi	
+New
+Notified
+
+Gabriela Ruiz
+2.7 mi	
+New
+Notified
+
+Sofia Ramirez
+3 mi	
+New
+Notified
+
+Daniela Castro
+3.6 mi	
+New
+Notified
+
+Diego Diaz
+3.7 mi	
+New
+Notified
+
+
+Customer 3 is assigned to Austin based on the distribution logic in 
+seedData.js
+ (Index 2 in the city list).
+
+🧹 Intended Cleaner Matches (Austin-based)
+The following cleaners are also assigned to Austin and would be the primary matches in a production environment with working geolocation:
+
+Cleaner 3
+Cleaner 8
+Cleaner 13
+Cleaner 18
+Cleaner 23
+Cleaner 28
+
+
+GS-2026-057578
+
+
+cleaner1@goswish.com / Cleaner123!
+cleaner2@goswish.com / Cleaner123!
+cleaner3@goswish.com / Cleaner123!
+cleaner4@goswish.com / Cleaner123!
+cleaner5@goswish.com / Cleaner123!
+cleaner6@goswish.com / Cleaner123!
+cleaner7@goswish.com / Cleaner123!
+cleaner8@goswish.com / Cleaner123!
+cleaner9@goswish.com / Cleaner123!
+cleaner10@goswish.com / Cleaner123!
+cleaner11@goswish.com / Cleaner123!
+cleaner12@goswish.com / Cleaner123!
+cleaner13@goswish.com / Cleaner123!
+cleaner14@goswish.com / Cleaner123!
+cleaner15@goswish.com / Cleaner123!
+cleaner16@goswish.com / Cleaner123!
+cleaner17@goswish.com / Cleaner123!
+cleaner18@goswish.com / Cleaner123!
+cleaner19@goswish.com / Cleaner123!
+cleaner20@goswish.com / Cleaner123!
+cleaner21@goswish.com / Cleaner123!
+cleaner22@goswish.com / Cleaner123!
+cleaner23@goswish.com / Cleaner123!
+cleaner24@goswish.com / Cleaner123!
+cleaner25@goswish.com / Cleaner123!
+cleaner26@goswish.com / Cleaner123!
+cleaner27@goswish.com / Cleaner123!
+cleaner28@goswish.com / Cleaner123!
+cleaner29@goswish.com / Cleaner123!
+cleaner30@goswish.com / Cleaner123!
+
+

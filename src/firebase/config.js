@@ -7,18 +7,30 @@ import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
-// Your web app's Firebase configuration
-// TODO: Replace with your actual Firebase project configuration
-// Get this from Firebase Console > Project Settings > General > Your apps > Web app
+// Firebase configuration from environment variables
+// This keeps sensitive credentials out of source code
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID",
-    measurementId: "YOUR_MEASUREMENT_ID" // Optional
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
+
+// Validate configuration in development
+if (import.meta.env.DEV) {
+    const missingVars = [];
+    if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'YOUR_API_KEY') missingVars.push('VITE_FIREBASE_API_KEY');
+    if (!firebaseConfig.authDomain) missingVars.push('VITE_FIREBASE_AUTH_DOMAIN');
+    if (!firebaseConfig.projectId) missingVars.push('VITE_FIREBASE_PROJECT_ID');
+
+    if (missingVars.length > 0) {
+        console.warn('⚠️ Firebase configuration incomplete. Missing:', missingVars.join(', '));
+        console.warn('📝 Please check your .env file');
+    }
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);

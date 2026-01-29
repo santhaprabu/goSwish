@@ -23,3 +23,30 @@ dist-ssr
 *.sln
 *.sw?
 npm-cache/
+
+# Environment variables - NEVER COMMIT THESE
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Security
+*.pem
+*.key
+*.cert
+*.crt
+secrets/
+credentials/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+Untitled-1

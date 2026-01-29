@@ -90,11 +90,11 @@ export default function UserManagement() {
                         All
                     </button>
                     <button
-                        onClick={() => setFilterRole('customer')}
+                        onClick={() => setFilterRole('homeowner')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2
-                            ${filterRole === 'customer' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700'}`}
+                            ${filterRole === 'homeowner' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700'}`}
                     >
-                        <User className="w-4 h-4" /> Customers
+                        <User className="w-4 h-4" /> Home Owners
                     </button>
                     <button
                         onClick={() => setFilterRole('cleaner')}

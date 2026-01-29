@@ -80,7 +80,7 @@ export default function PayoutManagement({ onBack }) {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
-            <div className="app-bar">
+            <div className="app-bar flex items-center justify-between px-4 py-3">
                 <button onClick={onBack} className="p-2">
                     <ChevronLeft className="w-6 h-6" />
                 </button>
@@ -89,7 +89,7 @@ export default function PayoutManagement({ onBack }) {
             </div>
 
             <div className="p-6">
-                <div className="bg-gradient-to-br from-primary-600 to-primary-800 rounded-2xl p-6 text-white shadow-lg mb-6">
+                <div className="bg-black rounded-2xl p-6 text-white shadow-lg mb-6">
                     <p className="text-primary-100 text-sm mb-1">Available Balance</p>
                     <h2 className="text-4xl font-bold mb-4">${balance.toFixed(2)}</h2>
                     <button

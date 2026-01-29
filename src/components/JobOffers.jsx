@@ -3,7 +3,8 @@ import { useApp } from '../context/AppContext';
 import {
     getAvailableBookings,
     getHouseById,
-    getCleanerByUserId
+    getCleanerByUserId,
+    calculateMatchScore
 } from '../storage'; // Import direct helpers not exposed in context
 
 import {
@@ -12,8 +13,11 @@ import {
 } from 'lucide-react';
 
 // Job Offers - Available Jobs for Cleaners
-export default function JobOffers() {
+import UpcomingJobs from './UpcomingJobs';
+
+export default function JobOffers({ onViewUpcomingJob }) {
     const { user, acceptJobOffer } = useApp();
+    const [viewMode, setViewMode] = useState('available'); // 'available' | 'upcoming'
     const [offers, setOffers] = useState([]);
     const [selectedOffer, setSelectedOffer] = useState(null);
     const [sortBy, setSortBy] = useState('earnings'); // earnings, distance, expiring
@@ -43,8 +47,23 @@ export default function JobOffers() {
                 // 1. Get available bookings (confirmed, no cleaner yet)
                 const bookings = await getAvailableBookings();
 
-                // 2. Map to offers ( enriching with house data )
-                const offersData = await Promise.all(bookings.map(async (booking) => {
+                // 2. Get current cleaner profile
+                const cleaner = await getCleanerByUserId(user.uid);
+                if (!cleaner) {
+                    setOffers([]);
+                    return;
+                }
+
+                // 3. Map to offers ( enriching with house data and match score )
+                const offersData = [];
+
+                for (const booking of bookings) {
+                    // Check match logic
+                    const match = await calculateMatchScore(booking, cleaner);
+
+                    // Only show if eligible (passes hard constraints)
+                    if (!match.isEligible) continue;
+
                     let house = null;
                     if (booking.houseId) {
                         try {
@@ -54,27 +73,18 @@ export default function JobOffers() {
                         }
                     }
 
-                    // Calculate distance (mock for now or real if cleaner location known)
-                    // In a real app we'd need cleaner's location here. 
-                    // For now, mockup distance.
-                    const distance = Math.random() * 15 + 2;
-
                     // Earnings estimate (70% of total)
-                    // If booking has totalAmount, use it.
-                    const amount = booking.totalAmount || 100; // Fallback
+                    const amount = booking.totalAmount || 100;
                     const earnings = amount * 0.7;
 
                     // Expiry logic (mock)
-                    // Real app might use booking.createdAt + 1 hour?
-                    // Let's just say it expires in 30 mins from now for engagement.
                     const expiresIn = Math.floor(Math.random() * 30) + 10;
 
-                    return {
-                        id: booking.id, // Use booking ID as offer ID
+                    offersData.push({
+                        id: booking.id,
                         bookingId: booking.id,
                         booking,
                         house: house || {
-                            // Fallback house data if missing
                             id: 'unknown',
                             sqft: 1500,
                             bedrooms: 2,
@@ -82,12 +92,14 @@ export default function JobOffers() {
                             address: { street: 'Unknown St', city: 'City', state: 'ST', zip: '00000' }
                         },
                         earnings: Math.round(earnings),
-                        distance: Math.round(distance * 10) / 10,
+                        distance: match.distance || 0,
+                        matchScore: match.score || 0,
+                        matchDescription: match.matchDescription || 'Compatible',
                         expiresIn,
                         status: 'open',
                         createdAt: booking.createdAt
-                    };
-                }));
+                    });
+                }
 
                 setOffers(offersData);
             } catch (error) {
@@ -97,8 +109,10 @@ export default function JobOffers() {
             }
         }
 
-        loadOffers();
-    }, []);
+        if (viewMode === 'available') {
+            loadOffers();
+        }
+    }, [user, viewMode]);
 
     // Sort offers
     const sortedOffers = [...offers].sort((a, b) => {
@@ -171,6 +185,8 @@ export default function JobOffers() {
 
             // Success feedback
             alert('Job Accepted! It has been added to your schedule.');
+            // Switch to upcoming view?
+            // setViewMode('upcoming');
         } catch (error) {
             console.error('Failed to accept offer:', error);
             // Show alert to user
@@ -219,7 +235,7 @@ export default function JobOffers() {
 
         return (
             <div className="min-h-screen bg-gray-50 pb-24">
-                <div className="app-bar">
+                <div className="app-bar flex items-center justify-between px-4 py-3">
                     <button onClick={() => setSelectedOffer(null)} className="p-2">
                         <ChevronRight className="w-6 h-6 rotate-180" />
                     </button>
@@ -289,7 +305,7 @@ export default function JobOffers() {
                             <div>
                                 <p className="text-sm text-gray-500">Estimated Duration</p>
                                 <p className="font-medium text-gray-900">
-                                    {Math.ceil(selectedOffer.house.sqft / 500)} hours
+                                    {Math.ceil((selectedOffer.house.sqft || selectedOffer.house.size || 1500) / 500)} hours
                                 </p>
                             </div>
                         </div>
@@ -312,7 +328,7 @@ export default function JobOffers() {
                         <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-100">
                             <div>
                                 <p className="text-xs text-gray-500">Size</p>
-                                <p className="font-medium text-gray-900">{selectedOffer.house.sqft} sqft</p>
+                                <p className="font-medium text-gray-900">{selectedOffer.house.sqft || selectedOffer.house.size || 1500} sqft</p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-500">Bedrooms</p>
@@ -438,171 +454,211 @@ export default function JobOffers() {
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
             {/* Header */}
-            <div className="bg-black text-white px-6 pt-8 pb-8 rounded-b-[2rem] shadow-xl relative z-20">
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Available Jobs</h1>
-                        <p className="text-gray-400 text-sm mt-1">Find your next clean</p>
-                    </div>
-                    <div className="bg-gray-800 border border-gray-700 rounded-full px-3 py-1 text-xs font-medium text-gray-300">
-                        {filteredOffers.length} nearby
-                    </div>
-                </div>
-
-                {/* Quick Sort - Integrated in Header Area */}
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-2 px-2">
+            <div className="bg-black text-white px-6 pt-6 pb-6 rounded-b-[2rem] shadow-xl relative z-20">
+                {/* Toggle */}
+                <div className="flex bg-gray-800 p-1 rounded-xl mb-6">
                     <button
-                        onClick={() => setSortBy('earnings')}
-                        className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border
-              ${sortBy === 'earnings'
-                                ? 'bg-white text-black border-white'
-                                : 'bg-gray-900 text-gray-400 border-gray-800 hover:bg-gray-800'
+                        onClick={() => setViewMode('available')}
+                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${viewMode === 'available'
+                            ? 'bg-white text-black shadow-sm'
+                            : 'text-gray-400 hover:text-white'
                             }`}
                     >
-                        Highest Pay
+                        Available
                     </button>
                     <button
-                        onClick={() => setSortBy('distance')}
-                        className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border
-              ${sortBy === 'distance'
-                                ? 'bg-white text-black border-white'
-                                : 'bg-gray-900 text-gray-400 border-gray-800 hover:bg-gray-800'
+                        onClick={() => setViewMode('upcoming')}
+                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${viewMode === 'upcoming'
+                            ? 'bg-white text-black shadow-sm'
+                            : 'text-gray-400 hover:text-white'
                             }`}
                     >
-                        Closest
-                    </button>
-                    <button
-                        onClick={() => setSortBy('expiring')}
-                        className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border
-              ${sortBy === 'expiring'
-                                ? 'bg-white text-black border-white'
-                                : 'bg-gray-900 text-gray-400 border-gray-800 hover:bg-gray-800'
-                            }`}
-                    >
-                        Expiring Soon
+                        Upcoming
                     </button>
                 </div>
-            </div>
 
-            {/* Filter Pills */}
-            <div className="px-6 mt-4 mb-2">
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
-                    {['all', 'regular', 'deep', 'move', 'windows'].map(type => (
-                        <button
-                            key={type}
-                            onClick={() => setFilter(type)}
-                            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all capitalize border
-                ${filter === type
-                                    ? 'bg-black text-white border-black'
-                                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                                }`}
-                        >
-                            {type === 'all' ? 'All Types' : type}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Offers List */}
-            <div className="px-6 pb-6 space-y-5 mt-2">
-                {loading ? (
-                    <div className="text-center py-12">
-                        <div className="animate-spin w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full mx-auto mb-3"></div>
-                        <p className="text-gray-500 font-medium">Finding best jobs near you...</p>
-                    </div>
-                ) : filteredOffers.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <AlertCircle className="w-8 h-8 text-gray-300" />
-                        </div>
-                        <h3 className="font-bold text-gray-900 text-lg mb-2">No jobs available</h3>
-                        <p className="text-gray-500 text-sm max-w-[200px] mx-auto">
-                            Check back later or adjust your filters to see more results.
-                        </p>
-                    </div>
-                ) : (
-                    filteredOffers.map(offer => (
-                        <div
-                            key={offer.id}
-                            onClick={() => handleViewDetails(offer)}
-                            className="bg-white rounded-[1.5rem] shadow-lg shadow-gray-200/50 border border-gray-100 overflow-hidden hover:shadow-xl transition-shadow cursor-pointer relative group"
-                        >
-                            {/* Header Gradient Stripe */}
-                            <div className="h-1.5 w-full bg-gradient-to-r from-gray-900 to-gray-600"></div>
-
-                            <div className="p-5">
-                                {/* Top Row */}
-                                <div className="flex justify-between items-start mb-4">
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-wider">
-                                        {(offer.booking.serviceTypeId || 'regular').replace('-', ' ')}
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 text-red-500 text-xs font-bold bg-red-50 px-2 py-0.5 rounded-full">
-                                        <Clock className="w-3 h-3" />
-                                        {offer.expiresIn}m left
-                                    </span>
-                                </div>
-
-                                {/* Main Info */}
-                                <div className="mb-5">
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-4xl font-black text-gray-900 tracking-tight">${offer.earnings}</span>
-                                        <span className="text-sm font-medium text-gray-400">est.</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-1 text-gray-500 text-sm font-medium">
-                                        <MapPin className="w-4 h-4 text-gray-400" />
-                                        <span>{offer.distance} mi</span>
-                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                        <span>{offer.house.address.city}</span>
-                                    </div>
-                                </div>
-
-                                {/* House Grid */}
-                                <div className="grid grid-cols-3 gap-2 py-3 border-t border-b border-gray-50 mb-5">
-                                    <div className="text-center">
-                                        <p className="text-lg font-bold text-gray-900">{offer.house.bedrooms}</p>
-                                        <p className="text-[10px] text-gray-400 uppercase font-bold">Bed</p>
-                                    </div>
-                                    <div className="text-center border-l border-gray-50">
-                                        <p className="text-lg font-bold text-gray-900">{offer.house.bathrooms}</p>
-                                        <p className="text-[10px] text-gray-400 uppercase font-bold">Bath</p>
-                                    </div>
-                                    <div className="text-center border-l border-gray-50">
-                                        <p className="text-lg font-bold text-gray-900">{Math.round(offer.house.sqft / 1000)}k</p>
-                                        <p className="text-[10px] text-gray-400 uppercase font-bold">Sqft</p>
-                                    </div>
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeclineOffer(offer);
-                                        }}
-                                        className="p-3 rounded-xl bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-                                    >
-                                        <X className="w-6 h-6" />
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (offer.booking.dates?.length === 1) {
-                                                const options = getDateOptions(offer.booking);
-                                                handleAcceptOffer(offer, options[0]);
-                                            } else {
-                                                handleViewDetails(offer);
-                                            }
-                                        }}
-                                        className="flex-1 bg-black text-white font-bold text-lg rounded-xl py-3 shadow-lg shadow-gray-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                                    >
-                                        Accept Job
-                                    </button>
-                                </div>
+                {viewMode === 'available' && (
+                    <>
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h1 className="text-2xl font-bold tracking-tight">Available Jobs</h1>
+                                <p className="text-gray-400 text-sm mt-1">Find your next clean</p>
+                            </div>
+                            <div className="bg-gray-800 border border-gray-700 rounded-full px-3 py-1 text-xs font-medium text-gray-300">
+                                {filteredOffers.length} nearby
                             </div>
                         </div>
-                    ))
+
+                        {/* Quick Sort - Integrated in Header Area */}
+                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-2 px-2">
+                            <button
+                                onClick={() => setSortBy('earnings')}
+                                className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border
+              ${sortBy === 'earnings'
+                                        ? 'bg-white text-black border-white'
+                                        : 'bg-gray-900 text-gray-400 border-gray-800 hover:bg-gray-800'
+                                    }`}
+                            >
+                                Highest Pay
+                            </button>
+                            <button
+                                onClick={() => setSortBy('distance')}
+                                className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border
+              ${sortBy === 'distance'
+                                        ? 'bg-white text-black border-white'
+                                        : 'bg-gray-900 text-gray-400 border-gray-800 hover:bg-gray-800'
+                                    }`}
+                            >
+                                Closest
+                            </button>
+                            <button
+                                onClick={() => setSortBy('expiring')}
+                                className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border
+              ${sortBy === 'expiring'
+                                        ? 'bg-white text-black border-white'
+                                        : 'bg-gray-900 text-gray-400 border-gray-800 hover:bg-gray-800'
+                                    }`}
+                            >
+                                Expiring Soon
+                            </button>
+                        </div>
+                    </>
                 )}
             </div>
+
+            {viewMode === 'available' ? (
+                <>
+                    {/* Filter Pills */}
+                    <div className="px-6 mt-4 mb-2">
+                        <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
+                            {['all', 'regular', 'deep', 'move', 'windows'].map(type => (
+                                <button
+                                    key={type}
+                                    onClick={() => setFilter(type)}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all capitalize border
+                ${filter === type
+                                            ? 'bg-black text-white border-black'
+                                            : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                                        }`}
+                                >
+                                    {type === 'all' ? 'All Types' : type}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Offers List */}
+                    <div className="px-6 pb-6 space-y-5 mt-2">
+                        {loading ? (
+                            <div className="text-center py-12">
+                                <div className="animate-spin w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full mx-auto mb-3"></div>
+                                <p className="text-gray-500 font-medium">Finding best jobs near you...</p>
+                            </div>
+                        ) : filteredOffers.length === 0 ? (
+                            <div className="text-center py-12 bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+                                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <AlertCircle className="w-8 h-8 text-gray-300" />
+                                </div>
+                                <h3 className="font-bold text-gray-900 text-lg mb-2">No jobs available</h3>
+                                <p className="text-gray-500 text-sm max-w-[200px] mx-auto">
+                                    Check back later or adjust your filters to see more results.
+                                </p>
+                            </div>
+                        ) : (
+                            filteredOffers.map(offer => (
+                                <div
+                                    key={offer.id}
+                                    onClick={() => handleViewDetails(offer)}
+                                    className="bg-white rounded-[1rem] shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer relative"
+                                >
+                                    <div className="h-1 w-full bg-gradient-to-r from-gray-900 to-gray-700"></div>
+
+                                    <div className="p-3">
+                                        {/* Top Header: Pay & Time */}
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-xl font-black text-gray-900 leading-none">${offer.earnings}</span>
+                                                    <span className="text-[10px] font-medium text-gray-400">est.</span>
+                                                </div>
+                                                <div className="flex items-center gap-1 text-[10px] font-bold text-teal-600 mt-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    <span>{getDateOptions(offer.booking)[0]?.date.split('-').slice(1).join('/')} • {getDateOptions(offer.booking)[0]?.timeSlot}</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-right flex flex-col items-end gap-1">
+                                                <span className="inline-flex items-center gap-1 text-red-500 text-[9px] font-bold bg-red-50 px-1.5 py-0.5 rounded">
+                                                    <Clock className="w-2.5 h-2.5" />
+                                                    {offer.expiresIn}m
+                                                </span>
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
+                                                    ID: {offer.bookingId.slice(-4).toUpperCase()}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Secondary Info: Badges & Proximity */}
+                                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                                            <span className="bg-gray-100 text-gray-700 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded">
+                                                {(offer.booking.serviceTypeId || 'regular')}
+                                            </span>
+                                            {offer.matchScore >= 75 && (
+                                                <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${offer.matchScore > 100 ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
+                                                    {offer.matchScore}% MATCH
+                                                </span>
+                                            )}
+                                            <span className="text-gray-400 text-[10px] flex items-center gap-1">
+                                                <MapPin className="w-3 h-3" />
+                                                {offer.distance} mi • {offer.house.address.city}
+                                            </span>
+                                        </div>
+
+                                        {/* Property & Note Row (Combined) */}
+                                        <div className="flex items-center justify-between text-[10px] text-gray-500 py-1.5 border-t border-gray-50">
+                                            <div className="flex gap-2 font-medium">
+                                                <span>{offer.house.bedrooms}b/{offer.house.bathrooms}ba</span>
+                                                <span>•</span>
+                                                <span>{offer.house.sqft} sqft</span>
+                                            </div>
+                                            {offer.booking.specialNotes && (
+                                                <div className="max-w-[120px] truncate italic text-gray-400 text-[9px]">
+                                                    "{offer.booking.specialNotes}"
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Compact Actions */}
+                                        <div className="flex gap-2 mt-2">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDeclineOffer(offer); }}
+                                                className="flex-1 bg-white text-gray-400 font-bold text-[10px] rounded-lg py-1.5 border border-gray-100 hover:bg-gray-50"
+                                            >
+                                                Decline
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (offer.booking.dates?.length === 1) {
+                                                        const options = getDateOptions(offer.booking);
+                                                        handleAcceptOffer(offer, options[0]);
+                                                    } else { handleViewDetails(offer); }
+                                                }}
+                                                className="flex-[1.8] bg-black text-white font-bold text-[10px] rounded-lg py-1.5 shadow-sm active:scale-95 transition-all uppercase tracking-wider"
+                                            >
+                                                Accept Job
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </>
+            ) : (
+                <div className="mt-4">
+                    <UpcomingJobs embedded={true} onViewJob={onViewUpcomingJob} />
+                </div>
+            )}
         </div>
     );
 }

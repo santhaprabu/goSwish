@@ -63,7 +63,7 @@ export default function CustomerActiveJob({ booking, onBack, onComplete }) {
     const handleVerify = async () => {
         setVerifying(true);
         try {
-            const success = await verifyJobCode(job.id, 'customer', inputCode);
+            const success = await verifyJobCode(job.id, 'homeowner', inputCode);
             if (success) {
                 const started = await checkVerificationAndStart(job.id);
                 if (started) setStep('progress');
@@ -106,6 +106,9 @@ export default function CustomerActiveJob({ booking, onBack, onComplete }) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col p-6">
                 <div className="text-center mb-8 mt-4">
+                    {job.bookingId && (
+                        <p className="text-xs text-gray-500 mb-2">Booking: <span className="font-mono font-semibold">{job.bookingId}</span></p>
+                    )}
                     <ShieldCheck className="w-16 h-16 text-blue-600 mx-auto mb-4" />
                     <h1 className="text-2xl font-bold text-gray-900">Verify Your Cleaner</h1>
                     <p className="text-gray-600">Exchange codes at the door for safety.</p>
@@ -150,6 +153,9 @@ export default function CustomerActiveJob({ booking, onBack, onComplete }) {
         return (
             <div className="min-h-screen bg-gray-50 p-6">
                 <div className="text-center mb-8 mt-4">
+                    {job.bookingId && (
+                        <p className="text-xs text-gray-500 mb-2">Booking: <span className="font-mono font-semibold">{job.bookingId}</span></p>
+                    )}
                     <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Clock className="w-8 h-8 text-blue-600 animate-spin-slow" />
                     </div>
@@ -188,6 +194,9 @@ export default function CustomerActiveJob({ booking, onBack, onComplete }) {
     if (step === 'review') {
         return (
             <div className="min-h-screen bg-gray-50 p-6 flex flex-col items-center">
+                {job.bookingId && (
+                    <p className="text-xs text-gray-500 mb-4">Booking: <span className="font-mono font-semibold">{job.bookingId}</span></p>
+                )}
                 <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
                     <Check className="w-10 h-10 text-green-600" />
                 </div>

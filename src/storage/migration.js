@@ -77,6 +77,13 @@ export const migrateUserData = async () => {
                 needsUpdate = true;
             }
 
+            // Migration 3: Rename role 'customer' to 'homeowner'
+            if (user.role === 'customer') {
+                updates.role = 'homeowner';
+                needsUpdate = true;
+                console.log(`Converting user ${user.email} from customer to homeowner`);
+            }
+
             // Consolidate updates
             if (needsUpdate) {
                 // Ensure profile sub-object is updated correctly

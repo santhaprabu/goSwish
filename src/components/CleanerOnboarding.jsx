@@ -22,7 +22,10 @@ export default function CleanerOnboarding({ onComplete }) {
 
   const [photo, setPhoto] = useState(null);
   const [location, setLocation] = useState({
-    address: '',
+    street: '',
+    city: '',
+    state: '',
+    zipcode: '',
     serviceRadius: 15
   });
   const [availability, setAvailability] = useState({
@@ -87,8 +90,8 @@ export default function CleanerOnboarding({ onComplete }) {
 
   // Handle profile form
   const handleProfileSubmit = () => {
-    if (profile.headline && profile.bio && profile.yearsExperience && 
-        profile.specialties.length > 0 && profile.languages.length > 0) {
+    if (profile.headline && profile.bio && profile.yearsExperience &&
+      profile.specialties.length > 0 && profile.languages.length > 0) {
       setOnboardingStatus(prev => ({ ...prev, profileComplete: true }));
       setCurrentStep(2);
     }
@@ -115,7 +118,7 @@ export default function CleanerOnboarding({ onComplete }) {
 
   // Handle location
   const handleLocationSubmit = () => {
-    if (location.address && location.serviceRadius) {
+    if (location.street && location.city && location.state && location.zipcode) {
       setOnboardingStatus(prev => ({ ...prev, locationSet: true }));
       setCurrentStep(4);
     }
@@ -144,8 +147,8 @@ export default function CleanerOnboarding({ onComplete }) {
 
   // Handle background check
   const handleBackgroundCheckSubmit = () => {
-    if (backgroundCheck.fullName && backgroundCheck.dob && 
-        backgroundCheck.ssn && backgroundCheck.consent) {
+    if (backgroundCheck.fullName && backgroundCheck.dob &&
+      backgroundCheck.ssn && backgroundCheck.consent) {
       setOnboardingStatus(prev => ({ ...prev, backgroundCheckComplete: true }));
       // Simulate background check submission
       updateUser({
@@ -198,7 +201,7 @@ export default function CleanerOnboarding({ onComplete }) {
               </span>
             </div>
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-primary-500 transition-all duration-500"
                 style={{ width: `${progress}%` }}
               />
@@ -223,7 +226,7 @@ export default function CleanerOnboarding({ onComplete }) {
                   `}
                 >
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center
-                    ${step.status ? 'bg-success-500 text-white' : 
+                    ${step.status ? 'bg-success-500 text-white' :
                       isLocked ? 'bg-gray-200 text-gray-400' : 'bg-primary-100 text-primary-600'}
                   `}>
                     {step.status ? (
@@ -240,8 +243,8 @@ export default function CleanerOnboarding({ onComplete }) {
                       {step.name}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {step.status ? 'Complete' : 
-                       isLocked ? `Complete ${steps[index - 1].name} first` : 'Not started'}
+                      {step.status ? 'Complete' :
+                        isLocked ? `Complete ${steps[index - 1].name} first` : 'Not started'}
                     </p>
                   </div>
 
@@ -389,8 +392,8 @@ export default function CleanerOnboarding({ onComplete }) {
 
           <button
             onClick={handleProfileSubmit}
-            disabled={!profile.headline || !profile.bio || !profile.yearsExperience || 
-                     profile.specialties.length === 0 || profile.languages.length === 0}
+            disabled={!profile.headline || !profile.bio || !profile.yearsExperience ||
+              profile.specialties.length === 0 || profile.languages.length === 0}
             className="btn btn-primary w-full"
           >
             Save & Continue
@@ -497,16 +500,53 @@ export default function CleanerOnboarding({ onComplete }) {
         </div>
 
         <div className="px-6 py-6 space-y-6">
-          <div>
-            <label className="label">Base Location</label>
-            <input
-              type="text"
-              value={location.address}
-              onChange={(e) => setLocation({ ...location, address: e.target.value })}
-              placeholder="Enter your address or zip code"
-              className="input"
-            />
-            <p className="text-xs text-gray-500 mt-1">
+          <div className="space-y-4">
+            <div>
+              <label className="label">Street Address</label>
+              <input
+                type="text"
+                value={location.street}
+                onChange={(e) => setLocation({ ...location, street: e.target.value })}
+                placeholder="123 Main St"
+                className="input"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">City</label>
+                <input
+                  type="text"
+                  value={location.city}
+                  onChange={(e) => setLocation({ ...location, city: e.target.value })}
+                  placeholder="Dallas"
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="label">State</label>
+                <input
+                  type="text"
+                  value={location.state}
+                  onChange={(e) => setLocation({ ...location, state: e.target.value })}
+                  placeholder="TX"
+                  className="input"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Zip Code</label>
+              <input
+                type="text"
+                value={location.zipcode}
+                onChange={(e) => setLocation({ ...location, zipcode: e.target.value })}
+                placeholder="75201"
+                className="input"
+              />
+            </div>
+
+            <p className="text-xs text-gray-500">
               This is your starting point for calculating distances
             </p>
           </div>
@@ -544,7 +584,7 @@ export default function CleanerOnboarding({ onComplete }) {
 
           <button
             onClick={handleLocationSubmit}
-            disabled={!location.address}
+            disabled={!location.street || !location.city || !location.state || !location.zipcode}
             className="btn btn-primary w-full"
           >
             Save & Continue
@@ -678,7 +718,7 @@ export default function CleanerOnboarding({ onComplete }) {
                 className="mt-1"
               />
               <span className="text-sm text-gray-700">
-                I consent to a background check and understand this is required to accept jobs. 
+                I consent to a background check and understand this is required to accept jobs.
                 I certify that the information provided is accurate.
               </span>
             </label>
@@ -686,8 +726,8 @@ export default function CleanerOnboarding({ onComplete }) {
 
           <button
             onClick={handleBackgroundCheckSubmit}
-            disabled={!backgroundCheck.fullName || !backgroundCheck.dob || 
-                     !backgroundCheck.ssn || !backgroundCheck.consent}
+            disabled={!backgroundCheck.fullName || !backgroundCheck.dob ||
+              !backgroundCheck.ssn || !backgroundCheck.consent}
             className="btn btn-primary w-full"
           >
             Submit for Verification

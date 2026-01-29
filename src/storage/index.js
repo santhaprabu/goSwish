@@ -145,7 +145,8 @@ export {
     submitJobForApproval,
     approveJob,
     rateCustomer,
-    checkCleanerConflict, // Added export
+    checkCleanerConflict,
+    calculateMatchScore,
 } from './helpers.js';
 
 // Aliases for consistency
@@ -158,3 +159,9 @@ export {
     createCleanerProfiles,
     getSeedingStats,
 } from './seedData.js';
+
+// Migrations
+export { migrateHouseStates } from './migrateHouseStates.js';
+
+// Database inspection
+export { checkAllHouses } from './checkHouses.js';

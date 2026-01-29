@@ -66,6 +66,15 @@ export default function LiveTracking({ booking, cleaner, onBack }) {
                 <div className="w-10" />
             </div>
 
+            {/* Booking ID */}
+            {booking?.bookingId && (
+                <div className="px-4 py-2 bg-white border-b border-gray-100">
+                    <p className="text-xs text-center text-gray-500">
+                        Booking: <span className="font-mono font-semibold text-gray-700">{booking.bookingId}</span>
+                    </p>
+                </div>
+            )}
+
             {/* Map Placeholder */}
             <div className="relative h-80 bg-gradient-to-br from-primary-100 to-primary-200">
                 <div className="absolute inset-0 flex items-center justify-center">

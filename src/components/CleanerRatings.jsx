@@ -239,7 +239,7 @@ export default function CleanerRatings({ onBack }) {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
-            <div className="app-bar">
+            <div className="app-bar flex items-center justify-between px-4 py-3">
                 <button onClick={onBack} className="p-2">
                     <ChevronLeft className="w-6 h-6" />
                 </button>

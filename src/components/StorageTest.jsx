@@ -71,7 +71,7 @@ export default function StorageTest() {
 
             const result = await signUpWithEmail(email, password, {
                 name: 'Test User',
-                role: 'customer',
+                role: 'homeowner',
                 phone: '555-1234',
             });
 

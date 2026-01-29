@@ -20,12 +20,13 @@ const TIME_SLOTS = [
 ];
 
 export default function BookingFlowNew({ onBack, onComplete }) {
-    const { user, getUserHouses, serviceTypes, addOns, createBooking, findEligibleCleaners } = useApp();
+    const { user, updateUser, getUserHouses, serviceTypes, addOns, createBooking, findEligibleCleaners } = useApp();
 
     // Current step (1-6)
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [notifiedCleaners, setNotifiedCleaners] = useState([]);
+    const [createdBooking, setCreatedBooking] = useState(null);
 
     // Step 1: Property
     const [houses, setHouses] = useState([]);
@@ -50,6 +51,9 @@ export default function BookingFlowNew({ onBack, onComplete }) {
     const [cardError, setCardError] = useState(null);
     const [stripeObj, setStripeObj] = useState(null);
     const [cardElement, setCardElement] = useState(null);
+    const [savedCards, setSavedCards] = useState([]);
+    const [selectedPaymentOption, setSelectedPaymentOption] = useState('new'); // 'new' or cardId
+    const [saveCardForFuture, setSaveCardForFuture] = useState(true);
 
     // Promo Code
     const [promoCode, setPromoCode] = useState('');
@@ -57,7 +61,7 @@ export default function BookingFlowNew({ onBack, onComplete }) {
     const [promoMessage, setPromoMessage] = useState(null);
     const [promoError, setPromoError] = useState(null);
 
-    // Load houses
+    // Load houses and saved cards
     useEffect(() => {
         async function loadData() {
             try {
@@ -67,59 +71,69 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                     const defaultHouse = housesData.find(h => h.isDefault) || housesData[0];
                     setSelectedHouseId(defaultHouse.id);
                 }
+
+                if (user?.paymentMethods && user.paymentMethods.length > 0) {
+                    setSavedCards(user.paymentMethods);
+                    // Default to first saved card
+                    setSelectedPaymentOption(user.paymentMethods.find(c => c.isDefault)?.id || user.paymentMethods[0].id);
+                }
             } catch (error) {
                 console.error('Error loading data:', error);
             }
         }
         loadData();
-    }, [getUserHouses]);
+    }, [getUserHouses, user]);
 
     // Initialize Stripe when on Step 6
     useEffect(() => {
         if (step === 6) {
             // Check if Stripe is loaded
-            if (window.Stripe) {
+            if (window.Stripe && !stripeObj) {
                 const stripe = window.Stripe(STRIPE_KEY);
                 setStripeObj(stripe);
-
-                const elements = stripe.elements();
-                const card = elements.create('card', {
-                    style: {
-                        base: {
-                            fontSize: '16px',
-                            color: '#424770',
-                            '::placeholder': {
-                                color: '#aab7c4',
-                            },
-                        },
-                        invalid: {
-                            color: '#9e2146',
-                        },
-                    },
-                });
-
-                // Mount to div
-                // Use a timeout to ensure DOM is ready or run immediately if ready
-                setTimeout(() => {
-                    const mountPoint = document.getElementById('card-element-mount');
-                    if (mountPoint) {
-                        card.mount('#card-element-mount');
-                        setCardElement(card);
-
-                        card.on('change', (event) => {
-                            if (event.error) {
-                                setCardError(event.error.message);
-                            } else {
-                                setCardError(null);
-                            }
-                        });
-                    }
-                }, 100);
-            } else {
+            } else if (!window.Stripe) {
                 setCardError("Stripe failed to load. Please refresh the page.");
             }
         }
-    }, [step]);
+    }, [step, stripeObj]);
+
+    // Mount Stripe card element when "new" payment option is selected
+    useEffect(() => {
+        if (step === 6 && selectedPaymentOption === 'new' && stripeObj && !cardElement) {
+            const elements = stripeObj.elements();
+            const card = elements.create('card', {
+                style: {
+                    base: {
+                        fontSize: '16px',
+                        color: '#424770',
+                        '::placeholder': {
+                            color: '#aab7c4',
+                        },
+                    },
+                    invalid: {
+                        color: '#9e2146',
+                    },
+                },
+            });
+
+            // Mount to div with a slight delay to ensure DOM is ready
+            setTimeout(() => {
+                const mountPoint = document.getElementById('card-element-mount');
+                if (mountPoint && !mountPoint.hasChildNodes()) {
+                    card.mount('#card-element-mount');
+                    setCardElement(card);
+
+                    card.on('change', (event) => {
+                        if (event.error) {
+                            setCardError(event.error.message);
+                        } else {
+                            setCardError(null);
+                        }
+                    });
+                }
+            }, 100);
+        }
+    }, [step, selectedPaymentOption, stripeObj, cardElement]);
 
     // Cleanup Stripe
     useEffect(() => {
@@ -227,7 +241,12 @@ export default function BookingFlowNew({ onBack, onComplete }) {
             case 3: return true; // Add-ons optional
             case 4: return !!selectedDate && !!selectedTimeSlot;
             case 5: return true; // Notes optional
-            case 6: return true; // We check card validity on submit mostly, or listen to change
+            case 6:
+                // For payment: either saved card selected, or new card with Stripe ready
+                if (selectedPaymentOption === 'new') {
+                    return !!stripeObj; // Just check if Stripe is loaded, card element can load on demand
+                }
+                return !!selectedPaymentOption; // Saved card selected
             default: return false;
         }
     };
@@ -247,25 +266,61 @@ export default function BookingFlowNew({ onBack, onComplete }) {
     };
 
     const handleSubmit = async () => {
-        if (!stripeObj || !cardElement) return;
+        console.log('Payment submit clicked', {
+            selectedPaymentOption,
+            hasStripe: !!stripeObj,
+            hasCardElement: !!cardElement
+        });
+
+        // If new card selected, we need stripeObj and cardElement
+        if (selectedPaymentOption === 'new' && (!stripeObj || !cardElement)) {
+            const errorMsg = !stripeObj
+                ? 'Stripe is still loading. Please wait a moment and try again.'
+                : 'Card form is loading. Please wait a moment and try again.';
+            setCardError(errorMsg);
+            console.error('Payment validation failed:', errorMsg);
+            return;
+        }
 
         try {
             setLoading(true);
             setCardError(null);
 
-            // Create Payment Method
-            const { error, paymentMethod } = await stripeObj.createPaymentMethod({
-                type: 'card',
-                card: cardElement,
-            });
+            let paymentMethodId = selectedPaymentOption;
 
-            if (error) {
-                setCardError(error.message);
-                setLoading(false);
-                return;
+            // Handle New Customer Card
+            if (selectedPaymentOption === 'new') {
+                const { error, paymentMethod } = await stripeObj.createPaymentMethod({
+                    type: 'card',
+                    card: cardElement,
+                });
+
+                if (error) {
+                    setCardError(error.message);
+                    setLoading(false);
+                    return;
+                }
+
+                paymentMethodId = paymentMethod.id;
+
+                // Save for future?
+                if (saveCardForFuture && (savedCards?.length || 0) < 2) {
+                    const newCard = {
+                        id: paymentMethod.id,
+                        brand: paymentMethod.card.brand,
+                        last4: paymentMethod.card.last4,
+                        expMonth: paymentMethod.card.exp_month,
+                        expYear: paymentMethod.card.exp_year,
+                        isDefault: false
+                    };
+                    const updatedCards = [...savedCards, newCard];
+                    // Save to user profile
+                    await updateUser({ paymentMethods: updatedCards });
+                }
+                console.log('Payment Success (New):', paymentMethod);
+            } else {
+                console.log('Payment Success (Saved):', paymentMethodId);
             }
-
-            console.log('Payment Success:', paymentMethod);
 
             const booking = await createBooking({
                 houseId: selectedHouseId,
@@ -277,6 +332,9 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                 totalAmount: calculateTotal().total,
                 discount: discount
             });
+
+            // Store the created booking for confirmation screen
+            setCreatedBooking(booking);
 
             // Fetch eligible cleaners to show who was notified
             try {
@@ -291,7 +349,14 @@ export default function BookingFlowNew({ onBack, onComplete }) {
 
         } catch (error) {
             console.error('Booking error:', error);
-            setCardError('Payment failed processing. Please try again.');
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                error: error
+            });
+            // Show detailed error message
+            const errorMessage = error.message || 'Payment failed processing. Please try again.';
+            setCardError(`Payment failed: ${errorMessage}`);
         } finally {
             setLoading(false);
         }
@@ -351,9 +416,6 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                                     <div className="flex-1">
                                         <div className="font-bold">{service.name}</div>
                                         <div className="text-sm text-gray-500">{service.description}</div>
-                                        <div className="text-sm text-teal-700 font-semibold mt-1">
-                                            ${service.rate}/sqft
-                                        </div>
                                     </div>
                                     {selectedServiceId === service.id && (
                                         <CheckCircle2 className="w-6 h-6 text-teal-600" />
@@ -362,14 +424,7 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                             </button>
                         ))}
 
-                        {selectedHouse && selectedService && (
-                            <div className="p-4 bg-gray-50 rounded-xl">
-                                <div className="text-sm text-gray-600">Estimated base price</div>
-                                <div className="text-2xl font-bold text-gray-900">
-                                    ${((selectedHouse.size || selectedHouse.sqft || 0) * selectedService.rate).toFixed(2)}
-                                </div>
-                            </div>
-                        )}
+
                     </div>
                 );
 
@@ -528,7 +583,7 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                         />
 
                         <div className="flex flex-wrap gap-2">
-                            {['Focus on bathrooms', 'Pet-friendly products', 'Eco-friendly only'].map(suggestion => (
+                            {['Focus on bathrooms', 'Pet-friendly products', 'Eco-friendly only', 'Key under mat', 'Don\'t ring doorbell', 'Trash out', 'Change bed linens', 'Call upon arrival'].map(suggestion => (
                                 <button
                                     key={suggestion}
                                     onClick={() => setNotes(notes ? `${notes}\n• ${suggestion}` : `• ${suggestion}`)}
@@ -543,10 +598,19 @@ export default function BookingFlowNew({ onBack, onComplete }) {
 
             case 6:
                 const { total, subtotal, discountAmount, tax } = calculateTotal();
+                const canSaveNewCard = (savedCards?.length || 0) < 2;
+
                 return (
                     <div className="space-y-4">
                         <h2 className="text-2xl font-bold">Payment</h2>
                         <p className="text-gray-500">Complete your booking with Stripe</p>
+
+                        {/* General Error Display */}
+                        {cardError && selectedPaymentOption !== 'new' && (
+                            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                                {cardError}
+                            </div>
+                        )}
 
                         {/* Promo Code */}
                         <div className="flex gap-2">
@@ -574,9 +638,7 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                         <div className="p-4 bg-gray-50 rounded-xl space-y-2">
                             <div className="flex justify-between text-sm">
                                 <span className="text-gray-600">Subtotal</span>
-                                <span className="font-medium">
-                                    ${subtotal.toFixed(2)}
-                                </span>
+                                <span className="font-medium">${subtotal.toFixed(2)}</span>
                             </div>
                             {discountAmount > 0 && (
                                 <div className="flex justify-between text-sm text-green-600">
@@ -598,20 +660,107 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                             </div>
                             <div className="border-t pt-2 flex justify-between">
                                 <span className="font-bold">Total</span>
-                                <span className="text-2xl font-bold text-teal-700">
-                                    ${total.toFixed(2)}
-                                </span>
+                                <span className="text-2xl font-bold text-teal-700">${total.toFixed(2)}</span>
                             </div>
                         </div>
 
-                        {/* Payment Form - Vanilla Stripe Elements Mount Point */}
+                        {/* Payment Selection */}
                         <div className="space-y-3">
-                            <div className="p-4 border-2 border-gray-200 rounded-lg bg-white">
-                                <div id="card-element-mount" style={{ minHeight: '40px' }} />
-                            </div>
-                            {cardError && (
-                                <div className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">
-                                    {cardError}
+                            <h3 className="font-bold text-gray-900 mt-4">Payment Method</h3>
+
+                            {/* Saved Cards */}
+                            {savedCards.map(card => (
+                                <button
+                                    key={card.id}
+                                    onClick={() => setSelectedPaymentOption(card.id)}
+                                    className={`w-full p-4 rounded-xl border-2 text-left flex items-center gap-3 transition-colors ${selectedPaymentOption === card.id
+                                        ? 'border-teal-600 bg-teal-50'
+                                        : 'border-gray-200 hover:border-gray-100'
+                                        }`}
+                                >
+                                    {(() => {
+                                        const b = (card.brand || '').toLowerCase();
+                                        if (b === 'visa') return (
+                                            <div className="w-10 h-7 bg-[#1A1F71] rounded-sm flex items-center justify-center flex-shrink-0 shadow-sm">
+                                                <span className="text-[10px] font-black italic text-white tracking-tight leading-none">VISA</span>
+                                            </div>
+                                        );
+                                        if (b === 'mastercard') return (
+                                            <div className="w-10 h-7 bg-[#252525] rounded-sm flex items-center justify-center flex-shrink-0 shadow-sm">
+                                                <div className="flex -space-x-1.5">
+                                                    <div className="w-3.5 h-3.5 rounded-full bg-[#EB001B]"></div>
+                                                    <div className="w-3.5 h-3.5 rounded-full bg-[#F79E1B]"></div>
+                                                </div>
+                                            </div>
+                                        );
+                                        if (b === 'amex') return (
+                                            <div className="w-10 h-7 bg-[#006FCF] rounded-sm flex items-center justify-center flex-shrink-0 shadow-sm">
+                                                <span className="text-[8px] font-bold text-white leading-none text-center">AM<br />EX</span>
+                                            </div>
+                                        );
+                                        return (
+                                            <div className="w-10 h-7 bg-gray-100 border border-gray-200 rounded-sm flex items-center justify-center flex-shrink-0">
+                                                <CreditCard className="w-4 h-4 text-gray-400" />
+                                            </div>
+                                        );
+                                    })()}
+                                    <div className="flex-1">
+                                        <div className="font-bold text-gray-900">•••• {card.last4}</div>
+                                        <div className="text-xs text-gray-500">Expires {card.expMonth}/{card.expYear}</div>
+                                    </div>
+                                    {selectedPaymentOption === card.id && (
+                                        <CheckCircle2 className="w-5 h-5 text-teal-600" />
+                                    )}
+                                </button>
+                            ))}
+
+                            {/* New Card Option */}
+                            <button
+                                onClick={() => setSelectedPaymentOption('new')}
+                                className={`w-full p-4 rounded-xl border-2 text-left flex items-center gap-3 transition-colors ${selectedPaymentOption === 'new'
+                                    ? 'border-teal-600 bg-teal-50'
+                                    : 'border-gray-200 hover:border-gray-100'
+                                    }`}
+                            >
+                                <div className="w-10 h-6 bg-white border border-gray-200 rounded flex items-center justify-center">
+                                    <Plus className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <span className="font-bold text-gray-900">Add New Card</span>
+                                {selectedPaymentOption === 'new' && (
+                                    <CheckCircle2 className="w-5 h-5 text-teal-600 ml-auto" />
+                                )}
+                            </button>
+
+                            {/* Stripe Element (Only if 'new' selected) */}
+                            {selectedPaymentOption === 'new' && (
+                                <div className="space-y-3 animate-fade-in pl-1">
+                                    <div className="p-4 border-2 border-gray-200 rounded-lg bg-white">
+                                        <div id="card-element-mount" style={{ minHeight: '40px' }} />
+                                    </div>
+
+                                    {/* Save Card Checkbox */}
+                                    {canSaveNewCard && (
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={saveCardForFuture}
+                                                onChange={(e) => setSaveCardForFuture(e.target.checked)}
+                                                className="checkbox checkbox-sm checkbox-primary rounded"
+                                            />
+                                            <span className="text-sm text-gray-600">Save card for future bookings</span>
+                                        </label>
+                                    )}
+                                    {!canSaveNewCard && (
+                                        <p className="text-xs text-gray-400 italic">
+                                            You have reached the limit of 2 saved cards. Manage them in your Profile.
+                                        </p>
+                                    )}
+
+                                    {cardError && (
+                                        <div className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">
+                                            {cardError}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -628,7 +777,7 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                         <p className="text-gray-500">Your cleaning has been scheduled</p>
                         <div className="p-4 bg-teal-50 rounded-xl">
                             <div className="text-sm text-gray-600">Booking ID</div>
-                            <div className="text-xl font-bold text-teal-700">BKG-{Date.now().toString().slice(-6)}</div>
+                            <div className="text-xl font-bold text-teal-700">{createdBooking?.bookingId || 'Generating...'}</div>
                         </div>
 
                         {/* Notified Cleaners Table */}

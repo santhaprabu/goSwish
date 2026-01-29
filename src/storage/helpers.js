@@ -83,10 +83,131 @@ export const deleteHouse = async (houseId) => {
 // ============================================
 
 /**
+ * Check if booking number exists in database
+ */
+const bookingNumberExists = async (bookingNumber) => {
+    const existingBookings = await queryDocs(COLLECTIONS.BOOKINGS, 'bookingId', bookingNumber);
+    return existingBookings.length > 0;
+};
+
+/**
+ * Normalize state name to 2-letter code
+ * Complete mapping for all 50 US states + DC
+ */
+const normalizeStateCode = (state) => {
+    if (!state) return 'TX'; // Default to Texas
+
+    // If already 2 letters, return as is (uppercase)
+    if (state.length === 2) return state.toUpperCase();
+
+    // Complete map of all 50 US states + DC
+    const stateMap = {
+        // Most populous states
+        'california': 'CA', 'texas': 'TX', 'florida': 'FL', 'new york': 'NY',
+        'pennsylvania': 'PA', 'illinois': 'IL', 'ohio': 'OH', 'georgia': 'GA',
+        'north carolina': 'NC', 'michigan': 'MI',
+
+        // Northeastern states
+        'new jersey': 'NJ', 'massachusetts': 'MA', 'virginia': 'VA', 'washington': 'WA',
+        'arizona': 'AZ', 'tennessee': 'TN', 'indiana': 'IN', 'maryland': 'MD',
+        'missouri': 'MO', 'wisconsin': 'WI', 'colorado': 'CO', 'minnesota': 'MN',
+
+        // Southern states
+        'south carolina': 'SC', 'alabama': 'AL', 'louisiana': 'LA', 'kentucky': 'KY',
+        'oklahoma': 'OK', 'connecticut': 'CT', 'utah': 'UT', 'iowa': 'IA',
+        'nevada': 'NV', 'arkansas': 'AR', 'mississippi': 'MS', 'kansas': 'KS',
+
+        // Western & Mountain states
+        'new mexico': 'NM', 'nebraska': 'NE', 'idaho': 'ID', 'west virginia': 'WV',
+        'hawaii': 'HI', 'new hampshire': 'NH', 'maine': 'ME', 'rhode island': 'RI',
+        'montana': 'MT', 'delaware': 'DE', 'south dakota': 'SD', 'north dakota': 'ND',
+        'alaska': 'AK', 'vermont': 'VT', 'wyoming': 'WY', 'oregon': 'OR',
+
+        // DC
+        'district of columbia': 'DC', 'washington dc': 'DC', 'washington d.c.': 'DC'
+    };
+
+    const normalized = stateMap[state.toLowerCase()];
+    return normalized || state.substring(0, 2).toUpperCase(); // Fallback to first 2 chars
+};
+
+/**
+ * Generate unique booking number
+ * Format: XX-YYYY-MMDD-#####
+ * Example: TX-2026-1026-38547
+ * Ensures uniqueness by checking database and regenerating if needed
+ */
+const generateBookingNumber = async (houseId, bookingDate) => {
+    try {
+        // Get house to extract state code
+        const house = await getHouseById(houseId);
+        console.log('🏠 House lookup for booking:', {
+            houseId,
+            found: !!house,
+            address: house?.address,
+            state: house?.address?.state
+        });
+
+        if (!house) {
+            throw new Error(`House not found with ID: ${houseId}`);
+        }
+
+        const rawState = house?.address?.state;
+        const stateCode = normalizeStateCode(rawState);
+        console.log('📍 State normalization:', { rawState, stateCode });
+
+        // Get current year
+        const year = new Date().getFullYear();
+
+        // Format booking date as MMDD
+        const date = new Date(bookingDate);
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const mmdd = `${month}${day}`;
+
+        // Keep trying until we get a unique booking number
+        let bookingNumber;
+        let attempts = 0;
+        const maxAttempts = 100; // Prevent infinite loop
+
+        do {
+            // Generate 5 random digits
+            const randomDigits = String(Math.floor(Math.random() * 100000)).padStart(5, '0');
+            bookingNumber = `${stateCode}-${year}-${mmdd}-${randomDigits}`;
+            attempts++;
+
+            // Check if this number already exists
+            const exists = await bookingNumberExists(bookingNumber);
+            if (!exists) {
+                break; // Found a unique number
+            }
+
+            if (attempts >= maxAttempts) {
+                // Fallback: add timestamp to ensure uniqueness
+                bookingNumber = `${stateCode}-${year}-${mmdd}-${String(Date.now()).slice(-5)}`;
+                console.warn('⚠️ Max attempts reached for booking number generation, using timestamp fallback');
+                break;
+            }
+        } while (true);
+
+        console.log(`✅ Generated unique booking number: ${bookingNumber} (attempts: ${attempts})`);
+        return bookingNumber;
+    } catch (error) {
+        console.error('Error generating booking number:', error);
+        // Fallback to simple timestamp-based ID
+        const fallbackNumber = `US-${new Date().getFullYear()}-${String(Date.now()).slice(-9)}`;
+        console.warn('Using fallback booking number:', fallbackNumber);
+        return fallbackNumber;
+    }
+};
+
+/**
  * Create booking
  */
 export const createBooking = async (customerId, bookingData) => {
-    const bookingNumber = `GS-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+    // Generate unique booking number based on house state and first booking date
+    const firstBookingDate = bookingData.dates?.[0] || new Date().toISOString();
+    const bookingNumber = await generateBookingNumber(bookingData.houseId, firstBookingDate);
 
     const booking = {
         id: generateId('booking'),
@@ -803,9 +924,9 @@ export const getCleanerEarnings = async (cleanerId, period = 'all') => {
         });
     }
 
-    const earnings = filteredJobs.reduce((sum, j) => sum + (j.amount || j.earnings || 0), 0);
-    const tips = filteredJobs.reduce((sum, j) => sum + (j.tip || 0), 0);
-    const hours = filteredJobs.reduce((sum, j) => sum + (j.duration || 2), 0); // Default 2 hours per job
+    const earnings = filteredJobs.reduce((sum, j) => sum + Number(j.amount || j.earnings || 0), 0);
+    const tips = filteredJobs.reduce((sum, j) => sum + Number(j.tip || 0), 0);
+    const hours = filteredJobs.reduce((sum, j) => sum + Number(j.duration || 2), 0); // Default 2 hours per job
 
     return {
         earnings,
@@ -821,6 +942,9 @@ export const getCleanerEarnings = async (cleanerId, period = 'all') => {
  */
 export const getCleanerDailyEarnings = async (cleanerId, days = 7) => {
     const jobs = await getCleanerJobs(cleanerId);
+    // Include 'completed' and 'scheduled' for better visualization if needed, but usually earnings are for completed.
+    // However, user data showed 'regular' jobs which might be completed.
+    // Let's stick to 'completed' but ensure we parse amounts properly.
     const completedJobs = jobs.filter(j => j.status === 'completed');
 
     const dailyEarnings = [];
@@ -839,7 +963,7 @@ export const getCleanerDailyEarnings = async (cleanerId, days = 7) => {
         dailyEarnings.push({
             day: dayName,
             date: dateStr,
-            earnings: dayJobs.reduce((sum, j) => sum + (j.amount || j.earnings || 0), 0),
+            earnings: dayJobs.reduce((sum, j) => sum + Number(j.amount || j.earnings || 0), 0),
             jobs: dayJobs.length,
         });
     }
@@ -1100,9 +1224,158 @@ export const cleanupOldAvailability = async (cleanerId, daysToKeep = 7) => {
     });
 };
 
+// ============================================
+// GEOLOCATION & PROXIMITY UTILITIES
+// ============================================
+
 /**
- * Broadcast new job to cleaners
+ * Calculate straight-line distance between two points (Haversine Formula)
+ * @returns {number} Distance in miles
  */
+export const calculateGeoDistance = (loc1, loc2) => {
+    if (!loc1?.lat || !loc1?.lng || !loc2?.lat || !loc2?.lng) return 999;
+
+    // Check if it's the same coordinate to avoid math errors
+    if (loc1.lat === loc2.lat && loc1.lng === loc2.lng) return 0;
+
+    const R = 3959; // Earth's radius in miles
+    const dLat = (loc2.lat - loc1.lat) * Math.PI / 180;
+    const dLng = (loc2.lng - loc1.lng) * Math.PI / 180;
+
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(loc1.lat * Math.PI / 180) * Math.cos(loc2.lat * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+};
+
+/**
+ * Estimate road distance and travel time
+ * Straight line is multiplied by a "Road Curvature Factor" (typically 1.3 - 1.4)
+ * @returns {Object} { roadMiles, travelMinutes }
+ */
+export const calculateTravelEstimate = (loc1, loc2) => {
+    const airMiles = calculateGeoDistance(loc1, loc2);
+
+    // Industry standard: Road distance is approx 30% longer than air distance
+    const roadMiles = airMiles * 1.3;
+
+    // Average city speed estimate: 25-30 mph (including lights/traffic)
+    // 30 mph = 0.5 miles per minute => 2 minutes per mile
+    const travelMinutes = roadMiles * 2.2;
+
+    return {
+        airMiles: Math.round(airMiles * 10) / 10,
+        roadMiles: Math.round(roadMiles * 10) / 10,
+        travelMinutes: Math.round(travelMinutes)
+    };
+};
+
+/**
+ * Calculate match score between a cleaner and a booking
+ * @returns {Object} { score, matchDescription, distance, isEligible }
+ */
+export const calculateMatchScore = async (booking, cleaner, house = null, customer = null, previousCleaners = null) => {
+    try {
+        // 1. Fetch missing data if not provided
+        if (!house && booking.houseId) house = await getDoc(COLLECTIONS.HOUSES, booking.houseId);
+        if (!house) return { score: 0, isEligible: false, error: 'House not found' };
+
+        if (!customer && booking.customerId) customer = await getDoc(COLLECTIONS.USERS, booking.customerId);
+
+        if (previousCleaners === null && booking.customerId) {
+            const previousBookings = await getCustomerBookings(booking.customerId);
+            previousCleaners = new Set(
+                previousBookings
+                    .filter(b => b.status === 'completed' && b.cleanerId)
+                    .map(b => b.cleanerId)
+            );
+        }
+
+        // 2. Base Filters (Hard Constraints)
+        if (cleaner.status !== 'active') return { score: 0, isEligible: false };
+
+        // City Boundary Check (Safety Fallback)
+        // If cleaner is in Dallas and house is in Houston, reject immediately even if GPS is missing
+        if (cleaner.baseLocation?.city && house.address?.city) {
+            if (cleaner.baseLocation.city !== house.address.city) {
+                // We allow matching across "Dallas" and "Fort Worth" (Dugout area) but not Dallas/Houston
+                const metroAreas = {
+                    'Dallas': 'DFW',
+                    'Fort Worth': 'DFW',
+                    'Houston': 'HOU',
+                    'Austin': 'AUS',
+                    'San Antonio': 'SA'
+                };
+                const cleanerMetro = metroAreas[cleaner.baseLocation.city];
+                const houseMetro = metroAreas[house.address.city];
+
+                if (cleanerMetro && houseMetro && cleanerMetro !== houseMetro) {
+                    return { score: 0, isEligible: false, error: 'Wrong Metro Area' };
+                }
+            }
+        }
+
+        // Service support
+        const supportsService = !booking.serviceTypeId ||
+            (cleaner.serviceTypes && cleaner.serviceTypes.includes(booking.serviceTypeId));
+        if (!supportsService) return { score: 0, isEligible: false };
+
+        // Distance & Travel estimation
+        const travel = calculateTravelEstimate(cleaner.baseLocation, house.address);
+        const distance = travel.airMiles;
+
+        if (distance > (cleaner.serviceRadius || 25)) {
+            return { score: 0, isEligible: false, distance, error: 'Outside Service Radius' };
+        }
+
+        // Availability check
+        const isBusy = await checkCleanerConflict(cleaner.id, booking.dates || [], booking.timeSlots || {});
+        if (isBusy) return { score: 0, isEligible: false, distance, error: 'Busy' };
+
+        // Pet compatibility
+        const houseHasPets = (house.pets && house.pets.hasPets) ||
+            (house.petInfo && house.petInfo !== 'No pets');
+
+        if (houseHasPets && cleaner.petFriendly === false) {
+            return { score: 0, isEligible: false, distance, error: 'Pets' };
+        }
+
+        // -- SCORING LOGIC --
+        let score = 50; // Base score for meeting requirements
+
+        // 1. Relationship Score (Highest priority)
+        if (previousCleaners?.has(cleaner.id)) score += 50;
+
+        // 2. Proximity Score
+        if (distance < 5) score += 20;
+        else if (distance < 10) score += 10;
+
+        // 3. Rating Score
+        if (cleaner.rating >= 4.8) score += 20;
+        else if (cleaner.rating >= 4.5) score += 10;
+
+        // 4. Experience Score
+        if (cleaner.yearsExperience >= 5) score += 10;
+
+        // 5. Reliability
+        if (cleaner.stats?.reliabilityScore > 95) score += 10;
+
+        const matchDescription = score > 100 ? 'Premier Match' : score > 75 ? 'Highly Recommended' : 'Strong Match';
+
+        return {
+            score,
+            matchDescription,
+            distance: Math.round(distance * 10) / 10,
+            isEligible: true
+        };
+    } catch (e) {
+        console.error('Error calculating match score:', e);
+        return { score: 0, isEligible: false };
+    }
+};
+
 /**
  * Check if cleaner has a conflicting job
  */
@@ -1131,12 +1404,23 @@ export const checkCleanerConflict = async (cleanerId, dates, timeSlots) => {
                 // But let's try to be smart.
                 // If the new request is 'morning' and existing job is 'afternoon', it's fine.
 
-                // However, our job model might not store "slot". It stores startTime/endTime.
-                // Let's parse startTime to slot.
                 let jobSlot = 'morning'; // Default
-                const hour = new Date(job.startTime || job.scheduledDate).getHours();
-                if (hour >= 12 && hour < 15) jobSlot = 'afternoon';
-                if (hour >= 15) jobSlot = 'evening';
+
+                // Smart slot parsing
+                const timeStr = job.startTime || '';
+                if (timeStr && timeStr.includes(':')) {
+                    const hour = parseInt(timeStr.split(':')[0], 10);
+                    if (hour >= 12 && hour < 15) jobSlot = 'afternoon';
+                    if (hour >= 15) jobSlot = 'evening';
+                } else {
+                    // Fallback to date parsing if it's a full ISO string
+                    const d = new Date(job.startTime || job.scheduledDate);
+                    if (!isNaN(d.getTime())) {
+                        const hour = d.getHours();
+                        if (hour >= 12 && hour < 15) jobSlot = 'afternoon';
+                        if (hour >= 15) jobSlot = 'evening';
+                    }
+                }
 
                 if (requestedSlots.includes(jobSlot)) {
                     return true; // Conflict found
@@ -1153,64 +1437,42 @@ export const checkCleanerConflict = async (cleanerId, dates, timeSlots) => {
  */
 export const broadcastNewJob = async (booking) => {
     try {
-        // 1. Get House for location
+        console.log('🔍 Matching cleaners for broadcasting:', booking.id);
+
         const house = await getDoc(COLLECTIONS.HOUSES, booking.houseId);
         if (!house) return;
 
-        // 2. Get all cleaners
+        const previousBookings = await getCustomerBookings(booking.customerId);
+        const previousCleaners = new Set(
+            previousBookings
+                .filter(b => b.status === 'completed' && b.cleanerId)
+                .map(b => b.cleanerId)
+        );
+
         const cleaners = await getDocs(COLLECTIONS.CLEANERS);
-
-        // Helper to calc distance (simple Haversine)
-        const getDist = (loc1, loc2) => {
-            if (!loc1?.lat || !loc2?.lat) return 999;
-            const R = 3959; // miles
-            const dLat = (loc2.lat - loc1.lat) * Math.PI / 180;
-            const dLng = (loc2.lng - loc1.lng) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(loc1.lat * Math.PI / 180) * Math.cos(loc2.lat * Math.PI / 180) *
-                Math.sin(dLng / 2) * Math.sin(dLng / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
-        };
-
-        // 3. Filter eligible cleaners
-        const eligibleCleaners = [];
+        const eligibleMatches = [];
 
         for (const cleaner of cleaners) {
-            if (cleaner.status !== 'active') continue;
-
-            // Check distance
-            if (cleaner.baseLocation && house.address) {
-                const dist = getDist(cleaner.baseLocation, house.address);
-                if (dist > (cleaner.serviceRadius || 25)) continue;
+            const match = await calculateMatchScore(booking, cleaner, house, null, previousCleaners);
+            if (match.isEligible) {
+                eligibleMatches.push({ cleaner, ...match });
             }
-
-            // Check service type
-            if (booking.serviceTypeId && cleaner.serviceTypes && !cleaner.serviceTypes.includes(booking.serviceTypeId)) {
-                // Skip if cleaner doesn't support this service
-                continue;
-            }
-
-            // Check availability (Calendar Blocking)
-            const isBusy = await checkCleanerConflict(cleaner.id, booking.dates || [], booking.timeSlots || {});
-            if (isBusy) {
-                console.log(`Skipping cleaner ${cleaner.name} - Calendar blocked`);
-                continue;
-            }
-
-            eligibleCleaners.push(cleaner);
         }
 
-        console.log(`Broadcasting job ${booking.id} to ${eligibleCleaners.length} cleaners`);
+        // Sort by score
+        eligibleMatches.sort((a, b) => b.score - a.score);
+        const topMatches = eligibleMatches.slice(0, 15);
 
-        // 4. Create notifications per cleaner
-        const createPromises = eligibleCleaners.map(cleaner => {
+        console.log(`🎯 Broadcasting to top ${topMatches.length} matches`);
+
+        const createPromises = topMatches.map(({ cleaner, score, matchDescription }) => {
+            const earnings = Math.round(booking.totalAmount * 0.7);
             const notif = {
                 id: generateId('notification'),
                 userId: cleaner.userId,
                 type: 'job_offer',
-                title: 'New Job Available!',
-                message: `New ${booking.serviceTypeId} job near you ($${Math.round(booking.totalAmount * 0.7)})`,
+                title: 'New Match: ' + matchDescription,
+                message: `New ${booking.serviceTypeId} job near you ($${earnings}). Match score: ${score}%`,
                 relatedId: booking.id,
                 read: false,
                 createdAt: new Date().toISOString()
@@ -1219,8 +1481,9 @@ export const broadcastNewJob = async (booking) => {
         });
 
         await Promise.all(createPromises);
+
     } catch (e) {
-        console.error('Error broadcasting job:', e);
+        console.error('❌ Error broadcasting job:', e);
     }
 };
 
@@ -1292,7 +1555,7 @@ export const verifyJobCode = async (bookingId, role, codeProvided) => {
         }
     }
     // If I am customer, I need to match the Cleaner's code
-    else if (role === 'customer') {
+    else if (role === 'homeowner') {
         if (codeProvided === cleanerCode) {
             await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
                 'verificationCodes.customerVerified': true
@@ -1354,7 +1617,7 @@ export const approveJob = async (bookingId, ratingData) => {
                 customerId: booking.customerId,
                 cleanerName: cleaner?.name || 'Cleaner',
                 customerName: customer?.name || 'Customer',
-                reviewerRole: 'customer',
+                reviewerRole: 'homeowner',
                 rating: ratingData.rating || 5,
                 comment: ratingData.comment || '',
                 tags: ratingData.tags || [],

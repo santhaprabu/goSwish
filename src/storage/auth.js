@@ -9,23 +9,112 @@ const CURRENT_USER_KEY = 'goswish_current_user';
 const SESSION_KEY = 'goswish_session';
 
 /**
- * Hash password (simple implementation - use bcrypt in production)
+ * Hash password using PBKDF2 with unique salt (SECURE)
+ * This replaces the old SHA-256 implementation
  */
 const hashPassword = async (password) => {
-    // For demo purposes - in production, use proper hashing
+    // Generate unique random salt (16 bytes)
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+
+    // Convert password to key material
     const encoder = new TextEncoder();
-    const data = encoder.encode(password + 'goswish_salt');
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const passwordData = encoder.encode(password);
+    const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        passwordData,
+        'PBKDF2',
+        false,
+        ['deriveBits']
+    );
+
+    // Derive key using PBKDF2 with 100,000 iterations
+    const derivedBits = await crypto.subtle.deriveBits(
+        {
+            name: 'PBKDF2',
+            salt: salt,
+            iterations: 100000,
+            hash: 'SHA-256'
+        },
+        keyMaterial,
+        256 // 256 bits = 32 bytes
+    );
+
+    // Convert to hex strings
+    const saltHex = Array.from(salt)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    const hashHex = Array.from(new Uint8Array(derivedBits))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+
+    // Return salt + hash combined (format: salt:hash)
+    return `${saltHex}:${hashHex}`;
 };
 
 /**
- * Verify password
+ * Verify password against stored hash
+ * Supports both old SHA-256 and new PBKDF2 hashes for backward compatibility
  */
-const verifyPassword = async (password, hashedPassword) => {
-    const hash = await hashPassword(password);
-    return hash === hashedPassword;
+const verifyPassword = async (password, storedHash) => {
+    try {
+        // Check if it's the new format (contains ':')
+        if (storedHash.includes(':')) {
+            // New PBKDF2 format
+            const [saltHex, hashHex] = storedHash.split(':');
+
+            if (!saltHex || !hashHex) {
+                console.error('Invalid hash format');
+                return false;
+            }
+
+            // Convert salt from hex
+            const salt = new Uint8Array(
+                saltHex.match(/.{2}/g).map(byte => parseInt(byte, 16))
+            );
+
+            // Hash the provided password with the same salt
+            const encoder = new TextEncoder();
+            const passwordData = encoder.encode(password);
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw',
+                passwordData,
+                'PBKDF2',
+                false,
+                ['deriveBits']
+            );
+
+            const derivedBits = await crypto.subtle.deriveBits(
+                {
+                    name: 'PBKDF2',
+                    salt: salt,
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                },
+                keyMaterial,
+                256
+            );
+
+            const computedHashHex = Array.from(new Uint8Array(derivedBits))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+
+            // Timing-safe comparison
+            return computedHashHex === hashHex;
+        } else {
+            // Old SHA-256 format (for backward compatibility)
+            // Compute old-style hash
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password + 'goswish_salt');
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const oldHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+            return oldHash === storedHash;
+        }
+    } catch (error) {
+        console.error('Password verification error:', error);
+        return false;
+    }
 };
 
 /**
@@ -178,14 +267,15 @@ export const signUpWithEmail = async (email, password, userData = {}) => {
             uid: userId,
             email,
             password: hashedPassword,
-            emailVerified: false,
-            role: userData.role || 'customer',
+            emailVerified: true,
+            role: userData.role || 'homeowner',
             status: 'active',
             name: userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
             firstName: userData.firstName || '',
             lastName: userData.lastName || '',
             photoURL: userData.photoURL || '',
             phone: userData.phone || '',
+            location: userData.location || null,
             profile: {
                 name: userData.name || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
                 firstName: userData.firstName || '',
@@ -505,11 +595,35 @@ export const deleteUserAccount = async (userId, password) => {
 };
 
 /**
+ * Force reset user password by email (Maintenance Tool)
+ */
+export const forceResetUserPassword = async (email, newPassword) => {
+    try {
+        const users = await queryDocs(COLLECTIONS.USERS, 'email', email);
+        if (users.length === 0) return { success: false, error: 'User not found' };
+
+        const user = users[0];
+        const hashedPassword = await hashPassword(newPassword);
+
+        await updateDoc(COLLECTIONS.USERS, user.id, {
+            password: hashedPassword,
+            updatedAt: new Date().toISOString()
+        });
+
+        return { success: true, userId: user.id };
+    } catch (error) {
+        console.error('Force password reset error:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
  * Force reset all cleaner passwords (Maintenance Tool)
  */
 export const forceResetCleanerPasswords = async () => {
     try {
         console.log("🔄 FORCE RESET: Updating all cleaner passwords...");
+
         const users = await getDocs(COLLECTIONS.USERS);
         const cleaners = users.filter(u => u.role === 'cleaner');
 

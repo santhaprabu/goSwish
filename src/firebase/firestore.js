@@ -17,7 +17,31 @@ import {
     addDoc,
     onSnapshot
 } from 'firebase/firestore';
-import { db } from './config';
+import { db, auth } from './config';
+
+// ===== AUTHORIZATION HELPERS =====
+
+/**
+ * Check if user is authenticated
+ */
+const checkAuth = () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+        throw new Error('Authentication required');
+    }
+    return currentUser;
+};
+
+/**
+ * Check if user owns the resource
+ */
+const checkOwnership = (resourceUserId) => {
+    const currentUser = checkAuth();
+    if (currentUser.uid !== resourceUserId) {
+        throw new Error('Unauthorized: You can only access your own data');
+    }
+    return currentUser;
+};
 
 // ===== USERS =====
 
@@ -51,6 +75,9 @@ export const updateUser = async (uid, updates) => {
 
 export const addHouse = async (userId, houseData) => {
     try {
+        // SECURITY: Verify user owns this resource
+        checkOwnership(userId);
+
         const houseRef = doc(collection(db, 'users', userId, 'houses'));
         await setDoc(houseRef, {
             ...houseData,
@@ -65,6 +92,9 @@ export const addHouse = async (userId, houseData) => {
 
 export const getUserHouses = async (userId) => {
     try {
+        // SECURITY: Verify user owns this resource
+        checkOwnership(userId);
+
         const housesSnapshot = await getDocs(collection(db, 'users', userId, 'houses'));
         const houses = housesSnapshot.docs.map(doc => ({
             id: doc.id,
@@ -79,6 +109,9 @@ export const getUserHouses = async (userId) => {
 
 export const updateHouse = async (userId, houseId, updates) => {
     try {
+        // SECURITY: Verify user owns this resource
+        checkOwnership(userId);
+
         await updateDoc(doc(db, 'users', userId, 'houses', houseId), updates);
         return { success: true };
     } catch (error) {
@@ -89,6 +122,9 @@ export const updateHouse = async (userId, houseId, updates) => {
 
 export const deleteHouse = async (userId, houseId) => {
     try {
+        // SECURITY: Verify user owns this resource
+        checkOwnership(userId);
+
         await deleteDoc(doc(db, 'users', userId, 'houses', houseId));
         return { success: true };
     } catch (error) {
@@ -132,9 +168,9 @@ export const getBooking = async (bookingId) => {
     }
 };
 
-export const getUserBookings = async (userId, role = 'customer') => {
+export const getUserBookings = async (userId, role = 'homeowner') => {
     try {
-        const fieldName = role === 'customer' ? 'customerId' : 'cleanerId';
+        const fieldName = role === 'homeowner' ? 'customerId' : 'cleanerId';
         const q = query(
             collection(db, 'bookings'),
             where(fieldName, '==', userId),
