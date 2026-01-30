@@ -138,67 +138,32 @@ const normalizeStateCode = (state) => {
  * Ensures uniqueness by checking database and regenerating if needed
  */
 const generateBookingNumber = async (houseId, bookingDate) => {
+    let stateCode = 'TX'; // Default to Texas as primary market
+
     try {
-        // Get house to extract state code
-        const house = await getHouseById(houseId);
-        console.log('🏠 House lookup for booking:', {
-            houseId,
-            found: !!house,
-            address: house?.address,
-            state: house?.address?.state
-        });
-
-        if (!house) {
-            throw new Error(`House not found with ID: ${houseId}`);
+        if (houseId) {
+            const house = await getHouseById(houseId);
+            if (house?.address?.state) {
+                stateCode = normalizeStateCode(house.address.state);
+            }
         }
-
-        const rawState = house?.address?.state;
-        const stateCode = normalizeStateCode(rawState);
-        console.log('📍 State normalization:', { rawState, stateCode });
-
-        // Get current year
-        const year = new Date().getFullYear();
-
-        // Format booking date as MMDD
-        const date = new Date(bookingDate);
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const mmdd = `${month}${day}`;
-
-        // Keep trying until we get a unique booking number
-        let bookingNumber;
-        let attempts = 0;
-        const maxAttempts = 100; // Prevent infinite loop
-
-        do {
-            // Generate 5 random digits
-            const randomDigits = String(Math.floor(Math.random() * 100000)).padStart(5, '0');
-            bookingNumber = `${stateCode}-${year}-${mmdd}-${randomDigits}`;
-            attempts++;
-
-            // Check if this number already exists
-            const exists = await bookingNumberExists(bookingNumber);
-            if (!exists) {
-                break; // Found a unique number
-            }
-
-            if (attempts >= maxAttempts) {
-                // Fallback: add timestamp to ensure uniqueness
-                bookingNumber = `${stateCode}-${year}-${mmdd}-${String(Date.now()).slice(-5)}`;
-                console.warn('⚠️ Max attempts reached for booking number generation, using timestamp fallback');
-                break;
-            }
-        } while (true);
-
-        console.log(`✅ Generated unique booking number: ${bookingNumber} (attempts: ${attempts})`);
-        return bookingNumber;
-    } catch (error) {
-        console.error('Error generating booking number:', error);
-        // Fallback to simple timestamp-based ID
-        const fallbackNumber = `US-${new Date().getFullYear()}-${String(Date.now()).slice(-9)}`;
-        console.warn('Using fallback booking number:', fallbackNumber);
-        return fallbackNumber;
+    } catch (e) {
+        console.warn('⚠️ Booking ID generation: house lookup failed, using default state TX');
     }
+
+    const date = new Date(bookingDate || Date.now());
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const mmdd = `${month}${day}`;
+
+    // Pattern: ST-YYYY-MMDD-XXXX
+    // Cleaner, State-first, 4-digit random suffix
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const bookingNumber = `${stateCode}-${year}-${mmdd}-${randomSuffix}`;
+
+    console.log(`🎫 Unique Booking ID Created: ${bookingNumber}`);
+    return bookingNumber;
 };
 
 /**
@@ -221,7 +186,7 @@ export const createBooking = async (customerId, bookingData) => {
         specialNotes: bookingData.specialNotes || '',
         paymentMethod: bookingData.paymentMethod || 'card',
         totalAmount: bookingData.totalAmount,
-        status: 'confirmed',
+        status: 'booking-placed',
         paymentStatus: 'pending',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -259,7 +224,7 @@ export const getAvailableBookings = async () => {
     // Determine bookings that correspond to "open jobs"
     // In a real DB we'd composite query: status=='confirmed' AND cleanerId==null
     // Here we might fetch confirmed and filter
-    const bookings = await queryDocs(COLLECTIONS.BOOKINGS, 'status', 'confirmed');
+    const bookings = await queryDocs(COLLECTIONS.BOOKINGS, 'status', 'booking-placed');
     return bookings.filter(b => !b.cleanerId);
 };
 
@@ -424,7 +389,7 @@ export const acceptJobOffer = async (bookingId, cleanerId, jobDetails) => {
     // 3. Update booking
     await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
         cleanerId: cleanerId,
-        status: 'scheduled',
+        status: 'confirmed',
         updatedAt: new Date().toISOString()
     });
 

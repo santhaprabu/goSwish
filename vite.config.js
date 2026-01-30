@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true, // Listen on all addresses for mobile testing
-    port: 5173,
+    port: 5174,
   },
   build: {
     target: 'esnext',

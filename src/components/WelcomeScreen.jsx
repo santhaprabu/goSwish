@@ -374,16 +374,24 @@ export default function WelcomeScreen({ onSuccess, initialMode = 'welcome' }) {
                         </button>
                         <button
                             onClick={async () => {
-                                if (confirm("Wipe & Reseed?")) {
+                                setLoading(true); // Show loading state on the button itself if possible, or just global loading
+                                console.log('🔄 Resetting Database immediately...');
+                                try {
                                     const { clearDatabase, seedAllData } = await import('../storage');
                                     await clearDatabase();
                                     await seedAllData();
+                                    console.log('✅ Database reset complete');
                                     window.location.reload();
+                                } catch (error) {
+                                    console.error("Failed to reset DB:", error);
+                                    alert("Failed to reset database");
+                                    setLoading(false);
                                 }
                             }}
-                            className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-red-50 hover:text-red-500"
+                            disabled={loading}
+                            className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
                         >
-                            Reset DB
+                            {loading ? 'Resetting...' : 'Reset DB'}
                         </button>
                     </div>
                 </div>
@@ -419,8 +427,12 @@ export default function WelcomeScreen({ onSuccess, initialMode = 'welcome' }) {
                     </div>
 
                     {error && (
-                        <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-sm font-semibold flex items-center gap-3 animate-in shake">
-                            <div className="w-1.5 h-1.5 bg-red-600 rounded-full" />
+                        <div className={`mb-6 p-4 rounded-2xl text-sm font-semibold flex items-center gap-3 animate-in shake ${error.includes('OTP code sent')
+                                ? 'bg-teal-50 border border-teal-100 text-teal-700'
+                                : 'bg-red-50 border border-red-100 text-red-600'
+                            }`}>
+                            <div className={`w-1.5 h-1.5 rounded-full ${error.includes('OTP code sent') ? 'bg-teal-600' : 'bg-red-600'
+                                }`} />
                             {error}
                         </div>
                     )}

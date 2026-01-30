@@ -71,7 +71,7 @@ const TIME_SLOTS = [
 export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
     console.log('BookingFlow mounted. InitialHouseId:', initialHouseId);
     const {
-        user, getUserHouses, serviceTypes, addOns: availableAddOns,
+        user, getUserHouses, serviceTypes, addOns: availableAddOns, metroMultipliers,
         calculatePrice, validatePromoCode, createBooking, findEligibleCleaners
     } = useApp();
 
@@ -164,14 +164,37 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
     const [bookingResult, setBookingResult] = useState(null);
 
     // Calculate price
-    const pricing = useMemo(() => {
-        if (!selectedHouseId || !selectedServiceType) return null;
-        return calculatePrice(
-            selectedHouseId,
-            selectedServiceType,
-            selectedAddOns,
-            appliedPromo?.code
-        );
+    const [pricing, setPricing] = useState(null);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        async function fetchPrice() {
+            // Debug logs
+            console.log('💰 Calculating price...', { selectedHouseId, selectedServiceType });
+
+            if (!selectedHouseId || !selectedServiceType) {
+                if (isMounted) setPricing(null);
+                return;
+            }
+
+            try {
+                const price = await calculatePrice(
+                    selectedHouseId,
+                    selectedServiceType,
+                    selectedAddOns,
+                    appliedPromo?.code
+                );
+                console.log('✅ Price calculated:', price);
+                if (isMounted) setPricing(price);
+            } catch (err) {
+                console.error("❌ Price calculation failed", err);
+            }
+        }
+
+        fetchPrice();
+
+        return () => { isMounted = false; };
     }, [selectedHouseId, selectedServiceType, selectedAddOns, appliedPromo, calculatePrice]);
 
     const selectedHouse = houses.find(h => h.id === selectedHouseId);
@@ -451,6 +474,35 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
                                 const IconComponent = serviceIcons[service.icon] || Sparkles;
                                 const isSelected = selectedServiceType === service.id;
 
+                                // Calculate estimate for this specific service
+                                const estimate = (() => {
+                                    if (!selectedHouse) return null;
+
+                                    const size = Number(selectedHouse.sqft || selectedHouse.size || 0);
+                                    if (size <= 0) return null;
+
+                                    const rate = Number(service.rate || 0);
+                                    let basePrice = size * rate;
+
+                                    // Apply metro multiplier
+                                    // Use 'metroMultipliers' from context (needs to be available)
+                                    // If not available directly, fallback to 1.0 or try to match AppContext logic
+                                    // Assuming metroMultipliers is available via useApp() -> state -> ...
+                                    // Note: In the destructuring at the top of the file, we need to add metroMultipliers
+                                    const city = selectedHouse.address?.city;
+                                    const multiplier = (metroMultipliers && city) ? (metroMultipliers[city] || 1.0) : 1.0;
+                                    basePrice *= multiplier;
+
+                                    // Apply pet fee
+                                    const hasPets = selectedHouse.pets?.hasPets || (selectedHouse.petInfo && selectedHouse.petInfo !== 'No pets');
+                                    if (hasPets) {
+                                        basePrice += 10;
+                                    }
+
+                                    // Rounding rule: Round UP to nearest 10
+                                    return Math.ceil(basePrice / 10) * 10;
+                                })();
+
                                 return (
                                     <button
                                         key={service.id}
@@ -472,9 +524,20 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
                                             <div className="flex-1">
                                                 <div className="flex items-center justify-between mb-1">
                                                     <h3 className="font-bold text-gray-900">{service.name}</h3>
-                                                    <span className="text-primary-600 font-semibold">
-                                                        ${service.rate}/sqft
-                                                    </span>
+                                                    <div className="text-right">
+                                                        <span className="block text-primary-600 font-bold text-lg">
+                                                            {estimate ? `~$${estimate}` : `$${service.rate}/sqft`}
+                                                        </span>
+                                                        {estimate ? (
+                                                            <span className="text-xs text-gray-400 font-normal">
+                                                                Est. for {selectedHouse?.sqft} sqft
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-400 font-normal">
+                                                                ${service.rate}/sqft
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <p className="text-sm text-gray-500 mb-3">{service.description}</p>
 
@@ -500,17 +563,12 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
                             })}
                         </div>
 
-                        {/* Estimated price preview */}
-                        {pricing && pricing.base !== undefined && (
-                            <div className="mt-6 p-4 bg-gray-50 rounded-xl">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-gray-600">Estimated base price</span>
-                                    <span className="text-xl font-bold text-gray-900">
-                                        ${pricing.base.toFixed(2)}
-                                    </span>
-                                </div>
-                                <p className="text-xs text-gray-400 mt-1">
-                                    Based on {selectedHouse?.sqft.toLocaleString()} sqft
+                        {/* Summary of current selection */}
+                        {selectedServiceType && (
+                            <div className="mt-4 p-3 bg-blue-50 text-blue-700 text-sm rounded-lg flex items-start gap-2">
+                                <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <p>
+                                    Prices are estimated based on your home size ({selectedHouse?.sqft?.toLocaleString()} sqft) and location. Final price includes taxes and fees.
                                 </p>
                             </div>
                         )}
@@ -1187,7 +1245,7 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
                         >
                             <ArrowLeft className="w-6 h-6" />
                         </button>
-                        <h1 className="text-lg font-semibold">New Booking</h1>
+                        <h1 className="text-lg font-semibold">New Booking (DEBUG)</h1>
                         <div className="w-10" />
                     </div>
 
@@ -1242,15 +1300,35 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
                 })()}
             </div>
 
-            {/* Footer */}
             {step < 7 && (
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-safe">
+                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-safe z-50 shadow-up">
                     {/* Price preview */}
-                    {pricing && step >= 2 && step < 6 && (
+                    {step >= 2 && step < 6 && (
                         <div className="flex items-center justify-between mb-3 px-1">
-                            <span className="text-sm text-gray-500">Estimated total</span>
+                            <span className="text-sm text-gray-500">
+                                {step === 2 ? 'Estimated base price' : 'Estimated total'}
+                            </span>
                             <span className="text-lg font-bold text-primary-600">
-                                ${pricing.total.toFixed(2)}
+                                {(() => {
+                                    // Primary: Use calculated pricing if available
+                                    if (pricing) {
+                                        return step === 2
+                                            ? `~$${(Math.ceil(pricing.base / 10) * 10).toFixed(0)}`
+                                            : `$${pricing.total.toFixed(2)}`;
+                                    }
+
+                                    // Fallback: Synchronous calculation for Step 2
+                                    if (step === 2 && selectedHouse && selectedService) {
+                                        const size = Number(selectedHouse.sqft || selectedHouse.size || 0);
+                                        const rate = Number(selectedService.rate || 0);
+                                        const rawBase = size * rate;
+                                        if (rawBase > 0) {
+                                            return `~$${(Math.ceil(rawBase / 10) * 10).toFixed(0)}`;
+                                        }
+                                    }
+
+                                    return 'Calculating...';
+                                })()}
                             </span>
                         </div>
                     )}

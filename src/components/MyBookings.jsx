@@ -165,27 +165,34 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
 
     const formatTimeSlot = (slotId) => {
         const slots = {
-            'morning': '🌅 9 AM - 12 PM',
-            'afternoon': '☀️ 12 PM - 3 PM',
-            'evening': '🌆 3 PM - 6 PM'
+            'morning': '9 AM - 12 PM',
+            'afternoon': '12 PM - 3 PM',
+            'evening': '3 PM - 6 PM'
         };
         return slots[slotId] || slotId || 'Time not set';
     };
 
-    const getStatusColor = (status) => {
-        const colors = {
-            'pending': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-            'confirmed': 'bg-teal-600 text-white border-teal-600',
-            'in-progress': 'bg-purple-50 text-purple-700 border-purple-200',
-            'completed': 'bg-green-50 text-green-700 border-green-200',
-            'cancelled': 'bg-red-50 text-red-700 border-red-200',
+    const getStatusStyle = (status) => {
+        const styles = {
+            'booking-placed': 'bg-amber-100 text-amber-600 font-bold',
+            'confirmed': 'bg-secondary-500 text-white font-bold',
+            'on_the_way': 'bg-black text-white',
+            'arrived': 'bg-black text-white',
+            'in-progress': 'bg-black text-white',
+            'completed': 'bg-gray-100 text-gray-400',
+            'approved': 'bg-gray-100 text-gray-400',
+            'completed_pending_approval': 'bg-secondary-100 text-secondary-700 font-bold',
+            'cancelled': 'bg-red-50 text-red-500',
         };
-        return colors[status] || 'bg-gray-50 text-gray-700 border-gray-200';
+        return styles[status] || 'bg-gray-100 text-gray-400';
     };
 
     const getStatusText = (status) => {
         if (!status) return 'Pending';
-        return status.charAt(0).toUpperCase() + status.slice(1).replace(/-/g, ' ');
+        if (status === 'booking-placed') return 'Booking Placed';
+        if (status === 'completed_pending_approval') return 'Review Pending';
+        if (status === 'approved') return 'Completed';
+        return status.charAt(0).toUpperCase() + status.slice(1).replace(/-/g, ' ').replace(/_/g, ' ');
     };
 
     const handleSubmitReview = async () => {
@@ -274,10 +281,19 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
     // Loading state
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
-                    <p className="text-gray-600 font-medium">Loading bookings...</p>
+            <div className="min-h-screen bg-white flex flex-col">
+                <div className="px-6 pt-14 pb-6 flex items-center justify-between opacity-50">
+                    <div className="w-10 h-10 rounded-full bg-gray-50"></div>
+                    <div className="flex flex-col items-center">
+                        <div className="w-32 h-6 bg-gray-100 rounded-lg"></div>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-gray-50"></div>
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="w-10 h-10 animate-spin text-secondary-500" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Loading Bookings</p>
+                    </div>
                 </div>
             </div>
         );
@@ -309,56 +325,57 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
     // Empty state
     if (bookings.length === 0) {
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col pb-20">
-                <div className="bg-black text-white px-5 pt-12 pb-8 rounded-b-[2rem] shadow-xl relative z-10 mb-6">
-                    <div className="flex items-center justify-between">
-                        <div className="w-10" />
-                        <h1 className="text-lg font-bold">My Bookings</h1>
-                        <button
-                            onClick={loadData}
-                            disabled={refreshing}
-                            className="bg-gray-800 p-2 rounded-full hover:bg-gray-700 transition-colors disabled:opacity-50"
-                        >
-                            <RefreshCw className={`w-6 h-6 text-gray-300 ${refreshing ? 'animate-spin' : ''}`} />
-                        </button>
+            <div className="min-h-screen bg-white flex flex-col pb-20">
+                <div className="px-6 pt-14 pb-6 flex items-center justify-between">
+                    <div className="w-10" />
+                    <div className="flex flex-col items-center">
+                        <h1 className="text-xl font-black text-gray-900 uppercase tracking-widest">Bookings</h1>
+                        <div className="w-8 h-1 bg-secondary-500 rounded-full mt-1"></div>
                     </div>
+                    <button
+                        onClick={loadData}
+                        disabled={refreshing}
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 text-gray-900 border border-gray-100 active:scale-90 transition-all disabled:opacity-50"
+                    >
+                        <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin text-secondary-500' : ''}`} />
+                    </button>
                 </div>
 
                 <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-                    <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mb-6">
-                        <Calendar className="w-12 h-12 text-blue-300" />
+                    <div className="w-24 h-24 bg-gray-50 rounded-[2rem] flex items-center justify-center mb-8 border border-gray-100">
+                        <Calendar className="w-10 h-10 text-gray-300" />
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-3">No Bookings Yet</h2>
-                    <p className="text-gray-500 mb-8 max-w-sm">
-                        Your cleaning bookings will appear here once you book a service
+                    <h2 className="text-2xl font-black text-gray-900 mb-3 uppercase tracking-widest">No Bookings</h2>
+                    <p className="text-gray-400 font-medium mb-10 max-w-xs leading-relaxed">
+                        You haven't booked any cleanings yet. Experience a spotless home today.
                     </p>
                 </div>
             </div>
         );
     }
 
-    // Bookings list
     return (
-        <div className="min-h-screen bg-gray-50 pb-24">
+        <div className="min-h-screen bg-white pb-24">
             {renderReviewModal()}
+
             {/* Header */}
-            {/* Header */}
-            <div className="bg-black text-white px-5 pt-12 pb-8 rounded-b-[2rem] shadow-xl relative z-10 mb-6">
-                <div className="flex items-center justify-between">
-                    <div className="w-10" />
-                    <h1 className="text-lg font-bold">My Bookings</h1>
-                    <button
-                        onClick={loadData}
-                        disabled={refreshing}
-                        className="bg-gray-800 p-2 rounded-full hover:bg-gray-700 transition-colors disabled:opacity-50"
-                    >
-                        <RefreshCw className={`w-6 h-6 ${refreshing ? 'animate-spin text-blue-400' : 'text-gray-300'}`} />
-                    </button>
+            <div className="px-6 pt-14 pb-6 flex items-center justify-between">
+                <div className="w-10" />
+                <div className="flex flex-col items-center">
+                    <h1 className="text-xl font-black text-gray-900 uppercase tracking-widest">Bookings</h1>
+                    <div className="w-8 h-1 bg-secondary-500 rounded-full mt-1"></div>
                 </div>
+                <button
+                    onClick={loadData}
+                    disabled={refreshing}
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 text-gray-900 border border-gray-100 active:scale-90 transition-all disabled:opacity-50"
+                >
+                    <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin text-secondary-500' : ''}`} />
+                </button>
             </div>
 
-            {/* Bookings */}
-            <div className="p-4 space-y-4">
+            {/* Bookings List */}
+            <div className="px-6 space-y-4">
                 {sortedBookings.map((booking, index) => {
                     const firstDate = booking.dates?.[0];
                     const timeSlot = firstDate && booking.timeSlots ? booking.timeSlots[firstDate]?.[0] : null;
@@ -377,167 +394,86 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
                     return (
                         <div
                             key={booking.id || index}
-                            className="bg-white rounded-2xl border-2 border-gray-100 overflow-hidden shadow-sm hover:shadow-md hover:border-blue-200 transition-all"
+                            className="bg-white rounded-[2rem] p-5 relative transition-all shadow-[0_4px_20px_-10px_rgba(0,0,0,0.08)] border border-gray-200"
                         >
-                            {/* Header */}
-                            <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <div className="text-xs font-mono text-gray-500 mb-1">
-                                            {booking.bookingId || booking.id || `BKG-${index}`}
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusColor(booking.status)}`}>
-                                                {getStatusText(booking.status)}
-                                            </span>
-                                            {booking.cleanerId && (
-                                                <button
-                                                    onClick={handleMessageCleaner}
-                                                    className="p-1 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors"
-                                                    title="Message Cleaner"
-                                                >
-                                                    <MessageSquare className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-xs text-gray-400">Booked</div>
-                                        <div className="text-xs font-medium text-gray-600">
-                                            {booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : 'Unknown date'}
-                                        </div>
-                                    </div>
+                            {/* Card Header: Status & ID */}
+                            <div className="flex justify-between items-start mb-4">
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusStyle(booking.status)}`}>
+                                    {getStatusText(booking.status)}
+                                </span>
+                                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-tighter">
+                                    #{booking.bookingId || booking.id?.slice(-6) || 'N/A'}
+                                </span>
+                            </div>
+
+                            {/* Property Info */}
+                            <div className="flex gap-4 items-center mb-4">
+                                <div className="w-14 h-14 rounded-[1.25rem] bg-gray-50 flex items-center justify-center border border-gray-100 flex-shrink-0">
+                                    <Home className="w-6 h-6 text-gray-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-black text-gray-900 text-base tracking-tight truncate">
+                                        {getHouseName(booking.houseId)}
+                                    </h3>
+                                    <p className="text-xs text-gray-400 font-medium truncate">
+                                        {getHouseAddress(booking.houseId)}
+                                    </p>
                                 </div>
                             </div>
 
-                            {/* Content */}
-                            <div className="p-4 space-y-4">
-                                {/* Property */}
-                                <div className="flex items-start gap-3">
-                                    <div className="w-11 h-11 bg-gradient-to-br from-teal-600 to-teal-700 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
-                                        <Home className="w-6 h-6 text-white" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="font-bold text-gray-900 text-lg">{getHouseName(booking.houseId)}</div>
-                                        <div className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
-                                            <MapPin className="w-3.5 h-3.5" />
-                                            <span className="truncate">{getHouseAddress(booking.houseId)}</span>
-                                        </div>
-                                    </div>
+                            {/* Service Details */}
+                            <div className="space-y-2 border-t border-gray-50 pt-4 mb-4">
+                                <div className="flex items-center gap-3 text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
+                                    <Sparkles className="w-3.5 h-3.5 text-secondary-500" />
+                                    <span>{getServiceName(booking.serviceTypeId)}</span>
+                                    {addOnsList.length > 0 && (
+                                        <span className="text-secondary-400 text-[9px]">+ {addOnsList.length} ADD-ONS</span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-3 text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
+                                    <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                                    <span>{firstDate ? formatDate(firstDate) : 'TBD'}</span>
+                                    <span className="text-gray-200">|</span>
+                                    <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                    <span>{timeSlot ? formatTimeSlot(timeSlot) : 'TBD'}</span>
+                                </div>
+                            </div>
+
+                            {/* Card Footer: Amount & Actions */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">Total Price</span>
+                                    <span className="text-xl font-black text-gray-900">
+                                        ${typeof booking.totalAmount === 'number' ? booking.totalAmount.toFixed(2) : booking.totalAmount}
+                                    </span>
                                 </div>
 
-                                {/* Service */}
-                                <div className="flex items-start gap-3">
-                                    <div className="w-11 h-11 bg-gradient-to-br from-teal-600 to-teal-700 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
-                                        <Sparkles className="w-6 h-6 text-white" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="font-bold text-gray-900">{getServiceName(booking.serviceTypeId)}</div>
-                                        {addOnsList.length > 0 && (
-                                            <div className="text-sm text-teal-700 mt-1">
-                                                + {addOnsList.join(', ')}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                <div className="flex items-center gap-2">
+                                    {booking.cleanerId && (
+                                        <button
+                                            onClick={handleMessageCleaner}
+                                            className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-full transition-all"
+                                            title="Message Cleaner"
+                                        >
+                                            <MessageSquare className="w-5 h-5" />
+                                        </button>
+                                    )}
 
-                                {/* Date & Time */}
-                                <div className="flex items-start gap-3">
-                                    <div className="w-11 h-11 bg-gradient-to-br from-teal-600 to-teal-700 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
-                                        <Calendar className="w-6 h-6 text-white" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="font-bold text-gray-900">
-                                            {firstDate ? formatDate(firstDate) : 'Date not set'}
-                                        </div>
-                                        {timeSlot && (
-                                            <div className="text-sm text-gray-600 flex items-center gap-1 mt-0.5">
-                                                <Clock className="w-3.5 h-3.5" />
-                                                {formatTimeSlot(timeSlot)}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Notes */}
-                                {booking.specialNotes && (
-                                    <div className="pt-3 border-t border-gray-100">
-                                        <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Special Instructions</div>
-                                        <div className="text-sm text-gray-700 bg-amber-50 border border-amber-100 p-3 rounded-lg">
-                                            {booking.specialNotes}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Price */}
-                                {booking.totalAmount !== undefined && (
-                                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                                        <span className="text-gray-600 font-medium">Total Amount</span>
-                                        <span className="text-2xl font-bold text-teal-700">
-                                            ${typeof booking.totalAmount === 'number' ? booking.totalAmount.toFixed(2) : booking.totalAmount}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {/* Cleaner Info Section */}
-                                {booking.cleanerId && cleanerDetails[booking.cleanerId] && (
-                                    <div className="pt-3 border-t border-gray-100">
-                                        <div className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wide">Your Pro</div>
-                                        <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl">
-                                            <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden flex-shrink-0 border border-gray-100">
-                                                {cleanerDetails[booking.cleanerId].photo ? (
-                                                    <img
-                                                        src={cleanerDetails[booking.cleanerId].photo}
-                                                        alt={cleanerDetails[booking.cleanerId].name}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-gray-300 text-gray-500">
-                                                        <User className="w-6 h-6" />
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-semibold text-gray-900 truncate">
-                                                    {cleanerDetails[booking.cleanerId].name}
-                                                </div>
-                                                <div className="flex items-center gap-1 text-sm text-gray-500">
-                                                    <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                                                    <span className="font-medium text-gray-700">
-                                                        {cleanerDetails[booking.cleanerId].rating.toFixed(1)}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={handleMessageCleaner}
-                                                className="p-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors"
-                                                title="Message"
-                                            >
-                                                <MessageSquare className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Actions Footer */}
-                                <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
                                     {['on_the_way', 'arrived', 'in_progress', 'completed_pending_approval'].includes(booking.status) && (
                                         <button
                                             onClick={() => onTrackJob?.(booking)}
-                                            className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors shadow-sm shadow-blue-200"
+                                            className="bg-black text-white text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-full shadow-md active:scale-95 transition-all"
                                         >
-                                            <MapPin className="w-4 h-4" />
-                                            {booking.status === 'completed_pending_approval' ? 'Review Job' : 'Track Job'}
+                                            {booking.status === 'completed_pending_approval' ? 'Review' : 'Track'}
                                         </button>
                                     )}
 
                                     {booking.status === 'completed' && (
                                         <button
                                             onClick={() => setReviewingBooking(booking)}
-                                            className="px-4 py-2 bg-yellow-50 text-yellow-700 text-sm font-semibold rounded-lg hover:bg-yellow-100 border border-yellow-200 flex items-center gap-2 transition-colors"
+                                            className="bg-secondary-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-full shadow-md active:scale-95 transition-all"
                                         >
-                                            <Star className="w-4 h-4" />
-                                            Leave a Review
+                                            Rate Clean
                                         </button>
                                     )}
                                 </div>
@@ -546,6 +482,6 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
                     );
                 })}
             </div>
-        </div >
+        </div>
     );
 }

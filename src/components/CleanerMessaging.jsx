@@ -9,8 +9,9 @@ import {
 import {
     Send, ChevronLeft, Phone, MoreVertical, Image as ImageIcon,
     Paperclip, Smile, Check, CheckCheck, Clock, User, Search,
-    MessageSquare, AlertCircle, Loader
+    MessageSquare, AlertCircle, Loader, Lock, Plus
 } from 'lucide-react';
+import { getDoc, COLLECTIONS } from '../storage/db';
 
 const quickReplies = [
     "I'm on my way!",
@@ -60,21 +61,41 @@ export default function CleanerMessaging({ onBack }) {
                 setLoading(true);
                 const convos = await getUserConversations(user.uid);
 
-                // Format conversations for display
-                const formattedConvos = convos.map(conv => ({
-                    id: conv.id,
-                    customerId: conv.participantIds?.find(id => id !== user.uid),
-                    customerName: conv.customerName || 'Customer',
-                    customerPhoto: null,
-                    lastMessage: conv.lastMessage || 'No messages yet',
-                    lastMessageTime: conv.lastMessageTime || conv.createdAt,
-                    unreadCount: 0, // Would calculate from unread messages
-                    bookingId: conv.bookingId || 'N/A',
-                    serviceType: conv.serviceType || 'Cleaning',
-                    status: 'active'
+                // Fetch booking details for status
+                const convosWithStatus = await Promise.all(convos.map(async (conv) => {
+                    let status = 'active';
+                    let bookingStatus = 'unknown';
+
+                    if (conv.bookingId && conv.bookingId !== 'N/A') {
+                        try {
+                            const bookingDoc = await getDoc(COLLECTIONS.BOOKINGS, conv.bookingId);
+                            if (bookingDoc) {
+                                bookingStatus = bookingDoc.status;
+                                if (['completed', 'cancelled', 'declined', 'approved'].includes(bookingStatus)) {
+                                    status = 'closed';
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('Could not fetch booking details for chat', conv.id);
+                        }
+                    }
+
+                    return {
+                        id: conv.id,
+                        customerId: conv.participantIds?.find(id => id !== user.uid),
+                        customerName: conv.customerName || 'Customer',
+                        customerPhoto: null,
+                        lastMessage: conv.lastMessage || 'No messages yet',
+                        lastMessageTime: conv.lastMessageTime || conv.createdAt,
+                        unreadCount: 0,
+                        bookingId: conv.bookingId || 'N/A',
+                        serviceType: conv.serviceType || 'Cleaning',
+                        status: status,
+                        bookingStatus: bookingStatus
+                    };
                 }));
 
-                setConversations(formattedConvos);
+                setConversations(convosWithStatus);
             } catch (error) {
                 console.error('Error loading conversations:', error);
             } finally {
@@ -269,48 +290,54 @@ export default function CleanerMessaging({ onBack }) {
                 )}
 
                 {/* Message Input */}
-                <div className="bg-white border-t border-gray-200 px-4 py-3 pb-safe">
-                    <div className="flex items-end gap-2">
-                        <button className="p-2 hover:bg-gray-100 rounded-full flex-shrink-0">
-                            <Paperclip className="w-5 h-5 text-gray-500" />
-                        </button>
-
-                        <div className="flex-1 relative">
-                            <textarea
-                                ref={inputRef}
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        handleSendMessage();
-                                    }
-                                }}
-                                placeholder="Type a message..."
-                                rows={1}
-                                className="w-full px-4 py-2.5 bg-gray-100 rounded-full resize-none focus:outline-none focus:ring-2 focus:ring-secondary-500 text-sm"
-                                style={{ maxHeight: '100px' }}
-                            />
+                <div className="bg-white/90 backdrop-blur-lg border-t border-gray-200 px-4 py-3 pb-safe sticky bottom-0">
+                    {selectedConvo.status === 'closed' ? (
+                        <div className="flex items-center justify-center gap-2 p-4 bg-gray-50 rounded-2xl text-gray-500 text-sm font-medium border border-gray-100">
+                            <Lock className="w-4 h-4" />
+                            <span>Chat closed (Booking {selectedConvo.bookingStatus === 'approved' ? 'completed' : selectedConvo.bookingStatus})</span>
                         </div>
+                    ) : (
+                        <div className="flex items-end gap-2 text-sm">
+                            <button className="p-2 hover:bg-gray-100 rounded-full flex-shrink-0 transition-colors">
+                                <Plus className="w-5 h-5 text-gray-400" />
+                            </button>
 
-                        <button
-                            onClick={() => setShowQuickReplies(!showQuickReplies)}
-                            className="p-2 hover:bg-gray-100 rounded-full flex-shrink-0"
-                        >
-                            <Smile className="w-5 h-5 text-gray-500" />
-                        </button>
+                            <div className="flex-1 relative bg-gray-100 rounded-[1.25rem] flex items-center px-2">
+                                <textarea
+                                    ref={inputRef}
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSendMessage();
+                                        }
+                                    }}
+                                    placeholder="Type a message..."
+                                    rows={1}
+                                    className="w-full px-3 py-2.5 bg-transparent resize-none focus:outline-none text-gray-900 placeholder-gray-400"
+                                    style={{ maxHeight: '100px' }}
+                                />
+                                <button
+                                    onClick={() => setShowQuickReplies(!showQuickReplies)}
+                                    className="p-1.5 hover:bg-gray-200 rounded-full flex-shrink-0 text-gray-400 transition-colors"
+                                >
+                                    <Smile className="w-5 h-5" />
+                                </button>
+                            </div>
 
-                        <button
-                            onClick={handleSendMessage}
-                            disabled={!newMessage.trim()}
-                            className={`p-2.5 rounded-full flex-shrink-0 transition-colors ${newMessage.trim()
-                                ? 'bg-secondary-500 text-white'
-                                : 'bg-gray-100 text-gray-400'
-                                }`}
-                        >
-                            <Send className="w-5 h-5" />
-                        </button>
-                    </div>
+                            <button
+                                onClick={handleSendMessage}
+                                disabled={!newMessage.trim()}
+                                className={`p-2.5 rounded-full flex-shrink-0 transition-all ${newMessage.trim()
+                                    ? 'bg-black text-white shadow-md hover:scale-105 active:scale-95'
+                                    : 'bg-gray-100 text-gray-300'
+                                    }`}
+                            >
+                                <Send className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -353,8 +380,8 @@ export default function CleanerMessaging({ onBack }) {
                             key={filter}
                             onClick={() => setActiveFilter(filter)}
                             className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${activeFilter === filter
-                                    ? 'bg-secondary-500 text-white shadow-sm'
-                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                ? 'bg-secondary-500 text-white shadow-sm'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                                 }`}
                         >
                             {filter.charAt(0).toUpperCase() + filter.slice(1)}

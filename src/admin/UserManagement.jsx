@@ -14,6 +14,9 @@ export default function UserManagement() {
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
 
+    const [editingUser, setEditingUser] = useState(null);
+    const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', role: '' });
+
     const loadData = async () => {
         setLoading(true);
         try {
@@ -48,6 +51,46 @@ export default function UserManagement() {
         if (window.confirm(`${user.isActive === false ? 'Activate' : 'Deactivate'} user ${user.name}?`)) {
             await updateDoc(COLLECTIONS.USERS, user.id, { isActive: !user.isActive });
             loadData();
+        }
+    };
+
+    const handleEditClick = (user) => {
+        setEditingUser(user);
+        setEditForm({
+            name: user.name || '',
+            email: user.email || '',
+            phone: user.phone || '',
+            role: user.role || 'homeowner'
+        });
+    };
+
+    const handleSaveEdit = async (e) => {
+        e.preventDefault();
+        if (!editingUser) return;
+
+        try {
+            await updateDoc(COLLECTIONS.USERS, editingUser.id, {
+                name: editForm.name,
+                email: editForm.email,
+                phone: editForm.phone,
+                role: editForm.role
+            });
+
+            // Also update cleaner profile name if they are a cleaner
+            if (editForm.role === 'cleaner') {
+                const cleanerProfile = cleaners.find(c => c.userId === editingUser.id);
+                if (cleanerProfile) {
+                    await updateDoc(COLLECTIONS.CLEANERS, cleanerProfile.id, {
+                        name: editForm.name
+                    });
+                }
+            }
+
+            setEditingUser(null);
+            loadData();
+        } catch (error) {
+            console.error("Error updating user:", error);
+            alert("Failed to update user");
         }
     };
 
@@ -160,6 +203,12 @@ export default function UserManagement() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => handleEditClick(user)}
+                                                    className="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-50 hover:text-gray-900"
+                                                >
+                                                    Edit
+                                                </button>
                                                 {user.role === 'cleaner' && cleanerStatus === 'pending' && (
                                                     <button
                                                         onClick={() => handleApproveCleaner(user.id)}
@@ -186,6 +235,86 @@ export default function UserManagement() {
                     </table>
                 </div>
             </div>
+
+            {/* Edit User Modal */}
+            {editingUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-gray-900">Edit User</h3>
+                            <button
+                                onClick={() => setEditingUser(null)}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <XCircle className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveEdit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={editForm.name}
+                                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input
+                                    type="email"
+                                    required
+                                    value={editForm.email}
+                                    onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                <input
+                                    type="tel"
+                                    value={editForm.phone}
+                                    onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                                <select
+                                    value={editForm.role}
+                                    onChange={e => setEditForm({ ...editForm, role: e.target.value })}
+                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                >
+                                    <option value="homeowner">Home Owner</option>
+                                    <option value="cleaner">Cleaner</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingUser(null)}
+                                    className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 px-4 py-2.5 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-800"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -445,7 +445,7 @@ export default function PaymentMethods({ onBack }) {
                             </div>
                         )}
 
-                        <div className="flex items-start gap-3 p-4 bg-blue-50 text-blue-700 rounded-xl text-sm">
+                        <div className="flex items-start gap-3 p-4 bg-teal-50 text-teal-700 rounded-xl text-sm">
                             <div className="mt-0.5">
                                 <CheckCircle2 className="w-4 h-4" />
                             </div>

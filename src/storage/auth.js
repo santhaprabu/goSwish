@@ -122,7 +122,7 @@ const verifyPassword = async (password, storedHash) => {
  */
 export const getCurrentUser = () => {
     try {
-        const sessionData = localStorage.getItem(SESSION_KEY);
+        const sessionData = sessionStorage.getItem(SESSION_KEY);
         if (!sessionData) return null;
 
         const session = JSON.parse(sessionData);
@@ -132,8 +132,8 @@ export const getCurrentUser = () => {
         const maxAge = 24 * 60 * 60 * 1000; // 24 hours
 
         if (sessionAge > maxAge) {
-            localStorage.removeItem(SESSION_KEY);
-            localStorage.removeItem(CURRENT_USER_KEY);
+            sessionStorage.removeItem(SESSION_KEY);
+            sessionStorage.removeItem(CURRENT_USER_KEY);
             return null;
         }
 
@@ -230,16 +230,16 @@ const setCurrentUser = (user) => {
         createdAt: new Date().toISOString(),
     };
 
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    sessionStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
 };
 
 /**
  * Clear current user session
  */
 const clearCurrentUser = () => {
-    localStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(CURRENT_USER_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(CURRENT_USER_KEY);
 };
 
 /**

@@ -53,9 +53,9 @@ const initialState = {
     addOns: [
         { id: 'oven', name: 'Inside Oven Deep Clean', price: 25, icon: 'Flame' },
         { id: 'fridge', name: 'Inside Refrigerator', price: 20, icon: 'Refrigerator' },
-        { id: 'windows', name: 'Interior Windows', price: 30, icon: 'Square' },
+        { id: 'windows', name: 'Interior Windows', price: 30, rate: 0.02, icon: 'Square' },
         { id: 'laundry', name: 'Laundry Wash & Fold', price: 15, icon: 'Shirt' },
-        { id: 'baseboards', name: 'Baseboards Wiping', price: 20, icon: 'Minus' },
+        { id: 'baseboards', name: 'Baseboards Wiping', price: 20, rate: 0.01, icon: 'Minus' },
     ],
 
     metroMultipliers: {
@@ -246,7 +246,10 @@ export function AppProvider({ children }) {
 
     const logout = useCallback(async () => {
         try {
-            // Force clear local storage immediately
+            // Force clear session storage immediately
+            sessionStorage.removeItem('goswish_session');
+            sessionStorage.removeItem('goswish_current_user');
+            // Also clear local storage just in case of old sessions
             localStorage.removeItem('goswish_session');
             localStorage.removeItem('goswish_current_user');
 
@@ -481,17 +484,28 @@ export function AppProvider({ children }) {
 
     // Pricing calculation - needs house data from DB
     const calculatePrice = useCallback(async (houseId, serviceTypeId, selectedAddOns = [], promoCode = null) => {
+        console.log('💰 calculatePrice called with:', { houseId, serviceTypeId, selectedAddOns, promoCode });
         try {
             const { getDoc, COLLECTIONS } = await import('../storage/db.js');
             const house = await getDoc(COLLECTIONS.HOUSES, houseId);
             const serviceType = state.serviceTypes.find(s => s.id === serviceTypeId);
 
+            console.log('🏠 Found house:', house);
+            console.log('✨ Found serviceType:', serviceType);
+
             if (!house || !serviceType) {
+                console.warn('❌ House or ServiceType not found', { houseFound: !!house, serviceFound: !!serviceType });
                 return null;
             }
 
+            // Ensure sqft determines size
+            const size = Number(house.sqft || house.size || 0);
+            const rate = Number(serviceType.rate || 0);
+
+            console.log(`📊 Calculating: Size ${size} * Rate ${rate}`);
+
             // Base price
-            let basePrice = house.size * serviceType.rate;
+            let basePrice = size * rate;
 
             // Metro multiplier
             const metro = state.metroMultipliers[house.address.city] || 1.0;
@@ -502,10 +516,24 @@ export function AppProvider({ children }) {
                 basePrice += 10; // Flat pet fee
             }
 
+            console.log(`💵 Base Price (raw): ${basePrice}`);
+
+            // Apply rounding rule: Round UP to nearest 10
+            basePrice = Math.ceil(basePrice / 10) * 10;
+            console.log(`💵 Base Price (rounded): ${basePrice}`);
+
             // Add-ons
             const addOnsTotal = selectedAddOns.reduce((sum, addonId) => {
                 const addon = state.addOns.find(a => a.id === addonId);
-                return sum + (addon?.price || 0);
+                if (!addon) return sum;
+                let price = 0;
+                if (addon.rate) {
+                    price = size * addon.rate;
+                } else {
+                    price = addon.price || 0;
+                }
+                // Round UP to nearest 10
+                return sum + (Math.ceil(price / 10) * 10);
             }, 0);
 
             // Subtotal
@@ -537,11 +565,11 @@ export function AppProvider({ children }) {
             const total = subtotal + taxes - promoDiscount;
 
             // Estimated duration (based on sqft)
-            const baseDuration = Math.ceil(house.size / 500); // hours
+            const baseDuration = Math.ceil(size / 500); // hours
             const serviceMultiplier = serviceTypeId === 'regular' ? 1 : serviceTypeId === 'deep' ? 1.5 : serviceTypeId === 'move' ? 2 : 0.5;
             const estimatedDuration = Math.ceil(baseDuration * serviceMultiplier);
 
-            return {
+            const result = {
                 base: Math.round(basePrice * 100) / 100,
                 addOns: addOnsTotal,
                 subtotal: Math.round(subtotal * 100) / 100,
@@ -552,8 +580,11 @@ export function AppProvider({ children }) {
                 estimatedDuration,
                 metro,
             };
+
+            console.log('✅ Final Calculation Result:', result);
+            return result;
         } catch (error) {
-            console.error('Error calculating price:', error);
+            console.error('❌ Error calculating price:', error);
             return null;
         }
     }, [state.serviceTypes, state.addOns, state.metroMultipliers, validatePromoCode]);

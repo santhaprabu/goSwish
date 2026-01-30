@@ -778,8 +778,8 @@ export const seedAllData = async () => {
         console.log('');
 
         // Create jobs for cleaners
-        await seedCleanerJobs(cleanerProfiles, customerUsers);
-        console.log('');
+        // await seedCleanerJobs(cleanerProfiles, customerUsers);
+        console.log('Skipping job seeding as requested');
 
         // Create reviews for cleaners
         await seedCleanerReviews(cleanerProfiles, customerUsers);

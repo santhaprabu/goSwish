@@ -1351,140 +1351,133 @@ export function HouseList({ onAddHouse, onEditHouse, onSelectHouse, navigateTo }
 
     if (houses.length === 0) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
-                <div className="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mb-6">
-                    <Home className="w-10 h-10 text-primary-400" />
+            <div className="flex-1 flex flex-col items-center justify-center px-6 py-20 text-center">
+                <div className="w-24 h-24 bg-gray-50 rounded-[2rem] flex items-center justify-center mb-8 border border-gray-100">
+                    <Home className="w-10 h-10 text-gray-300" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">No Properties Yet</h2>
-                <p className="text-gray-500 mb-8 max-w-xs">
-                    Add your first property to start booking cleaning services
+                <h2 className="text-2xl font-black text-gray-900 mb-3 uppercase tracking-widest">No Properties</h2>
+                <p className="text-gray-400 font-medium mb-10 max-w-xs leading-relaxed">
+                    Add your first home to start booking professional cleanings.
                 </p>
                 <button
                     onClick={onAddHouse}
-                    className="btn btn-primary gap-2"
+                    className="w-full max-w-[200px] bg-black text-white py-4 rounded-full font-black text-xs uppercase tracking-widest shadow-xl shadow-black/10 active:scale-95 transition-all flex items-center justify-center gap-3"
                 >
                     <Plus className="w-5 h-5" />
-                    Add Property
+                    Add Now
                 </button>
             </div>
         );
     }
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-3">
             {houses.map((house) => (
                 <div
                     key={house.id}
                     onClick={() => onSelectHouse?.(house)}
-                    className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden relative transition-all hover:shadow-md group cursor-pointer"
+                    className="bg-white rounded-[2rem] p-4 relative transition-all hover:bg-gray-50 active:scale-[0.98] group cursor-pointer shadow-[0_4px_20px_-10px_rgba(0,0,0,0.08)]"
                 >
-                    {/* Slim Gradient Stripe */}
-                    <div className="h-1 w-full bg-gradient-to-r from-teal-500 to-teal-400"></div>
-
-                    <div className="p-3.5 flex gap-3.5 items-start">
-                        {/* Compact Thumbnail & Star */}
-                        <div className="relative">
-                            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-sm flex-shrink-0 text-white relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-8 h-8 bg-white/20 rounded-full blur-lg -mr-2 -mt-2"></div>
-                                <Home className="w-6 h-6 relative z-10" />
+                    <div className="flex gap-4 items-center">
+                        {/* Property Icon/Thumbnail */}
+                        <div className="relative flex-shrink-0">
+                            <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center transition-colors shadow-sm ${house.isDefault ? 'bg-secondary-500 text-white' : 'bg-gray-100 text-gray-400'
+                                }`}>
+                                <Home className="w-7 h-7" />
                             </div>
-                            {/* Star Overlay */}
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSetDefault(house.id);
-                                }}
-                                className={`absolute -top-1.5 -left-1.5 p-1 rounded-full bg-white shadow-sm border border-gray-100 transition-transform hover:scale-110 z-20
-                                    ${house.isDefault ? 'text-yellow-400' : 'text-gray-200 hover:text-yellow-400'}`}
-                            >
-                                <Star className={`w-3.5 h-3.5 ${house.isDefault ? 'fill-current' : ''}`} />
-                            </button>
+                            {house.isDefault && (
+                                <div className="absolute -top-1 -right-1 bg-white p-1 rounded-full shadow-sm">
+                                    <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                                </div>
+                            )}
                         </div>
 
-                        {/* Content: Info & Stats */}
-                        <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                            <div>
-                                <h3 className="font-bold text-gray-900 text-[15px] leading-tight truncate">
+                        {/* Property Details */}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-black text-gray-900 text-base tracking-tight truncate">
                                     {house.name}
                                 </h3>
-                                <p className="text-xs text-gray-500 leading-snug line-clamp-2 mt-0.5">
-                                    {house.address?.street}, {house.address?.city}, {house.address?.state} {house.address?.zip}
-                                </p>
+                                {!house.isDefault && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSetDefault(house.id);
+                                        }}
+                                        className="text-gray-300 hover:text-yellow-400 transition-colors"
+                                    >
+                                        <Star className="w-4 h-4" />
+                                    </button>
+                                )}
                             </div>
+                            <p className="text-xs text-gray-400 font-medium mb-2 truncate">
+                                {house.address?.street}, {house.address?.city}
+                            </p>
 
-                            <div className="flex flex-wrap items-center gap-2">
-                                {/* Stats Pill */}
-                                <div className="flex items-center gap-2 text-[10px] font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
-                                    <span>{(house.size || house.sqft || 0).toLocaleString()} sqft</span>
-                                    <span className="text-gray-300">|</span>
-                                    <span>{house.bedrooms || 0} bd</span>
-                                    <span className="text-gray-300">|</span>
-                                    <span>{house.bathrooms || 0} ba</span>
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1 text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
+                                    <Ruler className="w-3 h-3" />
+                                    <span>{(house.size || house.sqft || 0).toLocaleString()} SQFT</span>
                                 </div>
-                                {/* Last Cleaned Badge */}
-                                <div className="flex items-center gap-1 text-[10px] text-gray-400">
-                                    <Sparkles className="w-3 h-3 text-teal-500" />
-                                    <span>{house.lastCleaned ? new Date(house.lastCleaned).toLocaleDateString() : 'New'}</span>
+                                <div className="flex items-center gap-1 text-[10px] font-bold text-gray-500 uppercase tracking-tighter border-l border-gray-100 pl-3">
+                                    <Bed className="w-3 h-3" />
+                                    <span>{house.bedrooms || 0} BD</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-[10px] font-bold text-gray-500 uppercase tracking-tighter border-l border-gray-100 pl-3">
+                                    <Bath className="w-3 h-3" />
+                                    <span>{house.bathrooms || 0} BA</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Right: Actions */}
-                        <div className="flex flex-col items-end gap-2">
-                            {/* Book Button */}
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    console.log('Book clicked for house:', house.id);
-                                    if (navigateTo) {
-                                        navigateTo('booking', { houseId: house.id });
-                                    } else {
-                                        console.error('NavigateTo function is missing!');
-                                    }
-                                }}
-                                className="bg-black text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-sm hover:bg-gray-800 flex items-center gap-1.5 transition-colors whitespace-nowrap"
-                            >
-                                Book a Clean
-                            </button>
-
-                            {/* Edit/Delete */}
+                        {/* Side Action */}
+                        <div className="flex flex-col items-end gap-3">
                             <div className="flex items-center gap-1">
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         onEditHouse(house);
                                     }}
-                                    className="p-1.5 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                                    className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-full transition-all"
                                 >
-                                    <Edit2 className="w-3.5 h-3.5" />
+                                    <Edit2 className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setConfirmDelete(house.id);
                                     }}
-                                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
                                 >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-4 h-4" />
                                 </button>
                             </div>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigateTo?.('booking', { houseId: house.id });
+                                }}
+                                className="bg-black text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full shadow-md active:scale-95 transition-all"
+                            >
+                                Book
+                            </button>
                         </div>
                     </div>
 
                     {/* Delete Confirmation Overlay */}
                     {confirmDelete === house.id && (
-                        <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-30 flex flex-col items-center justify-center p-6 animate-fade-in">
-                            <h4 className="font-bold text-gray-900 text-sm mb-1">Delete Property?</h4>
-                            <div className="flex gap-2 w-full max-w-[200px] mt-2">
+                        <div className="absolute inset-0 bg-white/98 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 animate-fade-in rounded-[2rem]">
+                            <h4 className="font-black text-gray-900 text-sm mb-3 uppercase tracking-wider">Remove Property?</h4>
+                            <div className="flex gap-3 w-full max-w-[200px]">
                                 <button
                                     onClick={() => setConfirmDelete(null)}
-                                    className="flex-1 py-1.5 rounded-lg text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200"
+                                    className="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 bg-gray-100 hover:bg-gray-200"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={() => handleDelete(house.id)}
-                                    className="flex-1 py-1.5 rounded-lg text-xs font-bold text-white bg-red-500 hover:bg-red-600"
+                                    className="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-white bg-red-500 shadow-lg shadow-red-500/20"
                                 >
                                     Delete
                                 </button>
@@ -1494,19 +1487,19 @@ export function HouseList({ onAddHouse, onEditHouse, onSelectHouse, navigateTo }
                 </div>
             ))}
 
-            {/* Add more button */}
-            {houses.length < 20 && (
+            {/* Add Button */}
+            <div className="pt-4">
                 <button
                     onClick={onAddHouse}
-                    className="w-full bg-teal-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-teal-500/20 hover:bg-teal-700 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                    className="w-full bg-secondary-500 text-white py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-secondary-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                 >
                     <Plus className="w-6 h-6" />
-                    Add Another Property
+                    Add Property
                 </button>
-            )}
+            </div>
 
-            <p className="text-center text-xs text-gray-400 font-medium pt-2">
-                You have {houses.length} properties
+            <p className="text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest pt-4">
+                {houses.length} {houses.length === 1 ? 'Property' : 'Properties'} Saved
             </p>
         </div>
     );
@@ -1551,23 +1544,24 @@ export default function HouseManagement({ onBack, navigateTo }) {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col pb-6">
+        <div className="min-h-screen bg-white flex flex-col">
             {/* Header */}
-            <div className="bg-black text-white px-5 pt-12 pb-8 rounded-b-[2rem] shadow-xl relative z-10 mb-6">
-                <div className="flex items-center justify-between">
-                    <button
-                        onClick={onBack}
-                        className="bg-gray-800 p-2 rounded-full hover:bg-gray-700 transition-colors"
-                    >
-                        <ArrowLeft className="w-6 h-6 text-white" />
-                    </button>
-                    <h1 className="text-lg font-bold">My Properties</h1>
-                    <div className="w-10" />
+            <div className="px-6 pt-14 pb-6 flex items-center justify-between">
+                <button
+                    onClick={onBack}
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 text-gray-900 border border-gray-100 active:scale-90 transition-all"
+                >
+                    <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div className="flex flex-col items-center">
+                    <h1 className="text-xl font-black text-gray-900 uppercase tracking-widest">Properties</h1>
+                    <div className="w-8 h-1 bg-secondary-500 rounded-full mt-1"></div>
                 </div>
+                <div className="w-10" />
             </div>
 
             {/* Content */}
-            <div className="flex-1 px-5 pt-4 pb-24 overflow-y-auto">
+            <div className="flex-1 px-6 pb-12 overflow-y-auto">
                 <HouseList
                     onAddHouse={handleAddHouse}
                     onEditHouse={handleEditHouse}
