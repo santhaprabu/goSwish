@@ -389,7 +389,7 @@ export default function WelcomeScreen({ onSuccess, initialMode = 'welcome' }) {
                         </button>
                         <button
                             onClick={async () => {
-                                setLoading(true); // Show loading state on the button itself if possible, or just global loading
+                                setLoading(true);
                                 console.log('🔄 Resetting Database immediately...');
                                 try {
                                     const { clearDatabase, seedAllData } = await import('../storage');
@@ -407,6 +407,66 @@ export default function WelcomeScreen({ onSuccess, initialMode = 'welcome' }) {
                             className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
                         >
                             {loading ? 'Resetting...' : 'Reset DB'}
+                        </button>
+
+                        <div className="w-full basis-full h-0"></div> {/* Line Break for new row */}
+
+                        <button
+                            onClick={async () => {
+                                try {
+                                    const { exportDatabase } = await import('../storage');
+                                    const data = await exportDatabase();
+                                    const jsonString = JSON.stringify(data, null, 2);
+                                    const blob = new Blob([jsonString], { type: 'application/json' });
+                                    const url = URL.createObjectURL(blob);
+
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `goswish_backup_${new Date().toISOString().split('T')[0]}.json`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    URL.revokeObjectURL(url);
+                                } catch (e) {
+                                    alert('Export failed: ' + e.message);
+                                }
+                            }}
+                            className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-indigo-50 hover:text-indigo-600"
+                        >
+                            Export Data
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = 'application/json';
+                                input.onchange = async (e) => {
+                                    const file = e.target.files[0];
+                                    if (!file) return;
+
+                                    const reader = new FileReader();
+                                    reader.onload = async (event) => {
+                                        try {
+                                            const { importDatabase } = await import('../storage');
+                                            const data = JSON.parse(event.target.result);
+
+                                            if (confirm('Warning: This will OVERWRITE all current local data with the imported file. Continue?')) {
+                                                await importDatabase(data);
+                                                alert('Import successful! The page will now reload.');
+                                                window.location.reload();
+                                            }
+                                        } catch (err) {
+                                            alert('Import failed: ' + err.message);
+                                        }
+                                    };
+                                    reader.readAsText(file);
+                                };
+                                input.click();
+                            }}
+                            className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-orange-50 hover:text-orange-600"
+                        >
+                            Import Data
                         </button>
                     </div>
                 </div>
