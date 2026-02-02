@@ -1,4 +1,16 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * EMAIL VERIFICATION MOCK
+ * ============================================================================
+ * 
+ * Purpose:
+ * Simulates a "Check your email" loop.
+ * 
+ * Note:
+ * In a real app, this would poll an auth state or wait for a deep link.
+ * Currently, it simulates success for demo purposes.
+ */
 import { Mail, Clock, ArrowRight, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 

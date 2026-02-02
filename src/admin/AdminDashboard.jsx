@@ -10,7 +10,7 @@ import AdminOverview from './AdminOverview';
 import ServiceConfig from './ServiceConfig';
 import UserManagement from './UserManagement';
 import PromoConfig from './PromoConfig';
-// import SettingsConfig from './SettingsConfig';
+import SettingsConfig from './SettingsConfig';
 
 export default function AdminDashboard() {
     const { logout } = useApp();
@@ -23,7 +23,7 @@ export default function AdminDashboard() {
             case 'services': return <ServiceConfig />;
             case 'users': return <UserManagement />;
             case 'promos': return <PromoConfig />;
-            // case 'settings': return <SettingsConfig />;
+            case 'settings': return <SettingsConfig />;
             default: return <AdminOverview />;
         }
     };
@@ -65,8 +65,8 @@ export default function AdminDashboard() {
                     <NavItem id="services" icon={Layers} label="Services & Pricing" />
                     <NavItem id="promos" icon={Tag} label="Promo Codes" />
 
-                    {/* <p className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 mt-6">System</p>
-                    <NavItem id="settings" icon={Settings} label="Settings" /> */}
+                    <p className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 mt-6">System</p>
+                    <NavItem id="settings" icon={Settings} label="Settings" />
                 </nav>
 
                 <button

@@ -1,11 +1,33 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * SCREEN COMPONENTS - MAIN DASHBOARD ROUTING
+ * ============================================================================
+ * 
+ * This file serves as the main "Router" for the inner-app experience.
+ * It contains:
+ * 1. BottomNavigation: The persistent tab bar.
+ * 2. CustomerHome: The dashboard for Homeowners.
+ * 3. CleanerHome: The dashboard for Cleaners.
+ * 
+ * DESIGN PATTERN:
+ * Instead of using a heavy routing library for every sub-view, we use conditional 
+ * rendering based on 'activeTab' or 'role'. This keeps the app fast and mobile-like.
+ * 
+ * COMPONENTS:
+ * - CustomerHome: Manages properties, active bookings, and notifications.
+ * - CleanerHome: Manages active jobs, earnings overview, and schedule.
+ */
+
 import {
     Home, MapPin, Calendar, User, Sparkles, Plus,
     ChevronRight, Bell, Clock, CheckCircle2, Star,
     TrendingUp, Wallet, Search, MessageSquare, Settings,
-    ShieldCheck, Share2, LogOut, Heart, HelpCircle, Building
+    ShieldCheck, Share2, LogOut, Heart, HelpCircle, Building,
+    Navigation, Lock, Check, AlertCircle
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import OTPInput from './OTPInput';
 
 export function BottomNavigation({ activeTab, onTabChange, role }) {
     const isCustomer = role === 'homeowner';
@@ -61,13 +83,50 @@ export function BottomNavigation({ activeTab, onTabChange, role }) {
     );
 }
 
-export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNotifications }) {
+/**
+ * ============================================================================
+ * CUSTOMER HOME SCREEN (Homeowner Dashboard)
+ * ============================================================================
+ * 
+ * Purpose:
+ * This is the landing page for Homeowners. It aggregates the most critical info:
+ * 1. "Today's Cleaning": The most immediate active booking.
+ * 2. "Recent Bookings": History/Status of other requests.
+ * 3. Quick Actions: Add House, New Booking.
+ * 
+ * Data Flow:
+ * - On mount, it fetches: Houses, Bookings, Notifications.
+ * - It specifically filters for 'Today's Booking' to show the progress card 
+ *   (e.g., "Cleaner is on the way").
+ * 
+ * @param {Function} onNewBooking - Callback to start booking flow
+ * @param {Function} onViewHouses - Nav to House Management
+ * @param {Function} onViewBookings - Nav to Booking History
+ */
+export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNotifications, navigateTo }) {
     const { user, getUserHouses, getUserBookings, serviceTypes } = useApp();
 
     const [houses, setHouses] = useState([]);
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [notificationCount, setNotificationCount] = useState(0);
+    const [todayBookings, setTodayBookings] = useState([]);
+    const [inputCodes, setInputCodes] = useState({});
+    const [verifyingIds, setVerifyingIds] = useState({});
+
+    // Helper to parse date string without timezone issues
+    const parseDateString = (dateStr) => {
+        if (!dateStr) return new Date();
+
+        // If it's a date-only string (YYYY-MM-DD), parse it as local time
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+
+        // Otherwise parse normally
+        return new Date(dateStr);
+    };
 
     // Load data on mount
     useEffect(() => {
@@ -96,6 +155,76 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNot
                     if (notifications) {
                         setNotificationCount(notifications.filter(n => !n.read).length);
                     }
+
+                    // Find all of today's bookings
+                    const today = new Date().toISOString().split('T')[0];
+                    console.log('[DEBUG CustomerHome] Today:', today);
+                    console.log('[DEBUG CustomerHome] All bookings count:', (bookingsData || []).length);
+                    console.log('[DEBUG CustomerHome] All bookings:', bookingsData);
+
+                    const todaysBookingsList = (bookingsData || []).filter(b => {
+                        // Helper to extract YYYY-MM-DD from various formats
+                        const extractDate = (val) => {
+                            if (!val) return null;
+                            // If it's a Date object
+                            if (val instanceof Date) return val.toISOString().split('T')[0];
+                            // If it's a timestamp number
+                            if (typeof val === 'number') return new Date(val).toISOString().split('T')[0];
+                            // If it's a string
+                            if (typeof val === 'string') {
+                                // Already YYYY-MM-DD
+                                if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+                                // ISO string
+                                if (val.includes('T')) return val.split('T')[0];
+                                // Try parsing as date
+                                const d = new Date(val);
+                                if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+                            }
+                            // If it's an object with date property
+                            if (typeof val === 'object' && val.date) return extractDate(val.date);
+                            return null;
+                        };
+
+                        let hasToday = false;
+
+                        // Check dates array
+                        if (b.dates && b.dates.length > 0) {
+                            hasToday = b.dates.some(date => {
+                                const dateStr = extractDate(date);
+                                return dateStr === today;
+                            });
+                        }
+
+                        // Also check selectedDate field
+                        if (!hasToday && b.selectedDate) {
+                            hasToday = extractDate(b.selectedDate) === today;
+                        }
+
+                        // Also check scheduledDate field
+                        if (!hasToday && b.scheduledDate) {
+                            hasToday = extractDate(b.scheduledDate) === today;
+                        }
+
+                        // Also check date field
+                        if (!hasToday && b.date) {
+                            hasToday = extractDate(b.date) === today;
+                        }
+
+                        // Also check createdAt as fallback (booking created today)
+                        if (!hasToday && b.createdAt) {
+                            hasToday = extractDate(b.createdAt) === today;
+                        }
+
+                        // Show all today's active bookings (not cancelled/completed)
+                        const activeStatuses = ['booking-placed', 'confirmed', 'matched', 'scheduled', 'assigned', 'accepted', 'on_the_way', 'arrived', 'pending_verification', 'in_progress', 'cleaning_complete'];
+                        const statusMatch = activeStatuses.includes(b.status);
+
+                        console.log(`[DEBUG Booking] id=${b.id}, status=${b.status}, dates=${JSON.stringify(b.dates)}, selectedDate=${b.selectedDate}, date=${b.date}, createdAt=${b.createdAt}, hasToday=${hasToday}, statusMatch=${statusMatch}`);
+
+                        return hasToday && statusMatch;
+                    });
+                    console.log('[DEBUG CustomerHome] Result - today bookings:', todaysBookingsList.length);
+                    setTodayBookings(todaysBookingsList);
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
@@ -112,6 +241,87 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNot
             isMounted = false;
         };
     }, [user, getUserHouses, getUserBookings]);
+
+    // Poll for today's bookings updates (every 3 seconds)
+    useEffect(() => {
+        if (todayBookings.length === 0) return;
+
+        const interval = setInterval(async () => {
+            try {
+                const { getBookingWithTracking } = await import('../storage');
+                const updatedBookings = await Promise.all(
+                    todayBookings.map(b => getBookingWithTracking(b.id))
+                );
+                const validUpdates = updatedBookings.filter(Boolean);
+                if (validUpdates.length > 0) {
+                    setTodayBookings(prev =>
+                        prev.map(booking => {
+                            const updated = validUpdates.find(u => u.id === booking.id);
+                            return updated || booking;
+                        })
+                    );
+                }
+            } catch (error) {
+                console.error('Error polling bookings:', error);
+            }
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [todayBookings.map(b => b.id).join(',')]);
+
+    // Handle verification for a specific booking
+    const handleVerifyCode = async (bookingId) => {
+        const code = inputCodes[bookingId] || '';
+        if (!bookingId || code.length !== 6) return;
+
+        setVerifyingIds(prev => ({ ...prev, [bookingId]: true }));
+        try {
+            const { verifyJobCode, checkVerificationAndStart } = await import('../storage');
+            const success = await verifyJobCode(bookingId, 'homeowner', code);
+            if (success) {
+                const started = await checkVerificationAndStart(bookingId);
+                if (started) {
+                    // Refresh booking
+                    const { getBookingWithTracking } = await import('../storage');
+                    const updated = await getBookingWithTracking(bookingId);
+                    if (updated) {
+                        setTodayBookings(prev =>
+                            prev.map(b => b.id === bookingId ? updated : b)
+                        );
+                    }
+                }
+            } else {
+                alert("Incorrect code. Please ask your cleaner for their 6-digit code.");
+            }
+        } catch (error) {
+            console.error('Verification error:', error);
+            alert("Verification failed. Please try again.");
+        } finally {
+            setVerifyingIds(prev => ({ ...prev, [bookingId]: false }));
+        }
+    };
+
+    // Handle completing the job (approval)
+    const handleCompleteBooking = async (bookingId) => {
+
+        try {
+            const { approveJob, getBookingWithTracking } = await import('../storage');
+            // For now, simple approval without detailed rating
+            await approveJob(bookingId, { rating: 5, comment: 'Completed via homeowner dashboard' });
+
+            // Refresh booking
+            const updated = await getBookingWithTracking(bookingId);
+            if (updated) {
+                setTodayBookings(prev =>
+                    prev.map(b => b.id === bookingId ? updated : b)
+                );
+            }
+            alert("Job completed and approved!");
+        } catch (error) {
+            console.error('Error completing booking:', error);
+            alert("Failed to complete booking. Please try again.");
+        }
+    };
 
     const recentBookings = bookings.slice(0, 3);
     const defaultHouse = houses.find(h => h.isDefault) || houses[0];
@@ -193,6 +403,188 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNot
             {/* Main Content Area */}
             <div className="px-5 mt-4 space-y-5">
 
+                {/* Today's Cleaning Section */}
+                {todayBookings.length > 0 && (
+                    <div>
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2 opacity-70">
+                            Today's Cleaning{todayBookings.length > 1 ? 's' : ''}
+                        </h3>
+                        <div className="space-y-3">
+                            {todayBookings.map((todayBooking) => (
+                                <div key={todayBooking.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                                    <div className="flex flex-col gap-3 w-full">
+                                        <div className="flex gap-4 w-full">
+                                            {/* Left: Time Sidebar */}
+                                            <div className="flex flex-col items-center justify-start py-1 w-12 flex-shrink-0">
+                                                {todayBooking.dates?.[0] && todayBooking.timeSlots?.[todayBooking.dates[0]]?.[0] ? (
+                                                    <>
+                                                        <p className="text-[13px] font-black text-gray-900 border-b-2 border-teal-500 pb-0.5 mb-1 leading-none">
+                                                            {todayBooking.timeSlots[todayBooking.dates[0]][0] === 'morning' ? '9 AM' :
+                                                                todayBooking.timeSlots[todayBooking.dates[0]][0] === 'afternoon' ? '12 PM' : '3 PM'}
+                                                        </p>
+                                                        <div className="h-8 w-0.5 bg-gray-100"></div>
+                                                        <p className="text-[13px] font-black text-gray-400 mt-1 leading-none">
+                                                            {todayBooking.timeSlots[todayBooking.dates[0]][0] === 'morning' ? '12 PM' :
+                                                                todayBooking.timeSlots[todayBooking.dates[0]][0] === 'afternoon' ? '3 PM' : '6 PM'}
+                                                        </p>
+                                                    </>
+                                                ) : (
+                                                    <Clock className="w-6 h-6 text-gray-400" />
+                                                )}
+                                            </div>
+
+                                            {/* Right: Main Content */}
+                                            <div className="flex-1 min-w-0">
+                                                {/* Header: Service Type + Price */}
+                                                <div className="flex items-baseline mb-2">
+                                                    <h4 className="font-extrabold text-gray-900 text-lg capitalize truncate">
+                                                        {(() => {
+                                                            const type = (todayBooking.serviceTypeId || todayBooking.serviceType || 'regular').toLowerCase();
+                                                            if (type.includes('regular')) return 'Regular Cleaning';
+                                                            if (type.includes('deep')) return 'Deep Cleaning';
+                                                            return type.replace('-', ' ');
+                                                        })()}
+                                                    </h4>
+                                                    <div className="flex-1 mx-4 border-b border-gray-50 border-dashed self-center mb-1"></div>
+                                                    <span className="text-base font-bold text-teal-600 whitespace-nowrap">
+                                                        ${(todayBooking.totalAmount || 0).toFixed(2)}
+                                                    </span>
+                                                    <ChevronRight className="w-4 h-4 text-gray-300 ml-2 flex-shrink-0" />
+                                                </div>
+
+                                                {/* Full Address */}
+                                                {todayBooking.houseId && (
+                                                    <div className="mb-4">
+                                                        <p className="text-gray-500 text-xs leading-snug">
+                                                            {(() => {
+                                                                const house = houses.find(h => h.id === todayBooking.houseId);
+                                                                if (!house?.address) return 'Address';
+                                                                const { street, city, state, zip, zipcode } = house.address;
+                                                                const parts = [street, city].filter(Boolean);
+                                                                let addr = parts.join(', ');
+                                                                if (state) addr += `, ${state}`;
+                                                                if (zip || zipcode) addr += ` ${zip || zipcode}`;
+                                                                return addr;
+                                                            })()}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {/* Status and Verification Row */}
+                                                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                                                    {/* Status Badge */}
+                                                    {todayBooking.status === 'on_the_way' && (
+                                                        <div className="flex items-center gap-1.5 px-3 py-2.5 bg-blue-50 text-blue-700 rounded-xl text-[10px] font-black uppercase tracking-tighter border border-blue-100">
+                                                            <Navigation className="w-3.5 h-3.5 animate-pulse" />
+                                                            On The Way
+                                                            {todayBooking.tracking?.eta > 0 && ` (${todayBooking.tracking.eta} min)`}
+                                                        </div>
+                                                    )}
+                                                    {todayBooking.status === 'arrived' && (
+                                                        <div className="flex items-center gap-1.5 px-3 py-2.5 bg-green-50 text-green-700 rounded-xl text-[10px] font-black uppercase tracking-tighter border border-green-100">
+                                                            <MapPin className="w-3.5 h-3.5" />
+                                                            Arrived
+                                                        </div>
+                                                    )}
+                                                    {todayBooking.status === 'in_progress' && (
+                                                        <div className="flex items-center gap-1.5 px-3 py-2.5 bg-teal-50 text-teal-700 rounded-xl text-[10px] font-black uppercase tracking-tighter border border-teal-100">
+                                                            <CheckCircle2 className="w-3.5 h-3.5 animate-pulse" />
+                                                            In Progress
+                                                        </div>
+                                                    )}
+                                                    {(todayBooking.status === 'approved' || todayBooking.status === 'completed') && (
+                                                        <div className="flex items-center gap-1.5 px-3 py-2.5 bg-green-100 text-green-800 rounded-xl text-[10px] font-black uppercase tracking-tighter border border-green-200">
+                                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                                            Job Completed
+                                                        </div>
+                                                    )}
+                                                    {['confirmed', 'matched', 'scheduled'].includes(todayBooking.status) && todayBooking.cleanerReconfirmed && (
+                                                        <div className="flex items-center gap-1.5 px-3 py-2.5 bg-teal-50 text-teal-700 rounded-xl text-[10px] font-black uppercase tracking-tighter border border-teal-100">
+                                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                                            Cleaner Confirmed
+                                                        </div>
+                                                    )}
+                                                    {['confirmed', 'matched', 'scheduled'].includes(todayBooking.status) && !todayBooking.cleanerReconfirmed && (
+                                                        <div className="flex items-center gap-1.5 px-3 py-2.5 bg-gray-50 text-gray-700 rounded-xl text-[10px] font-black uppercase tracking-tighter border border-gray-100">
+                                                            <Clock className="w-3.5 h-3.5" />
+                                                            Scheduled
+                                                        </div>
+                                                    )}
+
+                                                    {/* Verification Code Display */}
+                                                    {todayBooking.verificationCodes?.customerCode && (
+                                                        <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl whitespace-nowrap shadow-lg flex-shrink-0 border border-gray-800 ml-auto">
+                                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Code</span>
+                                                            <div className="h-6 w-[1px] bg-gray-700 mx-1"></div>
+                                                            <span className="text-xl font-mono font-black tracking-[0.2em] text-teal-400">
+                                                                {todayBooking.verificationCodes.customerCode}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Verification Input - Shows when codes are available and not yet verified */}
+                                                {todayBooking.verificationCodes?.customerCode && !todayBooking.verificationCodes?.customerVerified && (
+                                                    <div className="mt-4 pt-4 border-t border-gray-100">
+                                                        <p className="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-wider">Enter cleaner's code</p>
+                                                        <div className="flex gap-2">
+                                                            <div className="flex-1">
+                                                                <OTPInput
+                                                                    length={6}
+                                                                    value={inputCodes[todayBooking.id] || ''}
+                                                                    onChange={(val) => setInputCodes(prev => ({ ...prev, [todayBooking.id]: val }))}
+                                                                />
+                                                            </div>
+                                                            <button
+                                                                onClick={() => handleVerifyCode(todayBooking.id)}
+                                                                disabled={(inputCodes[todayBooking.id] || '').length !== 6 || verifyingIds[todayBooking.id]}
+                                                                className="px-4 bg-primary-600 text-white font-black rounded-xl text-xs uppercase tracking-wider disabled:opacity-50 hover:bg-primary-700 active:scale-95 transition-all shadow-md"
+                                                            >
+                                                                {verifyingIds[todayBooking.id] ? '...' : 'Verify'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Verified Status */}
+                                                {todayBooking.verificationCodes?.customerVerified && (
+                                                    <div className="mt-4 pt-4 border-t border-gray-100">
+                                                        <div className="bg-green-50 text-green-700 p-3 rounded-xl flex items-center justify-between border border-green-100">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                                                                    <Check className="w-3 h-3 text-white" />
+                                                                </div>
+                                                                <span className="font-bold text-xs uppercase tracking-wider">
+                                                                    {['approved', 'completed'].includes(todayBooking.status)
+                                                                        ? 'Cleaning Successfully Completed'
+                                                                        : todayBooking.verificationCodes?.cleanerVerified
+                                                                            ? 'Verified! Cleaning Started'
+                                                                            : 'Verified. Waiting for Cleaner...'}
+                                                                </span>
+                                                            </div>
+                                                            {todayBooking.verificationCodes?.cleanerVerified && todayBooking.status !== 'approved' && todayBooking.status !== 'completed' && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleCompleteBooking(todayBooking.id);
+                                                                    }}
+                                                                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+                                                                >
+                                                                    Mark Job as Done
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* My Properties */}
                 <div>
                     <div className="flex items-center justify-between mb-2">
@@ -205,16 +597,18 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNot
                             {houses.map((house) => (
                                 <div
                                     key={house.id}
-                                    className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between cursor-pointer hover:border-primary-100 transition-colors"
-                                    onClick={onViewHouses}
+                                    onClick={() => navigateTo?.('booking', { houseId: house.id })}
+                                    className="bg-white rounded-xl shadow-sm border border-gray-200 py-3 px-4 flex items-center justify-between cursor-pointer hover:border-teal-500/30 hover:shadow-md transition-all active:scale-[0.98]"
                                 >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                                            <Home className="w-6 h-6 text-primary-500" />
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 bg-primary-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <Home className="w-5 h-5 text-primary-500" />
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="text-sm font-bold text-gray-900 truncate pr-4">{house.nickname}</h3>
-                                            <p className="text-gray-500 text-[10px] truncate max-w-[200px]">{house.address?.street || 'No Address'}</p>
+                                            <h3 className="text-sm font-bold text-gray-900 truncate">{house.name || house.nickname}</h3>
+                                            <p className="text-gray-500 text-[9px] font-medium leading-tight">
+                                                {house.address?.street}, {house.address?.city}, {house.address?.state} {house.address?.zip || house.address?.zipcode}
+                                            </p>
                                         </div>
                                     </div>
                                     {house.isDefault && <Star className="w-5 h-5 text-yellow-500 flex-shrink-0" />}
@@ -270,7 +664,7 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNot
                                             </div>
                                             <div>
                                                 <h3 className="text-sm font-bold text-gray-900">{service?.name || 'Cleaning'}</h3>
-                                                <p className="text-[10px] text-gray-500 font-mono">{booking.id}</p>
+                                                <p className="text-[10px] text-gray-500 font-mono">{booking.bookingNumber || booking.id}</p>
                                                 <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase mt-1 ${booking.status === 'confirmed' ? 'bg-green-50 text-green-600' :
                                                     booking.status === 'completed' ? 'bg-gray-100 text-gray-600' :
                                                         'bg-blue-50 text-blue-600'
@@ -430,6 +824,25 @@ export function BookingsList() {
     );
 }
 
+/**
+ * ============================================================================
+ * CLEANER HOME SCREEN (Provider Dashboard)
+ * ============================================================================
+ * 
+ * Purpose:
+ * The command center for Cleaners. It focuses on:
+ * 1. Revenue: "This Week Earnings" (Motivation).
+ * 2. Active Job: The immediate task at hand (Start Trip, Check In).
+ * 3. Schedule: Upcoming jobs.
+ * 
+ * Key Features:
+ * - "Slide to Start": Safety mechanism to prevent accidental status changes.
+ * - Live Earnings: Real-time calculation of net income.
+ * - Job Lifecycle management (Accept -> On Way -> Arrived -> Complete).
+ * 
+ * @param {Function} onViewEarnings - Nav to detailed earnings
+ * @param {Function} onViewJobs - Nav to available job offers
+ */
 export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJobs, onViewHistory, onViewEarnings, onViewUpcoming }) {
     const { user } = useApp();
     const [loading, setLoading] = useState(true);
@@ -445,6 +858,13 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
         notificationCount: 0,
         availableJobsCount: 0
     });
+
+    const getLocalDateString = (date) => {
+        const d = new Date(date);
+        return d.getFullYear() + '-' +
+            String(d.getMonth() + 1).padStart(2, '0') + '-' +
+            String(d.getDate()).padStart(2, '0');
+    };
 
     // Load dashboard data from database
     useEffect(() => {
@@ -485,13 +905,16 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                 ]);
 
                 // Calculate stats
-                const today = new Date().toISOString().split('T')[0];
+                const now = new Date();
+                const today = getLocalDateString(new Date()); // YYYY-MM-DD local
+
                 const todayJobs = allJobs.filter(job => {
                     const dateVal = job.scheduledDate || job.createdAt;
                     if (!dateVal) return false;
-                    const jobDate = new Date(dateVal);
-                    if (isNaN(jobDate.getTime())) return false;
-                    return jobDate.toISOString().split('T')[0] === today;
+
+                    // Extract date string directly (handle both YYYY-MM-DD and full ISO strings)
+                    const jobDateStr = dateVal.split('T')[0];
+                    return jobDateStr === today;
                 });
 
                 const pendingJobs = allJobs.filter(job =>
@@ -523,52 +946,152 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                     console.error('Error parsing dismissed jobs in Home', e);
                 }
 
-                const availableJobsCount = validAvailableBookings.length;
+                // Apply eligibility filter (same as JobOffers)
+                let eligibleCount = 0;
+                for (const booking of validAvailableBookings) {
+                    try {
+                        const match = await storage.calculateMatchScore(booking, cleanerProfile);
+                        if (match.isEligible) {
+                            eligibleCount++;
+                        }
+                    } catch (e) {
+                        // Skip bookings that can't be matched
+                    }
+                }
+                const availableJobsCount = eligibleCount;
 
                 const upcomingJobs = allJobs.filter(job => {
                     const dateVal = job.scheduledDate || job.startTime;
                     if (!dateVal) return false;
-                    const jobDate = new Date(dateVal);
-                    if (isNaN(jobDate.getTime())) return false;
-                    const jobDateStr = jobDate.toISOString().split('T')[0];
+
+                    // Extract date string directly
+                    const jobDateStr = dateVal.split('T')[0];
                     return jobDateStr > today && (job.status === 'scheduled' || job.status === 'confirmed');
                 }).sort((a, b) => {
-                    const dateA = new Date(a.scheduledDate || a.startTime || 0);
-                    const dateB = new Date(b.scheduledDate || b.startTime || 0);
-                    return dateA - dateB;
+                    const dateA = (a.scheduledDate || a.startTime || '').split('T')[0];
+                    const dateB = (b.scheduledDate || b.startTime || '').split('T')[0];
+                    return dateA.localeCompare(dateB);
                 });
+
+                // Helper to parse date string without timezone issues
+                const parseDateString = (dateStr) => {
+                    if (!dateStr) return new Date();
+
+                    // If it's a date-only string (YYYY-MM-DD), parse it as local time
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                        const [year, month, day] = dateStr.split('-').map(Number);
+                        return new Date(year, month - 1, day);
+                    }
+
+                    // Otherwise parse normally
+                    return new Date(dateStr);
+                };
 
                 // Format job for display
                 const formatJobForSchedule = (job) => {
-                    const dateVal = job.scheduledDate || job.startTime || new Date();
-                    const startTime = new Date(dateVal);
-                    const validDate = !isNaN(startTime.getTime()) ? startTime : new Date();
-                    const hours = startTime.getHours();
-                    const duration = job.duration || 2;
+                    const dateVal = job.scheduledDate || job.startTime || job.createdAt || new Date().toISOString();
+                    const validDate = parseDateString(dateVal);
+
+                    // Get hours from startTime or the date object
+                    let hours = 9; // Default morning time
+
+                    if (job.startTime && typeof job.startTime === 'string' && job.startTime.includes(':')) {
+                        const [h] = job.startTime.split(':').map(Number);
+                        if (!isNaN(h)) hours = h;
+                    } else if (validDate && !isNaN(validDate.getTime())) {
+                        hours = validDate.getHours();
+                    }
+
+                    // If we still have NaN, fallback to 9
+                    if (isNaN(hours)) hours = 9;
+
+                    const duration = Number(job.duration) || 3;
                     const endHours = hours + duration;
 
                     // Format date for upcoming jobs
-                    const dateStr = startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    const dateStr = (validDate && !isNaN(validDate.getTime()))
+                        ? validDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        : 'TBA';
 
                     const formatTime = (h) => {
-                        const period = h >= 12 ? 'PM' : 'AM';
-                        const hour12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+                        if (isNaN(h)) return '--:--';
+                        const hInt = Math.floor(h) % 24;
+                        const period = hInt >= 12 ? 'PM' : 'AM';
+                        const hour12 = hInt > 12 ? hInt - 12 : hInt === 0 ? 12 : hInt;
                         return `${hour12}:00 ${period}`;
                     };
 
                     return {
                         id: job.id,
+                        bookingId: job.bookingId,
+                        customerId: job.customerId,
                         date: dateStr,
                         timeRange: `${formatTime(hours)} - ${formatTime(endHours)}`,
                         serviceType: job.serviceType || 'Cleaning',
                         address: job.address || 'Address pending',
                         earnings: (job.amount || job.earnings || 50).toFixed(2), // Format to 2 decimal places
-                        status: job.status
+                        status: job.status,
+                        verificationCodes: job.verificationCodes || null,
+                        rawDate: dateVal.split('T')[0]
                     };
                 };
 
-                const todaySchedule = todayJobs.map(formatJobForSchedule);
-                const upcomingSchedule = upcomingJobs.slice(0, 5).map(formatJobForSchedule); // Show next 5 upcoming jobs
+                const todaySchedule = await Promise.all(todayJobs.map(async job => {
+                    const formatted = formatJobForSchedule(job);
+                    try {
+                        const booking = await storage.getBookingById(job.bookingId);
+                        const houseId = job.houseId || booking?.houseId;
+                        const house = houseId ? await storage.getHouseById(houseId) : null;
+
+                        let fullAddress = formatted.address;
+                        if (house?.address) {
+                            const { street, city, state, zip, zipcode } = house.address;
+                            const addrParts = [street, city].filter(Boolean);
+                            let addrStr = addrParts.join(', ');
+                            if (state) addrStr += `, ${state}`;
+                            if (zip || zipcode) addrStr += ` ${zip || zipcode}`;
+                            fullAddress = addrStr;
+                        }
+
+                        // Calculate cleaner earnings as 90% of subtotal (10% platform fee)
+                        const subtotal = booking?.pricingBreakdown?.subtotal || booking?.pricing?.subtotal || booking?.totalAmount || job.amount || 0;
+                        const cleanerEarnings = (subtotal * 0.9).toFixed(2);
+
+                        return {
+                            ...formatted,
+                            address: fullAddress,
+                            earnings: cleanerEarnings,
+                            cleanerReconfirmed: booking?.cleanerReconfirmed || false,
+                            trackingStatus: booking?.tracking?.status || 'idle',
+                            verificationCodes: booking?.verificationCodes || null
+                        };
+                    } catch (e) {
+                        return formatted;
+                    }
+                }));
+
+                const upcomingSchedule = await Promise.all(upcomingJobs.slice(0, 5).map(async job => {
+                    const formatted = formatJobForSchedule(job);
+                    try {
+                        const booking = await storage.getBookingById(job.bookingId);
+                        const houseId = job.houseId || booking?.houseId;
+                        const house = houseId ? await storage.getHouseById(houseId) : null;
+
+                        if (house?.address) {
+                            const { street, city, state, zip, zipcode } = house.address;
+                            const addrParts = [street, city].filter(Boolean);
+                            let addrStr = addrParts.join(', ');
+                            if (state) addrStr += `, ${state}`;
+                            if (zip || zipcode) addrStr += ` ${zip || zipcode}`;
+                            formatted.address = addrStr;
+                        }
+
+                        // Calculate cleaner earnings as 90% of subtotal (10% platform fee)
+                        const subtotal = booking?.pricingBreakdown?.subtotal || booking?.pricing?.subtotal || booking?.totalAmount || job.amount || 0;
+                        formatted.earnings = (subtotal * 0.9).toFixed(2);
+                    } catch (e) { }
+                    return formatted;
+                })); // Show next 5 upcoming jobs
 
                 // Calculate rating from reviews if stats are missing
                 const calculatedRating = reviewsData.reviews && reviewsData.reviews.length > 0
@@ -601,7 +1124,48 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
         return () => {
             isMounted = false;
         };
-    }, [user?.uid]);
+    }, [user?.uid]); // Dependency array for useEffect
+
+    // Poll for today's jobs updates (every 3 seconds)
+    useEffect(() => {
+        if (!user?.uid || dashboardData.todaySchedule.length === 0) return;
+
+        const interval = setInterval(async () => {
+            try {
+                const storage = await import('../storage');
+                const updatedSchedule = await Promise.all(
+                    dashboardData.todaySchedule.map(async (job) => {
+                        try {
+                            const updatedBooking = await storage.getBookingWithTracking(job.bookingId);
+                            if (updatedBooking) {
+                                return {
+                                    ...job,
+                                    verificationCodes: updatedBooking.verificationCodes,
+                                    cleanerReconfirmed: updatedBooking.cleanerReconfirmed,
+                                    trackingStatus: updatedBooking.tracking?.status || job.trackingStatus,
+                                    status: updatedBooking.status
+                                };
+                            }
+                            return job;
+                        } catch (err) {
+                            console.error('Error fetching updated job:', err);
+                            return job;
+                        }
+                    })
+                );
+                setDashboardData(prev => ({ ...prev, todaySchedule: updatedSchedule }));
+            } catch (error) {
+                console.error('Error polling today schedule:', error);
+            }
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [user?.uid, dashboardData.todaySchedule.length]);
+
+    const [confirming, setConfirming] = useState({}); // {jobId: boolean}
+    const [startingTrip, setStartingTrip] = useState({}); // {jobId: boolean}
+    const [cleanerVerificationInput, setCleanerVerificationInput] = useState({}); // {jobId: code}
+    const [verifyingCleaner, setVerifyingCleaner] = useState({}); // {jobId: boolean}
 
     const {
         pendingJobs,
@@ -659,31 +1223,29 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                     </button>
                 </div>
 
-                {/* Big Earnings Display */}
-                <div className="text-center mb-3">
-                    <button onClick={onViewEarnings} className="group">
-                        <h1 className="text-3xl font-bold tracking-tight mb-1 group-hover:text-gray-200 transition-colors">${earnings}</h1>
-                        <div className="flex items-center justify-center gap-2 text-gray-400 font-medium bg-white/10 w-fit mx-auto px-3 py-0.5 rounded-full text-xs">
-                            <span>Earned this week</span>
-                            <ChevronRight className="w-3 h-3" />
+                {/* Earnings + Available Jobs Row */}
+                <div className="flex items-center gap-3">
+                    {/* Earnings Display */}
+                    <button onClick={onViewEarnings} className="flex-1 flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2 hover:bg-white/20 transition-colors">
+                        <div className="text-left">
+                            <p className="text-xl font-bold text-white leading-tight">${earnings}</p>
+                            <p className="text-[10px] text-gray-400 font-medium">Earned this week</p>
                         </div>
+                        <ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
+                    </button>
+
+                    {/* Available Jobs Button */}
+                    <button
+                        onClick={onViewJobs}
+                        className={`bg-secondary-600 hover:bg-secondary-700 text-white font-bold text-sm py-3 px-12 rounded-xl shadow-lg shadow-secondary-900/30 flex items-center justify-center transition-transform active:scale-[0.98] whitespace-nowrap ${availableJobsCount > 0 ? 'animate-pulse' : ''}`}
+                    >
+                        Available Jobs {availableJobsCount > 0 ? `(${availableJobsCount})` : ''}
                     </button>
                 </div>
-
-                {/* Primary "GO" Action Button */}
-                <button
-                    onClick={onViewJobs}
-                    className="w-full bg-secondary-600 hover:bg-secondary-700 text-white font-bold text-lg py-3 rounded-2xl shadow-xl shadow-secondary-900/30 flex items-center justify-center gap-3 transition-transform active:scale-[0.98] relative overflow-hidden group"
-                >
-                    <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                    <span className="relative z-10">
-                        Available Jobs {availableJobsCount > 0 ? `(${availableJobsCount})` : ''}
-                    </span>
-                </button>
             </div>
 
             {/* Stats Grid */}
-            <div className="px-4 mt-3 relative z-30">
+            <div className="px-4 mt-3 relative z-30 hidden">
                 <div className="bg-white rounded-2xl shadow-lg p-5 grid grid-cols-3 gap-4 divide-x divide-gray-100">
                     <button onClick={onRatings} className="text-center group flex flex-col items-center">
                         <div className="flex items-center justify-center gap-1 mb-1">
@@ -707,7 +1269,7 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
             <div className="px-5 mt-4 space-y-5">
 
                 {/* Quick Actions Grid */}
-                <div>
+                <div className="hidden">
                     <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2 opacity-70">Quick Actions</h3>
                     <div className="grid grid-cols-2 gap-4">
                         <button
@@ -752,25 +1314,185 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                                     key={job.id || index}
                                     className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between"
                                 >
-                                    <div className="flex items-start gap-4">
-                                        <div className="flex flex-col items-center justify-center w-14 pt-1">
-                                            <p className="text-[10px] font-bold text-gray-500 mb-0.5 whitespace-nowrap">{job.timeRange.split(' - ')[0]}</p>
-                                            <div className="h-6 w-0.5 bg-gray-200 my-0.5"></div>
-                                            <p className="text-[10px] font-bold text-gray-500 mt-0.5 whitespace-nowrap">{job.timeRange.split(' - ')[1]}</p>
+                                    <div className="flex flex-col gap-3 w-full">
+                                        <div className="flex gap-4 w-full">
+                                            {/* Left: Time Sidebar */}
+                                            <div className="flex flex-col items-center justify-start py-1 w-12 flex-shrink-0">
+                                                <p className="text-[13px] font-black text-gray-900 border-b-2 border-teal-500 pb-0.5 mb-1 leading-none">{job.timeRange.split(' - ')[0].replace(':00', '')}</p>
+                                                <div className="h-8 w-0.5 bg-gray-100"></div>
+                                                <p className="text-[13px] font-black text-gray-400 mt-1 leading-none">{job.timeRange.split(' - ')[1].replace(':00', '')}</p>
+                                            </div>
+
+                                            {/* Right: Main Content */}
+                                            <div className="flex-1 min-w-0">
+                                                {/* Header: Service Type + Price */}
+                                                <div className="flex items-baseline mb-2">
+                                                    <h4 className="font-extrabold text-gray-900 text-lg capitalize truncate">
+                                                        {(() => {
+                                                            const type = (job.serviceType || 'regular').toLowerCase();
+                                                            if (type.includes('regular')) return 'Regular Cleaning';
+                                                            if (type.includes('deep')) return 'Deep Cleaning';
+                                                            return type.replace('-', ' ');
+                                                        })()}
+                                                    </h4>
+                                                    <div className="flex-1 mx-4 border-b border-gray-50 border-dashed self-center mb-1"></div>
+                                                    <span className="text-base font-bold text-teal-600 whitespace-nowrap">${job.earnings}</span>
+                                                    <ChevronRight className="w-4 h-4 text-gray-300 ml-2 flex-shrink-0" />
+                                                </div>
+
+                                                {/* Address and Map Button Row */}
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <p className="text-gray-500 text-xs min-w-0 flex-1 leading-snug">{job.address}</p>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`;
+                                                            window.open(mapUrl, '_blank');
+                                                        }}
+                                                        className="flex items-center gap-1.5 px-3 py-1 bg-secondary-50 text-secondary-700 rounded-lg text-[10px] font-extrabold border border-secondary-100 flex-shrink-0 hover:bg-secondary-100 transition-colors uppercase tracking-wider shadow-sm"
+                                                    >
+                                                        <MapPin className="w-3.5 h-3.5" /> Map
+                                                    </button>
+                                                </div>
+
+                                                {/* Action Row: Buttons + Code */}
+                                                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                                                    {!['approved', 'completed'].includes(job.status) && (
+                                                        <>
+                                                            <button
+                                                                disabled={job.rawDate !== getLocalDateString(new Date()) || confirming[job.id] === 'done' || job.cleanerReconfirmed || job.status === 'in_progress'}
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
+                                                                    setConfirming(prev => ({ ...prev, [job.id]: true }));
+                                                                    try {
+                                                                        const storage = await import('../storage');
+                                                                        await storage.generateVerificationCodes(job.bookingId);
+                                                                        await storage.updateDoc('bookings', job.bookingId, { cleanerReconfirmed: true });
+                                                                        await storage.createNotification(job.customerId, {
+                                                                            type: 'cleaner_reconfirmed',
+                                                                            title: 'Cleaner Confirmed',
+                                                                            message: `${user.name} has re-confirmed and received their verification code for today.`,
+                                                                            relatedId: job.bookingId
+                                                                        });
+                                                                        const updatedBooking = await storage.getBookingWithTracking(job.bookingId);
+                                                                        if (updatedBooking) {
+                                                                            setDashboardData(prev => ({
+                                                                                ...prev,
+                                                                                todaySchedule: prev.todaySchedule.map(j =>
+                                                                                    j.bookingId === job.bookingId ? {
+                                                                                        ...j,
+                                                                                        cleanerReconfirmed: updatedBooking.cleanerReconfirmed,
+                                                                                        verificationCodes: updatedBooking.verificationCodes
+                                                                                    } : j
+                                                                                )
+                                                                            }));
+                                                                        }
+                                                                        setConfirming(prev => ({ ...prev, [job.id]: 'done' }));
+                                                                    } catch (err) {
+                                                                        console.error(err);
+                                                                        setConfirming(prev => ({ ...prev, [job.id]: false }));
+                                                                    }
+                                                                }}
+                                                                className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[10px] font-black transition-all whitespace-nowrap uppercase tracking-tighter shadow-md translate-y-0 active:translate-y-0.5 ${job.rawDate !== getLocalDateString(new Date()) || confirming[job.id] === 'done' || job.cleanerReconfirmed || job.status === 'in_progress'
+                                                                    ? 'bg-gray-50 text-gray-400 border border-gray-100 shadow-none opacity-50'
+                                                                    : `bg-teal-600 text-white hover:bg-teal-700 active:scale-95 ${!(confirming[job.id] === 'done' || job.cleanerReconfirmed) ? 'animate-pulse' : ''}`
+                                                                    }`}
+                                                            >
+                                                                {(confirming[job.id] === 'done' || job.cleanerReconfirmed) ? <><CheckCircle2 className="w-3.5 h-3.5" /> Confirmed</> : 'Confirm & Get Code'}
+                                                            </button>
+
+                                                            {/* Hidden Start Trip button for now */}
+                                                        </>
+                                                    )}
+
+                                                    {/* 6-Digit Code - Aligned Right */}
+                                                    <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl whitespace-nowrap shadow-lg flex-shrink-0 border border-gray-800 ml-auto">
+                                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Code</span>
+                                                        <div className="h-6 w-[1px] bg-gray-700 mx-1"></div>
+                                                        <span className="text-xl font-mono font-black tracking-[0.2em] text-teal-400">
+                                                            {job.verificationCodes?.cleanerCode || '------'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Verification Input Section */}
+                                                {job.verificationCodes && !job.verificationCodes?.cleanerVerified && (
+                                                    <div className="mt-4 pt-4 border-t border-gray-100">
+                                                        <p className="text-xs font-bold text-gray-700 uppercase mb-3">Enter Homeowner's Code</p>
+                                                        <div className="flex flex-col gap-3">
+                                                            <OTPInput
+                                                                length={6}
+                                                                value={cleanerVerificationInput[job.id] || ''}
+                                                                onChange={(code) => setCleanerVerificationInput(prev => ({ ...prev, [job.id]: code }))}
+                                                                disabled={verifyingCleaner[job.id]}
+                                                            />
+                                                            <button
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
+                                                                    const inputCode = cleanerVerificationInput[job.id];
+                                                                    if (inputCode?.length !== 6) return;
+
+                                                                    setVerifyingCleaner(prev => ({ ...prev, [job.id]: true }));
+                                                                    try {
+                                                                        const storage = await import('../storage');
+                                                                        const success = await storage.verifyJobCode(job.bookingId, 'cleaner', inputCode);
+                                                                        if (success) {
+                                                                            const started = await storage.checkVerificationAndStart(job.bookingId);
+                                                                            if (started) {
+                                                                                // Fetch updated booking from database
+                                                                                const updatedBooking = await storage.getBookingWithTracking(job.bookingId);
+                                                                                if (updatedBooking) {
+                                                                                    // Update todaySchedule with fresh data from database
+                                                                                    setDashboardData(prev => ({
+                                                                                        ...prev,
+                                                                                        todaySchedule: prev.todaySchedule.map(j =>
+                                                                                            j.bookingId === job.bookingId ? {
+                                                                                                ...j,
+                                                                                                verificationCodes: updatedBooking.verificationCodes,
+                                                                                                status: updatedBooking.status,
+                                                                                                trackingStatus: updatedBooking.tracking?.status || j.trackingStatus
+                                                                                            } : j
+                                                                                        )
+                                                                                    }));
+                                                                                }
+                                                                            }
+                                                                        } else {
+                                                                            alert("Incorrect code. Please try again.");
+                                                                        }
+                                                                    } catch (err) {
+                                                                        console.error('Verification error:', err);
+                                                                        alert("Verification failed. Please try again.");
+                                                                    } finally {
+                                                                        setVerifyingCleaner(prev => ({ ...prev, [job.id]: false }));
+                                                                    }
+                                                                }}
+                                                                disabled={!cleanerVerificationInput[job.id] || cleanerVerificationInput[job.id].length !== 6 || verifyingCleaner[job.id]}
+                                                                className={`w-full py-3 rounded-xl text-xs font-bold transition-all ${!cleanerVerificationInput[job.id] || cleanerVerificationInput[job.id].length !== 6 || verifyingCleaner[job.id]
+                                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                                    : 'bg-teal-600 text-white hover:bg-teal-700 active:scale-95 shadow-md'
+                                                                    }`}
+                                                            >
+                                                                {verifyingCleaner[job.id] ? 'Verifying...' : 'Verify Homeowner'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Verified Success Message */}
+                                                {job.verificationCodes?.cleanerVerified && (
+                                                    <div className="mt-4 pt-4 border-t border-gray-100">
+                                                        <div className="flex items-center justify-center gap-2 py-3 bg-green-50 text-green-700 rounded-xl border border-green-200">
+                                                            <CheckCircle2 className="w-5 h-5" />
+                                                            <span className="font-bold text-sm">
+                                                                {['approved', 'completed'].includes(job.status)
+                                                                    ? 'Work Finished & Approved'
+                                                                    : 'Verified! Job Started'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h4 className="font-bold text-gray-900 text-lg capitalize">{job.serviceType.replace('-', ' ')}</h4>
-                                            <p className="text-gray-500 text-sm mb-2">{job.address}</p>
-                                            {job.status === 'in_progress' && (
-                                                <span className="inline-block px-2 py-0.5 bg-secondary-100 text-secondary-700 text-xs font-bold rounded-full">
-                                                    In Progress
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-xl font-bold text-gray-900">${job.earnings}</p>
-                                        <ChevronRight className="w-5 h-5 text-gray-300 ml-auto mt-2" />
                                     </div>
                                 </div>
                             ))}
@@ -838,7 +1560,7 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }
 

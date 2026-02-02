@@ -1,4 +1,17 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * CLEANER RATINGS DASHBOARD
+ * ============================================================================
+ * 
+ * Purpose:
+ * Allows Cleaners to view their performance metrics and reviews.
+ * 
+ * Logic:
+ * - Calculates aggregate stats (Average Rating, distribution).
+ * - Implements logic to reply to reviews.
+ * - Visualizes trends (Last 30 days vs All time).
+ */
 import { useApp } from '../context/AppContext';
 import {
     getCleanerReviewsWithStats,

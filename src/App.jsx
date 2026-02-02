@@ -1,4 +1,23 @@
 import { useState, useEffect } from 'react';
+/**
+ * ============================================================================
+ * ROOT APPLICATION COMPONENT
+ * ============================================================================
+ * 
+ * Purpose:
+ * This is the root of the React application. It handles:
+ * 1. Global Providers (AppProvider)
+ * 2. Initialization (Database seeding, migration)
+ * 3. Top-Level Navigation
+ * 
+ * NAVIGATIONAL PATTERN:
+ * We use a "State Machine" approach for navigation (`currentScreen`) rather
+ * than a URL-based router (like react-router). This mimics a Mobile App structure
+ * where screens are stacked or replaced.
+ * 
+ * Flow:
+ * Splash -> (Check Auth) -> Welcome/Auth OR Main Dashboard
+ */
 import { AppProvider, useApp } from './context/AppContext';
 import SplashScreen from './components/SplashScreen';
 import WelcomeScreen from './components/WelcomeScreen';
@@ -14,6 +33,7 @@ import PayoutManagement from './components/PayoutManagement';
 import TippingScreen from './components/TippingScreen';
 import LiveTracking from './components/LiveTracking';
 import BookingsList from './components/MyBookings';
+import BookingDetails from './components/BookingDetails';
 import PaymentMethods from './components/PaymentMethods';
 import HelpCenter from './components/HelpCenter';
 import TermsPrivacy from './components/TermsPrivacy';
@@ -40,11 +60,12 @@ import {
 } from './components/Screens';
 import UpcomingJobs from './components/UpcomingJobs';
 import JobDetails from './components/JobDetails';
-import { initDB, initializeDatabase } from './storage';
+import { initDB, initializeDatabase, updatePlatformFee } from './storage';
 import { seedAllData, getSeedingStats, createAdminUser } from './storage/seedData';
 import { migrateUserData } from './storage/migration';
 import AdminDashboard from './admin/AdminDashboard';
 import NotificationTest from './components/NotificationTest';
+import TopCleaners from './components/TopCleaners';
 import './index.css';
 
 // Main app component with all navigation logic
@@ -63,8 +84,10 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState('splash');
   const [activeTab, setActiveTab] = useState('home');
   const [selectedJobDetail, setSelectedJobDetail] = useState(null);
-  const [jobDetailsBackScreen, setJobDetailsBackScreen] = useState(null); // { screen: 'string', tab?: 'string' }
+  const [jobDetailsBackScreen, setJobDetailsBackScreen] = useState(null);
+  const [executingJob, setExecutingJob] = useState(null); // { screen: 'string', tab?: 'string' }
   const [activeJobBooking, setActiveJobBooking] = useState(null);
+  const [selectedBooking, setSelectedBooking] = useState(null);
   const [navigationParams, setNavigationParams] = useState({});
 
   // Auto-initialize database and seed data on first load
@@ -81,6 +104,9 @@ function AppContent() {
 
         // Ensure Admin User exists
         await createAdminUser();
+
+        // Ensure platform fee is set to 10% (cleaner earns 90%)
+        await updatePlatformFee(10);
 
         // Check if we need to seed data
         const stats = await getSeedingStats();
@@ -373,10 +399,10 @@ function AppContent() {
             }}
             onMessaging={() => setCurrentScreen('cleaner-messaging')}
             onStartJob={(job) => {
-              // Handle starting job (navigate to active job flow if exists, or schedule)
+              // Handle starting job (navigate to active job flow)
               console.log('Start job', job);
-              setActiveTab('schedule');
-              setCurrentScreen('main');
+              setExecutingJob(job);
+              setCurrentScreen('job-execution');
             }}
           />
         );
@@ -500,13 +526,56 @@ function AppContent() {
             }}
           />
         );
-
       case 'notification-preferences':
         return (
           <NotificationPreferences
             onBack={() => {
               setCurrentScreen('main');
               setActiveTab('profile');
+            }}
+          />
+        );
+
+      case 'top-cleaners':
+        return (
+          <TopCleaners
+            onBack={() => {
+              setCurrentScreen('main');
+              setActiveTab('bookings');
+            }}
+          />
+        );
+
+      case 'booking-details':
+        return (
+          <BookingDetails
+            booking={selectedBooking}
+            onBack={() => {
+              setCurrentScreen('main');
+              setActiveTab('bookings');
+            }}
+            onMessage={(booking) => {
+              setCurrentScreen('customer-messaging');
+            }}
+            onTrack={(booking) => {
+              setActiveJobBooking(booking);
+              setCurrentScreen('main');
+            }}
+          />
+        );
+
+      case 'job-execution':
+        return (
+          <JobExecution
+            job={executingJob}
+            onBack={() => {
+              setCurrentScreen('main');
+              setActiveTab('schedule');
+            }}
+            onComplete={() => {
+              setExecutingJob(null);
+              setCurrentScreen('main');
+              setActiveTab('schedule');
             }}
           />
         );
@@ -552,13 +621,21 @@ function AppContent() {
                 onViewHouses={() => navigateTo('houses')}
                 onViewBookings={() => setActiveTab('bookings')}
                 onNotifications={() => setCurrentScreen('customer-notifications')}
+                navigateTo={navigateTo}
               />
             )}
             {activeTab === 'houses' && (
               <HouseManagement onBack={() => setActiveTab('home')} navigateTo={navigateTo} />
             )}
             {activeTab === 'bookings' && (
-              <BookingsList onTrackJob={setActiveJobBooking} />
+              <BookingsList
+                onTrackJob={setActiveJobBooking}
+                onViewTopCleaners={() => setCurrentScreen('top-cleaners')}
+                onViewBooking={(booking) => {
+                  setSelectedBooking(booking);
+                  setCurrentScreen('booking-details');
+                }}
+              />
             )}
             {activeTab === 'profile' && (
               <ProfileScreen
@@ -605,6 +682,8 @@ function AppContent() {
                 }}
                 onStartJob={(job) => {
                   console.log('Start job:', job);
+                  setExecutingJob(job);
+                  setCurrentScreen('job-execution');
                 }}
                 onManageAvailability={() => setCurrentScreen('shift-management')}
                 onMessaging={() => setCurrentScreen('cleaner-messaging')}

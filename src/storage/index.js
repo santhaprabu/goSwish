@@ -43,6 +43,7 @@ export {
     initializeDatabase,
     verifyDatabase,
     resetDatabase,
+    updatePlatformFee,
 } from './initDatabase.js';
 
 // Helper functions

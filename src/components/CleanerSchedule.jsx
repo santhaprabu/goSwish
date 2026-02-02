@@ -1,4 +1,20 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * CLEANER SCHEDULE VIEW
+ * ============================================================================
+ * 
+ * Purpose:
+ * Visualizes the cleaner's upcoming jobs and allows availability management.
+ * 
+ * Capabilities:
+ * 1. Week View: Detailed daily breakdown.
+ * 2. Month View: High-level overview of busy days.
+ * 3. Blocking: Shows time-offs (Morning/Afternoon/Evening blocks).
+ * 
+ * Integration:
+ * Fetches jobs via `getCleanerJobs()` providing a real-time schedule.
+ */
 import { useApp } from '../context/AppContext';
 import { getCleanerJobs, getCleanerByUserId } from '../storage';
 import {

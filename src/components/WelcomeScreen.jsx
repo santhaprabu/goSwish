@@ -1,5 +1,20 @@
 import { useState } from 'react';
-import { Mail, Lock, Loader2, Sparkles, ArrowLeft, User, Phone } from 'lucide-react';
+/*
+ * ============================================================================
+ * WELCOME / AUTH SCREEN
+ * ============================================================================
+ * 
+ * Purpose:
+ * The main entry point supporting:
+ * - Login (Email/Password & OTP Phone Login)
+ * - Sign Up (Dual flows for Cleaner/Customer)
+ * - Social Login (Mocked)
+ * 
+ * Architecture:
+ * Uses a "Bottom Sheet" design pattern for a modern mobile feel.
+ */
+import { Mail, Lock, Loader2, Sparkles, ArrowLeft, User, Phone, ShieldCheck } from 'lucide-react';
+import OTPInput from './OTPInput';
 import { useApp } from '../context/AppContext';
 
 export default function WelcomeScreen({ onSuccess, initialMode = 'welcome' }) {
@@ -428,8 +443,8 @@ export default function WelcomeScreen({ onSuccess, initialMode = 'welcome' }) {
 
                     {error && (
                         <div className={`mb-6 p-4 rounded-2xl text-sm font-semibold flex items-center gap-3 animate-in shake ${error.includes('OTP code sent')
-                                ? 'bg-teal-50 border border-teal-100 text-teal-700'
-                                : 'bg-red-50 border border-red-100 text-red-600'
+                            ? 'bg-teal-50 border border-teal-100 text-teal-700'
+                            : 'bg-red-50 border border-red-100 text-red-600'
                             }`}>
                             <div className={`w-1.5 h-1.5 rounded-full ${error.includes('OTP code sent') ? 'bg-teal-600' : 'bg-red-600'
                                 }`} />
@@ -487,17 +502,13 @@ export default function WelcomeScreen({ onSuccess, initialMode = 'welcome' }) {
                         {/* OTP Option */}
                         <div className="pt-2">
                             <label className="block text-sm font-bold text-gray-900 mb-2 ml-1">Login with Code</label>
-                            <div className="relative group mb-4">
-                                <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-black transition-colors" />
-                                <input
-                                    type="text"
+                            <div className="flex justify-center mb-4">
+                                <OTPInput
+                                    length={6}
                                     value={otp}
-                                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                    className="w-full pl-14 pr-4 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-black rounded-2xl outline-none transition-all font-medium tracking-widest disabled:opacity-50 disabled:bg-gray-100"
-                                    placeholder={otpSent ? "Enter 6-digit OTP" : "Click 'Get OTP' below"}
-                                    maxLength={6}
-                                    autoFocus={isPhone}
+                                    onChange={setOtp}
                                     disabled={!otpSent && !isPhone}
+                                    error={error && !error.includes('OTP code sent')}
                                 />
                             </div>
 

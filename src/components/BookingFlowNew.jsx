@@ -1,5 +1,49 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+/*
+ * ============================================================================
+ * BOOKING FLOW WIZARD (New V2)
+ * ============================================================================
+ * 
+ * Purpose:
+ * An optimized, step-by-step wizard for creating jobs.
+ * 
+ * Key Improvements over V1:
+ * - Better state persistence between steps.
+ * - Enhanced UI for Add-on selection.
+ * - Integrated Payment method management (Stripe).
+ * 
+ * Steps:
+ * 1. Select Property
+ * 2. Select Service
+ * 3. Add-ons
+ * 4. Schedule
+ * 5. Notes
+ * 6. Payment
+ */
+/**
+ * ============================================================================
+ * BOOKING FLOW WIZARD
+ * ============================================================================
+ * 
+ * Purpose:
+ * This component guides the user through the 6-step process of creating a job.
+ * 
+ * Steps:
+ * 1. Select Property (Where?)
+ * 2. Select Service (What type?)
+ * 3. Add-ons (Extras)
+ * 4. Schedule (When?)
+ * 5. Notes (Instructions)
+ * 6. Payment (Stripe Integration)
+ * 
+ * DATA FLOW:
+ * We collect partial state in local `useState` hooks. 
+ * Only on Step 6 (Payment Success) do we call `createBooking()` to commit data to DB.
+ * 
+ * STRIPE INTEGRATION:
+ * This component directly mounts Stripe Elements for PCI compliance.
+ */
 import {
     ArrowLeft, Home, Sparkles, Calendar, Clock, CreditCard,
     CheckCircle2, Loader2, Plus, Check, X, ChevronLeft, ChevronRight,
@@ -26,7 +70,7 @@ const serviceIcons = {
     Grid3X3: Grid3X3
 };
 
-export default function BookingFlowNew({ onBack, onComplete }) {
+export default function BookingFlowNew({ onBack, onComplete, initialHouseId }) {
     const {
         user, updateUser, getUserHouses, serviceTypes, addOns,
         createBooking, findEligibleCleaners, metroMultipliers,
@@ -71,30 +115,50 @@ export default function BookingFlowNew({ onBack, onComplete }) {
     const [promoCode, setPromoCode] = useState('');
     const [promoError, setPromoError] = useState(null);
 
+    // Flag to handle initial house selection only once
+    const initialSelectionDone = useRef(false);
+
     // Load houses and saved cards
     useEffect(() => {
+        let isMounted = true;
         async function loadData() {
             setLoading(true);
             try {
                 const housesData = await getUserHouses();
                 setHouses(housesData || []);
-                if (housesData && housesData.length > 0) {
-                    const defaultHouse = housesData.find(h => h.isDefault) || housesData[0];
-                    setSelectedHouseId(defaultHouse.id);
-                }
+                if (isMounted) {
+                    if (housesData && housesData.length > 0) {
+                        const defaultHouse = housesData.find(h => h.isDefault) || housesData[0];
 
-                if (user?.paymentMethods && user.paymentMethods.length > 0) {
-                    setSavedCards(user.paymentMethods);
-                    setSelectedPaymentOption(user.paymentMethods.find(c => c.isDefault)?.id || user.paymentMethods[0].id);
+                        // Use initialHouseId if provided and selection not yet done
+                        if (initialHouseId && !initialSelectionDone.current) {
+                            setSelectedHouseId(initialHouseId);
+                            setStep(2); // Jump to Step 2
+                            initialSelectionDone.current = true;
+                        } else {
+                            setSelectedHouseId(defaultHouse.id);
+                        }
+                    }
+
+                    if (user?.paymentMethods && user.paymentMethods.length > 0) {
+                        setSavedCards(user.paymentMethods);
+                        setSelectedPaymentOption(user.paymentMethods.find(c => c.isDefault)?.id || user.paymentMethods[0].id);
+                    }
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
             } finally {
-                setLoading(false);
+                if (isMounted) {
+                    setLoading(false);
+                }
             }
         }
         loadData();
-    }, [getUserHouses, user]);
+
+        return () => {
+            isMounted = false;
+        };
+    }, [getUserHouses, user, initialHouseId]);
 
     // Update price details whenever selection changes
     useEffect(() => {
@@ -212,6 +276,7 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                 timeSlots: { [selectedDate]: [selectedTimeSlot] },
                 specialNotes: notes,
                 totalAmount: priceDetails?.total || 0,
+                pricingBreakdown: priceDetails,
                 discount: priceDetails?.promoDiscount ? { type: priceDetails.promoDetails.type, value: priceDetails.promoDetails.value, code: promoCode } : null
             });
 
@@ -562,12 +627,12 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                                     <span className="text-gray-900 font-bold">${priceDetails?.base.toFixed(2)}</span>
                                 </div>
 
-                                {selectedAddOnIds.length > 0 && (
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-500 font-medium">Add-ons ({selectedAddOnIds.length})</span>
-                                        <span className="text-gray-900 font-bold">+${priceDetails?.addOns.toFixed(2)}</span>
+                                {priceDetails?.addOnDetails?.map((addon, idx) => (
+                                    <div key={idx} className="flex justify-between text-sm">
+                                        <span className="text-gray-500 font-medium">{addon.name}</span>
+                                        <span className="text-gray-900 font-bold">+${addon.price.toFixed(2)}</span>
                                     </div>
-                                )}
+                                ))}
 
                                 <div className="flex justify-between text-sm">
                                     <div className="flex items-center gap-1.5 text-gray-500 font-medium">
@@ -700,15 +765,19 @@ export default function BookingFlowNew({ onBack, onComplete }) {
                                         <div key={cleaner.id} className="flex items-center justify-between group">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border-2 border-white group-hover:border-secondary-500 transition-colors">
-                                                    <Star className="w-5 h-5 text-amber-400" />
+                                                    {cleaner.photoURL ? (
+                                                        <img src={cleaner.photoURL} alt={cleaner.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <Star className="w-5 h-5 text-amber-400" />
+                                                    )}
                                                 </div>
                                                 <div className="text-left">
-                                                    <div className="text-xs font-black text-gray-900">Professional Cleaner</div>
-                                                    <div className="text-[10px] text-gray-400 font-bold">{cleaner.distance} miles away</div>
+                                                    <div className="text-xs font-black text-gray-900">{cleaner.name || 'Professional Cleaner'}</div>
+                                                    <div className="text-[10px] text-gray-400 font-bold">{cleaner.distance} miles away • {cleaner.rating || '5.0'} ★</div>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-1.5 text-xs font-bold text-secondary-600">
-                                                <Zap className="w-3 h-3 animate-pulse" /> Pending
+                                                <Zap className="w-3 h-3 animate-pulse" /> Notified
                                             </div>
                                         </div>
                                     ))}

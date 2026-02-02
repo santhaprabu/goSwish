@@ -1,5 +1,27 @@
 import { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 
+/**
+ * ============================================================================
+ * APP CONTEXT - GLOBAL STATE MANAGEMENT
+ * ============================================================================
+ * 
+ * Purpose:
+ * This component acts as the "Brain" of the frontend application.
+ * It provides a central place to access:
+ * 1. User Authentication State (Who is logged in?)
+ * 2. Shared Data (Service Types, Prices, Settings)
+ * 3. Global Actions (login, logout, fetch data)
+ * 
+ * Architecture:
+ * - We use the React Context API + useReducer for state management.
+ * - This avoids the complexity of Redux for this scale of app.
+ * - Logic is exposed via the `useApp()` custom hook.
+ * 
+ * Integration:
+ * This Context file imports the backend logic from `src/storage` and exposes it
+ * to UI components, acting as a bridge.
+ */
+
 // Initial state - UI state only, all data comes from IndexedDB
 const initialState = {
     // User authentication
@@ -70,6 +92,11 @@ const initialState = {
         'Chicago': 1.15,
         'Miami': 1.2,
     },
+    settings: {
+        taxRate: 0.0825,
+        cleanerEarningsRate: 0.90,
+        minBookingAmount: 50,
+    }
 };
 
 // Action types
@@ -80,6 +107,7 @@ const ActionTypes = {
     SET_CURRENT_BOOKING: 'SET_CURRENT_BOOKING',
     SET_LOADING: 'SET_LOADING',
     SET_ERROR: 'SET_ERROR',
+    SET_SETTINGS: 'SET_SETTINGS',
 };
 
 // Reducer
@@ -127,6 +155,12 @@ function appReducer(state, action) {
                 error: action.payload,
             };
 
+        case ActionTypes.SET_SETTINGS:
+            return {
+                ...state,
+                settings: { ...state.settings, ...action.payload },
+            };
+
         default:
             return state;
     }
@@ -149,6 +183,13 @@ export function AppProvider({ children }) {
 
                 if (currentUser) {
                     dispatch({ type: ActionTypes.SET_USER, payload: currentUser });
+                }
+
+                // Load Settings
+                const { getAppSettings } = await import('../storage/index.js');
+                const settingsData = await getAppSettings();
+                if (settingsData) {
+                    dispatch({ type: ActionTypes.SET_SETTINGS, payload: settingsData });
                 }
 
                 // SECURITY: Dangerous admin functions removed
@@ -504,43 +545,47 @@ export function AppProvider({ children }) {
 
             console.log(`📊 Calculating: Size ${size} * Rate ${rate}`);
 
-            // Base price
-            let basePrice = size * rate;
-
             // Metro multiplier
             const metro = state.metroMultipliers[house.address.city] || 1.0;
-            basePrice *= metro;
+
+            // Base price
+            let basePrice = size * rate * metro;
+
+            // Apply rounding rule: Round UP to nearest 10 for sqft-based base price
+            basePrice = Math.ceil(basePrice / 10) * 10;
 
             // Pet surcharge
             if (house.petInfo && house.petInfo !== 'No pets') {
                 basePrice += 10; // Flat pet fee
             }
 
-            console.log(`💵 Base Price (raw): ${basePrice}`);
-
-            // Apply rounding rule: Round UP to nearest 10
-            basePrice = Math.ceil(basePrice / 10) * 10;
-            console.log(`💵 Base Price (rounded): ${basePrice}`);
+            console.log(`💵 Base Price (rounded to nearest 10): ${basePrice}`);
 
             // Add-ons
+            const addOnDetails = [];
             const addOnsTotal = selectedAddOns.reduce((sum, addonId) => {
                 const addon = state.addOns.find(a => a.id === addonId);
                 if (!addon) return sum;
+
                 let price = 0;
                 if (addon.rate) {
-                    price = size * addon.rate;
+                    // Sqft based add-on - round UP to nearest 10
+                    price = Math.ceil((size * addon.rate) / 10) * 10;
                 } else {
+                    // Flat fee add-on
                     price = addon.price || 0;
                 }
-                // Round UP to nearest 10
-                return sum + (Math.ceil(price / 10) * 10);
+
+                const roundedPrice = Math.round(price * 100) / 100;
+                addOnDetails.push({ id: addonId, name: addon.name, price: roundedPrice });
+                return sum + roundedPrice;
             }, 0);
 
             // Subtotal
-            const subtotal = basePrice + addOnsTotal;
+            const subtotal = Math.round((basePrice + addOnsTotal) * 100) / 100;
 
             // Tax
-            const taxRate = 0.08;
+            const taxRate = state.settings?.taxRate || 0.0825;
             const taxes = subtotal * taxRate;
 
             // Promo discount
@@ -570,10 +615,12 @@ export function AppProvider({ children }) {
             const estimatedDuration = Math.ceil(baseDuration * serviceMultiplier);
 
             const result = {
-                base: Math.round(basePrice * 100) / 100,
-                addOns: addOnsTotal,
-                subtotal: Math.round(subtotal * 100) / 100,
+                base: basePrice,
+                addOns: Math.round(addOnsTotal * 100) / 100,
+                addOnDetails,
+                subtotal: subtotal,
                 taxes: Math.round(taxes * 100) / 100,
+                taxRate: taxRate,
                 promoDiscount: Math.round(promoDiscount * 100) / 100,
                 promoDetails,
                 total: Math.round(total * 100) / 100,

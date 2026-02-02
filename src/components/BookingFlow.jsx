@@ -1,4 +1,24 @@
 import { useState, useEffect, useMemo } from 'react';
+/*
+ * ============================================================================
+ * BOOKING FLOW (Standard)
+ * ============================================================================
+ * 
+ * Purpose:
+ * The primary multi-step form for creating a new booking.
+ * 
+ * Steps:
+ * 1. Property Selection
+ * 2. Service Type
+ * 3. Add-ons
+ * 4. Date & Time
+ * 5. Notes
+ * 6. Payment & Confirmation
+ * 
+ * Logic:
+ * - Uses `calculatePrice` from context for dynamic pricing.
+ * - Manages multi-slot date selection.
+ */
 import {
     ArrowLeft, ChevronLeft, ChevronRight, Check, X,
     Sparkles, Home, SprayCan, Grid3X3, Info,

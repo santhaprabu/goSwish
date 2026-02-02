@@ -1,4 +1,16 @@
 import { useState } from 'react';
+/*
+ * ============================================================================
+ * DIGITAL RECEIPT VIEWER
+ * ============================================================================
+ * 
+ * Purpose:
+ * Displays a formatted receipt for a completed booking.
+ * 
+ * Technical:
+ * - Generates HTML on the fly for PDF conversion/download.
+ * - Breaks down Base Price, Add-ons, Discounts, Tax, and Tips.
+ */
 import {
     Download, Mail, Share2, ChevronLeft, Check,
     Calendar, MapPin, User, CreditCard
@@ -110,28 +122,32 @@ export default function ReceiptViewer({ booking, onBack }) {
     <div class="section-title">Pricing Breakdown</div>
     <table class="pricing-table">
       <tr>
-        <td class="label-col">Base Price (${booking.serviceType} clean, ${booking.house?.sqft} sqft)</td>
-        <td class="amount-col">$${booking.pricingBreakdown?.basePrice?.toFixed(2) || '0.00'}</td>
+        <td class="label-col">Base Price (${booking.serviceType || (typeof booking.serviceTypeId === 'string' ? booking.serviceTypeId.replace('-', ' ') : 'cleaning')}, ${booking.house?.sqft} sqft)</td>
+        <td class="amount-col">$${(booking.pricingBreakdown?.base || booking.pricingBreakdown?.basePrice || 0).toFixed(2)}</td>
       </tr>
-      ${booking.addOns?.map(addon => `
-      <tr>
-        <td class="label-col">${addon.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}</td>
-        <td class="amount-col">$15.00</td>
-      </tr>
-      `).join('') || ''}
+      ${(booking.pricingBreakdown?.addOnDetails || booking.addOns || []).map(addon => {
+            const addonPrice = typeof addon === 'object' ? addon.price : 15.00;
+            const addonName = typeof addon === 'object' ? addon.name : addon.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+            return `
+        <tr>
+          <td class="label-col">${addonName}</td>
+          <td class="amount-col">$${addonPrice.toFixed(2)}</td>
+        </tr>
+      `;
+        }).join('') || ''}
       <tr>
         <td class="label-col">Subtotal</td>
-        <td class="amount-col">$${booking.pricingBreakdown?.subtotal?.toFixed(2) || '0.00'}</td>
+        <td class="amount-col">$${(booking.pricingBreakdown?.subtotal || 0).toFixed(2)}</td>
       </tr>
-      ${booking.pricingBreakdown?.discount ? `
+      ${(booking.pricingBreakdown?.promoDiscount || booking.pricingBreakdown?.discount) ? `
       <tr>
         <td class="label-col">Promo Code Discount</td>
-        <td class="amount-col">-$${booking.pricingBreakdown.discount.toFixed(2)}</td>
+        <td class="amount-col">-$${(booking.pricingBreakdown?.promoDiscount || booking.pricingBreakdown?.discount).toFixed(2)}</td>
       </tr>
       ` : ''}
       <tr>
-        <td class="label-col">Tax (8.25%)</td>
-        <td class="amount-col">$${booking.pricingBreakdown?.tax?.toFixed(2) || '0.00'}</td>
+        <td class="label-col">Tax (${((booking.pricingBreakdown?.taxRate || 0.0825) * 100).toFixed(1)}%)</td>
+        <td class="amount-col">$${(booking.pricingBreakdown?.taxes || booking.pricingBreakdown?.tax || 0).toFixed(2)}</td>
       </tr>
       ${booking.tipAmount ? `
       <tr>
@@ -141,7 +157,7 @@ export default function ReceiptViewer({ booking, onBack }) {
       ` : ''}
       <tr class="total-row">
         <td class="label-col">TOTAL PAID</td>
-        <td class="amount-col">$${booking.pricingBreakdown?.total?.toFixed(2) || '0.00'}</td>
+        <td class="amount-col">$${(booking.pricingBreakdown?.total || booking.totalAmount || 0).toFixed(2)}</td>
       </tr>
     </table>
   </div>
@@ -255,35 +271,39 @@ export default function ReceiptViewer({ booking, onBack }) {
                         <div className="space-y-3">
                             <div className="flex justify-between">
                                 <span className="text-gray-600">
-                                    Base Price ({booking.serviceType} clean, {booking.house?.sqft} sqft)
+                                    Base Price ({(booking.serviceType || booking.serviceTypeId || 'cleaning').replace('-', ' ')} clean, {booking.house?.sqft} sqft)
                                 </span>
-                                <span className="font-medium">${booking.pricingBreakdown?.basePrice?.toFixed(2)}</span>
+                                <span className="font-medium">${(booking.pricingBreakdown?.base || booking.pricingBreakdown?.basePrice || 0).toFixed(2)}</span>
                             </div>
 
-                            {booking.addOns?.map((addon, index) => (
-                                <div key={index} className="flex justify-between">
-                                    <span className="text-gray-600 capitalize">{addon.replace('-', ' ')}</span>
-                                    <span className="font-medium">$15.00</span>
-                                </div>
-                            ))}
+                            {(booking.pricingBreakdown?.addOnDetails || booking.addOns || []).map((addon, index) => {
+                                const addonPrice = typeof addon === 'object' ? addon.price : 15.00;
+                                const addonName = typeof addon === 'object' ? addon.name : addon.replace('-', ' ');
+                                return (
+                                    <div key={index} className="flex justify-between">
+                                        <span className="text-gray-600 capitalize">{addonName}</span>
+                                        <span className="font-medium">${addonPrice.toFixed(2)}</span>
+                                    </div>
+                                );
+                            })}
 
                             <div className="flex justify-between pt-3 border-t border-gray-200">
                                 <span className="text-gray-600">Subtotal</span>
-                                <span className="font-medium">${booking.pricingBreakdown?.subtotal?.toFixed(2)}</span>
+                                <span className="font-medium">${(booking.pricingBreakdown?.subtotal || 0).toFixed(2)}</span>
                             </div>
 
-                            {booking.pricingBreakdown?.discount > 0 && (
+                            {(booking.pricingBreakdown?.promoDiscount || booking.pricingBreakdown?.discount) > 0 && (
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Promo Code Discount</span>
                                     <span className="font-medium text-green-600">
-                                        -${booking.pricingBreakdown.discount.toFixed(2)}
+                                        -${(booking.pricingBreakdown?.promoDiscount || booking.pricingBreakdown?.discount).toFixed(2)}
                                     </span>
                                 </div>
                             )}
 
                             <div className="flex justify-between">
-                                <span className="text-gray-600">Tax (8.25%)</span>
-                                <span className="font-medium">${booking.pricingBreakdown?.tax?.toFixed(2)}</span>
+                                <span className="text-gray-600">Tax (8%)</span>
+                                <span className="font-medium">${(booking.pricingBreakdown?.taxes || booking.pricingBreakdown?.tax || 0).toFixed(2)}</span>
                             </div>
 
                             {booking.tipAmount > 0 && (
@@ -295,7 +315,7 @@ export default function ReceiptViewer({ booking, onBack }) {
 
                             <div className="flex justify-between pt-4 border-t-2 border-black text-xl font-bold">
                                 <span>TOTAL PAID</span>
-                                <span>${booking.pricingBreakdown?.total?.toFixed(2)}</span>
+                                <span>${(booking.pricingBreakdown?.total || booking.totalAmount || 0).toFixed(2)}</span>
                             </div>
                         </div>
                     </div>

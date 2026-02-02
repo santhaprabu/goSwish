@@ -1,6 +1,22 @@
 /**
- * Eligibility Filtering
- * Filters cleaners who CAN perform the job (hard filters)
+ * ============================================================================
+ * ELIGIBILITY FILTERING (The "Matching Funnel")
+ * ============================================================================
+ * 
+ * Overview:
+ * This module is responsible for filtering the pool of cleaners down to those who
+ * are STRICTLY CAPABLE of performing a specific job.
+ * 
+ * The 7-Step Funnel:
+ * 1. Verification (Identity checked?)
+ * 2. Account Status (Active?)
+ * 3. Onboarding (Completed training?)
+ * 4. Geography (Within service radius?)
+ * 5. Availability (Has open slots?)
+ * 6. Service Type (Can do "Deep Clean" etc?)
+ * 7. Conflicts (Already booked at that time?)
+ * 
+ * Only cleaners who pass ALL 7 steps are passed to the "Scoring" engine for ranking.
  */
 
 import { getDocs, queryDocs, COLLECTIONS } from '../storage/db.js';

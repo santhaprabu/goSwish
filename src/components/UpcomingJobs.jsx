@@ -1,4 +1,17 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * UPCOMING JOBS (Cleaner Schedule)
+ * ============================================================================
+ * 
+ * Purpose:
+ * Lists confirmed assignments for the cleaner.
+ * 
+ * Logic:
+ * - Fetches jobs where status is 'scheduled' or 'confirmed'.
+ * - Sorts chronologically.
+ * - Parsing logic handles various date string formats from the DB.
+ */
 import { ChevronLeft, MapPin, Calendar, Clock, DollarSign, ChevronRight, User } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getCleanerByUserId, getCleanerJobs } from '../storage';
@@ -45,16 +58,16 @@ export default function UpcomingJobs({ onBack, onViewJob, embedded = false }) {
                     const dateVal = job.scheduledDate || job.startTime;
                     if (!dateVal) return false;
 
-                    // Simple check: date >= today
-                    const jobDate = new Date(dateVal).toISOString().split('T')[0];
+                    // Extract date string (handle both YYYY-MM-DD and full ISO strings)
+                    const jobDate = dateVal.split('T')[0];
                     return jobDate >= today;
                 });
 
                 // Sort by date then time
                 upcoming.sort((a, b) => {
-                    const dateA = new Date(a.scheduledDate || a.startTime || 0);
-                    const dateB = new Date(b.scheduledDate || b.startTime || 0);
-                    return dateA - dateB;
+                    const dateA = (a.scheduledDate || a.startTime || '').split('T')[0];
+                    const dateB = (b.scheduledDate || b.startTime || '').split('T')[0];
+                    return dateA.localeCompare(dateB);
                 });
 
                 setJobs(upcoming);
@@ -68,14 +81,45 @@ export default function UpcomingJobs({ onBack, onViewJob, embedded = false }) {
         loadJobs();
     }, [user]);
 
+    // Helper to parse date string without timezone issues
+    const parseDateString = (dateStr) => {
+        if (!dateStr) return new Date();
+
+        // If it's a date-only string (YYYY-MM-DD), parse it as local time
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+
+        // Otherwise parse normally
+        return new Date(dateStr);
+    };
+
+    // Helper to parse time string (HH:MM) and combine with date
+    const parseTime = (dateStr, timeStr) => {
+        const date = parseDateString(dateStr);
+        if (!timeStr || !timeStr.includes(':')) {
+            return date.getHours();
+        }
+        const [hours] = timeStr.split(':').map(Number);
+        return hours;
+    };
+
     // Format helper
     const formatJob = (job) => {
-        const dateVal = job.scheduledDate || job.startTime || new Date();
-        const startTime = new Date(dateVal);
-        const validDate = !isNaN(startTime.getTime()) ? startTime : new Date();
+        const dateVal = job.scheduledDate || job.startTime || new Date().toISOString();
+        const validDate = parseDateString(dateVal);
 
-        const hours = validDate.getHours();
-        const duration = job.duration || 2;
+        // Get hours from startTime if available, otherwise from parsed date
+        let hours = 9; // Default morning time
+        if (job.startTime && job.startTime.includes(':')) {
+            // If startTime is "09:00" format
+            hours = parseTime(dateVal, job.startTime);
+        } else if (validDate) {
+            hours = validDate.getHours();
+        }
+
+        const duration = job.duration || 3;
         const endHours = hours + duration;
 
         const formatTime = (h) => {

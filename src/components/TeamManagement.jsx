@@ -1,4 +1,17 @@
 import { useState } from 'react';
+/*
+ * ============================================================================
+ * TEAM MANAGEMENT
+ * ============================================================================
+ * 
+ * Purpose:
+ * Allows Cleaners to form teams to handle larger jobs.
+ * 
+ * Features:
+ * - Create a Team profile.
+ * - Invite members via email.
+ * - View member stats and remove members.
+ */
 import {
     Users, Plus, UserPlus, Mail, Check, X,
     ChevronRight, Star, TrendingUp, Award, Settings

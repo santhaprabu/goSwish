@@ -1,5 +1,16 @@
 
 import { useState } from 'react';
+/*
+ * ============================================================================
+ * TERMS & PRIVACY VIEW
+ * ============================================================================
+ * 
+ * Purpose:
+ * Displays legal agreements (TOS / Privacy Policy).
+ * 
+ * Tech:
+ * - Simple toggle state to switch between text blocks.
+ */
 import { ChevronLeft, FileText, Shield } from 'lucide-react';
 
 export default function TermsPrivacy({ onBack }) {

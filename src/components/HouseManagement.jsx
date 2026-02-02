@@ -1,4 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
+/*
+ * ============================================================================
+ * HOUSE MANAGEMENT (CRUD)
+ * ============================================================================
+ * 
+ * Purpose:
+ * Allows customers to Add, Edit, and Manage their properties.
+ * 
+ * Features:
+ * - Geocoding: Converts address to Lat/Lng for cleaner matching.
+ * - Validation: Ensures sqft, bedroom/bath counts are realistic.
+ * - State Normalization: Converts "Texas" -> "TX" for consistent storage.
+ * 
+ * Note:
+ * This component handles both "Edit Mode" and "Add Mode".
+ */
 import {
     ArrowLeft, MapPin, Home, Ruler, Layers, Bed, Bath,
     Dog, Cat, Bird, AlertCircle, Check, Loader2, X,
@@ -1375,7 +1391,7 @@ export function HouseList({ onAddHouse, onEditHouse, onSelectHouse, navigateTo }
             {houses.map((house) => (
                 <div
                     key={house.id}
-                    onClick={() => onSelectHouse?.(house)}
+                    onClick={() => navigateTo?.('booking', { houseId: house.id })}
                     className="bg-white rounded-[2rem] p-4 relative transition-all hover:bg-gray-50 active:scale-[0.98] group cursor-pointer shadow-[0_4px_20px_-10px_rgba(0,0,0,0.08)]"
                 >
                     <div className="flex gap-4 items-center">
@@ -1466,7 +1482,10 @@ export function HouseList({ onAddHouse, onEditHouse, onSelectHouse, navigateTo }
 
                     {/* Delete Confirmation Overlay */}
                     {confirmDelete === house.id && (
-                        <div className="absolute inset-0 bg-white/98 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 animate-fade-in rounded-[2rem]">
+                        <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute inset-0 bg-white/98 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 animate-fade-in rounded-[2rem]"
+                        >
                             <h4 className="font-black text-gray-900 text-sm mb-3 uppercase tracking-wider">Remove Property?</h4>
                             <div className="flex gap-3 w-full max-w-[200px]">
                                 <button

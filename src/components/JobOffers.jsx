@@ -1,4 +1,17 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * JOB OFFERS COMPONENT (Marketplace)
+ * ============================================================================
+ * 
+ * Purpose:
+ * Displays available jobs to cleaners (Uber-style feed).
+ * 
+ * Features:
+ * - Tabbed view: 'Available' (Marketplace) vs 'Upcoming' (My Schedule).
+ * - Match Score: Calculates compatibility based on location & preferences.
+ * - Acceptance Flow: Cleaners can claim a job instantly or bid.
+ */
 import { useApp } from '../context/AppContext';
 import {
     getAvailableBookings,
@@ -15,6 +28,23 @@ import {
 // Job Offers - Available Jobs for Cleaners
 import UpcomingJobs from './UpcomingJobs';
 
+/**
+ * ============================================================================
+ * JOB OFFERS COMPONENT (Marketplace)
+ * ============================================================================
+ * 
+ * Purpose:
+ * This component is the "Marketplace" where Cleaners find work.
+ * It displays a list of available bookings that match the cleaner's criteria.
+ * 
+ * Key Features:
+ * 1. Eligibility Filtering: Only shows jobs the cleaner CAN do (skills, location).
+ * 2. Match Scoring: Ranks jobs by how well they fit the cleaner's preferences.
+ * 3. Optimistic UI: Allows instant acceptance (handled safely by backend).
+ * 4. Dual View: Toggles between "Available" (Marketplace) and "Upcoming" (My Schedule).
+ * 
+ * @param {Function} onViewUpcomingJob - Navigation callback
+ */
 export default function JobOffers({ onViewUpcomingJob }) {
     const { user, acceptJobOffer } = useApp();
     const [viewMode, setViewMode] = useState('available'); // 'available' | 'upcoming'
@@ -73,9 +103,9 @@ export default function JobOffers({ onViewUpcomingJob }) {
                         }
                     }
 
-                    // Earnings estimate (70% of total)
-                    const amount = booking.totalAmount || 100;
-                    const earnings = amount * 0.7;
+                    // Earnings estimate (90% of subtotal - 10% platform fee)
+                    const baseAmount = booking.pricingBreakdown?.subtotal || booking.totalAmount || 0;
+                    const earnings = baseAmount * 0.9;
 
                     // Expiry logic (mock)
                     const expiresIn = Math.floor(Math.random() * 30) + 10;
@@ -137,6 +167,17 @@ export default function JobOffers({ onViewUpcomingJob }) {
         setSelectedOffer(offer);
     };
 
+    /**
+     * Handle Accepting a Job Offer
+     * 
+     * EDUCATIONAL NOTE:
+     * This is a critical transaction. In a real marketplace, multiple cleaners
+     * might try to accept the same job at the same time (Race Condition).
+     * 
+     * Our backend (helpers.js -> acceptJobOffer) handles this using 
+     * "Optimistic Locking" (checking version numbers) to ensure only one 
+     * cleaner wins the job.
+     */
     const handleAcceptOffer = async (offer, selectedDateOption) => {
         try {
             if (!user?.uid) {
@@ -205,9 +246,41 @@ export default function JobOffers({ onViewUpcomingJob }) {
         setSelectedOffer(null);
     };
 
+    // Helper to parse date string without timezone issues
+    const parseDateString = (dateStr) => {
+        if (!dateStr) return new Date();
+
+        // If it's a date-only string (YYYY-MM-DD), parse it as local time
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+
+        // Otherwise parse normally
+        return new Date(dateStr);
+    };
+
+    // Helper to format date for display
+    const formatDateForDisplay = (dateStr) => {
+        const date = parseDateString(dateStr);
+        return date.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    };
+
     // Helper: Normalize date options for UI
     const getDateOptions = (booking) => {
-        if (booking.dateOptions && booking.dateOptions.length > 0) return booking.dateOptions;
+        if (booking.dateOptions && booking.dateOptions.length > 0) {
+            // Format dates in dateOptions
+            return booking.dateOptions.map(option => ({
+                ...option,
+                date: option.date, // Keep original for processing
+                displayDate: formatDateForDisplay(option.date)
+            }));
+        }
 
         // Fallback: create options from booking.dates
         if (booking.dates && booking.dates.length > 0) {
@@ -220,6 +293,7 @@ export default function JobOffers({ onViewUpcomingJob }) {
 
                 return {
                     date,
+                    displayDate: formatDateForDisplay(date),
                     timeSlot: slot,
                     startTime: timeRange.split(' - ')[0],
                     endTime: timeRange.split(' - ')[1]
@@ -383,7 +457,7 @@ export default function JobOffers({ onViewUpcomingJob }) {
                                                 <p className="text-xs text-gray-500 mb-1">
                                                     {dateOptions.length > 1 ? (index === 0 ? '1st Choice' : `Option ${index + 1}`) : 'Requested Schedule'}
                                                 </p>
-                                                <p className="font-bold text-gray-900">{option.date}</p>
+                                                <p className="font-bold text-gray-900">{option.displayDate || option.date}</p>
                                                 <p className="text-sm text-gray-600 capitalize">
                                                     {option.timeSlot} ({option.startTime} - {option.endTime})
                                                 </p>
@@ -565,92 +639,169 @@ export default function JobOffers({ onViewUpcomingJob }) {
                                 </p>
                             </div>
                         ) : (
-                            filteredOffers.map(offer => (
-                                <div
-                                    key={offer.id}
-                                    onClick={() => handleViewDetails(offer)}
-                                    className="bg-white rounded-[1rem] shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer relative"
-                                >
-                                    <div className="h-1 w-full bg-gradient-to-r from-gray-900 to-gray-700"></div>
+                            filteredOffers.map(offer => {
+                                const dateOptions = getDateOptions(offer.booking);
+                                const estimatedHours = Math.ceil((offer.house.sqft || offer.house.size || 1500) / 500);
+                                const addOns = offer.booking.addOnIds || [];
+                                const hasPets = (offer.house.pets?.hasPets) || (offer.house.petInfo && offer.house.petInfo !== 'No pets');
 
-                                    <div className="p-3">
-                                        {/* Top Header: Pay & Time */}
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <div className="flex items-baseline gap-1">
-                                                    <span className="text-xl font-black text-gray-900 leading-none">${offer.earnings}</span>
-                                                    <span className="text-[10px] font-medium text-gray-400">est.</span>
-                                                </div>
-                                                <div className="flex items-center gap-1 text-[10px] font-bold text-teal-600 mt-1">
-                                                    <Calendar className="w-3 h-3" />
-                                                    <span>{getDateOptions(offer.booking)[0]?.date.split('-').slice(1).join('/')} • {getDateOptions(offer.booking)[0]?.timeSlot}</span>
-                                                </div>
-                                            </div>
-                                            <div className="text-right flex flex-col items-end gap-1">
-                                                <span className="inline-flex items-center gap-1 text-red-500 text-[9px] font-bold bg-red-50 px-1.5 py-0.5 rounded">
-                                                    <Clock className="w-2.5 h-2.5" />
-                                                    {offer.expiresIn}m
+                                return (
+                                    <div
+                                        key={offer.id}
+                                        onClick={() => handleViewDetails(offer)}
+                                        className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all cursor-pointer relative group"
+                                    >
+                                        {/* Top Gradient Bar with Service Type */}
+                                        <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 px-4 py-2.5 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="bg-white/20 text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full backdrop-blur-sm">
+                                                    {(offer.booking.serviceTypeId || 'regular').replace('-', ' ')}
                                                 </span>
-                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
-                                                    ID: {offer.bookingId.slice(-4).toUpperCase()}
-                                                </span>
+                                                {offer.matchScore >= 75 && (
+                                                    <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${offer.matchScore >= 100
+                                                        ? 'bg-purple-500/30 text-purple-200'
+                                                        : 'bg-green-500/30 text-green-200'
+                                                        }`}>
+                                                        ⭐ {offer.matchScore}% match
+                                                    </span>
+                                                )}
                                             </div>
-                                        </div>
-
-                                        {/* Secondary Info: Badges & Proximity */}
-                                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                                            <span className="bg-gray-100 text-gray-700 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded">
-                                                {(offer.booking.serviceTypeId || 'regular')}
-                                            </span>
-                                            {offer.matchScore >= 75 && (
-                                                <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${offer.matchScore > 100 ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
-                                                    {offer.matchScore}% MATCH
-                                                </span>
-                                            )}
-                                            <span className="text-gray-400 text-[10px] flex items-center gap-1">
-                                                <MapPin className="w-3 h-3" />
-                                                {offer.distance} mi • {offer.house.address.city}
-                                            </span>
-                                        </div>
-
-                                        {/* Property & Note Row (Combined) */}
-                                        <div className="flex items-center justify-between text-[10px] text-gray-500 py-1.5 border-t border-gray-50">
-                                            <div className="flex gap-2 font-medium">
-                                                <span>{offer.house.bedrooms}b/{offer.house.bathrooms}ba</span>
-                                                <span>•</span>
-                                                <span>{offer.house.sqft} sqft</span>
-                                            </div>
-                                            {offer.booking.specialNotes && (
-                                                <div className="max-w-[120px] truncate italic text-gray-400 text-[9px]">
-                                                    "{offer.booking.specialNotes}"
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Compact Actions */}
-                                        <div className="flex gap-2 mt-2">
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleDeclineOffer(offer); }}
-                                                className="flex-1 bg-white text-gray-400 font-bold text-[10px] rounded-lg py-1.5 border border-gray-100 hover:bg-gray-50"
-                                            >
-                                                Decline
-                                            </button>
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     if (offer.booking.dates?.length === 1) {
-                                                        const options = getDateOptions(offer.booking);
-                                                        handleAcceptOffer(offer, options[0]);
+                                                        handleAcceptOffer(offer, dateOptions[0]);
                                                     } else { handleViewDetails(offer); }
                                                 }}
-                                                className="flex-[1.8] bg-black text-white font-bold text-[10px] rounded-lg py-1.5 shadow-sm active:scale-95 transition-all uppercase tracking-wider"
+                                                className="bg-secondary-600 hover:bg-secondary-700 text-white text-[10px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-colors shadow-lg shadow-secondary-500/30 animate-pulse"
                                             >
-                                                Accept Job
+                                                <Check className="w-3.5 h-3.5" />
+                                                Accept
                                             </button>
                                         </div>
+
+                                        <div className="p-4 space-y-4">
+                                            {/* Earnings & Urgency Row */}
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="text-3xl font-black text-gray-900">${offer.earnings}</span>
+                                                    <span className="text-xs font-medium text-gray-400">earn</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="inline-flex items-center gap-1.5 text-orange-600 text-xs font-bold bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100 animate-pulse">
+                                                        <Clock className="w-3.5 h-3.5" />
+                                                        {offer.expiresIn}m left
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Schedule & Duration */}
+                                            <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+                                                        <Calendar className="w-5 h-5 text-teal-600" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-gray-900">{dateOptions[0]?.displayDate || dateOptions[0]?.date}</p>
+                                                        <p className="text-xs text-gray-500 capitalize">{dateOptions[0]?.timeSlot} slot</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="font-bold text-gray-900">~{estimatedHours} hrs</p>
+                                                    <p className="text-xs text-gray-500">Est. duration</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Location Card */}
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-10 h-10 bg-teal-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                    <MapPin className="w-5 h-5 text-teal-600" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-semibold text-gray-900 truncate">{offer.house.address.street}</p>
+                                                    <p className="text-sm text-gray-500">{offer.house.address.city}, {offer.house.address.state} {offer.house.address.zip || offer.house.address.zipcode}</p>
+                                                    <p className="text-xs text-teal-600 font-semibold mt-1">{offer.distance} miles away</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Property Details Grid */}
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div className="bg-gray-50 rounded-lg p-2.5 text-center">
+                                                    <p className="text-lg font-bold text-gray-900">{offer.house.sqft || offer.house.size || 1500}</p>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">sq ft</p>
+                                                </div>
+                                                <div className="bg-gray-50 rounded-lg p-2.5 text-center">
+                                                    <p className="text-lg font-bold text-gray-900">{offer.house.bedrooms}</p>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">beds</p>
+                                                </div>
+                                                <div className="bg-gray-50 rounded-lg p-2.5 text-center">
+                                                    <p className="text-lg font-bold text-gray-900">{offer.house.bathrooms}</p>
+                                                    <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wider">baths</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Add-ons */}
+                                            {addOns.length > 0 && (
+                                                <div className="border-t border-gray-100 pt-3">
+                                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Includes Add-ons</p>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {addOns.map((addon, idx) => (
+                                                            <span key={idx} className="bg-teal-50 text-teal-700 text-[10px] font-semibold px-2.5 py-1 rounded-full capitalize">
+                                                                {addon.replace(/-/g, ' ')}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Alerts Row */}
+                                            <div className="flex flex-wrap gap-2">
+                                                {hasPets && (
+                                                    <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-amber-100">
+                                                        🐾 Pets in home
+                                                    </span>
+                                                )}
+                                                {offer.booking.specialNotes && (
+                                                    <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-blue-100">
+                                                        📝 Has instructions
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Special Notes Preview */}
+                                            {offer.booking.specialNotes && (
+                                                <div className="bg-blue-50/50 rounded-lg p-3 border border-blue-100">
+                                                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Special Instructions</p>
+                                                    <p className="text-sm text-gray-700 line-clamp-2">{offer.booking.specialNotes}</p>
+                                                </div>
+                                            )}
+
+                                            {/* Action Buttons */}
+                                            <div className="flex gap-3 pt-2">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDeclineOffer(offer); }}
+                                                    className="flex-1 bg-gray-100 text-gray-600 font-bold text-sm rounded-xl py-3.5 hover:bg-gray-200 transition-colors"
+                                                >
+                                                    Not Interested
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (offer.booking.dates?.length === 1) {
+                                                            const options = getDateOptions(offer.booking);
+                                                            handleAcceptOffer(offer, options[0]);
+                                                        } else { handleViewDetails(offer); }
+                                                    }}
+                                                    className="flex-[1.5] bg-gradient-to-r from-teal-600 to-teal-500 text-white font-bold text-sm rounded-xl py-3.5 shadow-lg shadow-teal-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    <Check className="w-4 h-4" />
+                                                    Accept Job
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))
+                                )
+                            })
                         )}
                     </div>
                 </>

@@ -1,5 +1,17 @@
 
 import { useState } from 'react';
+/*
+ * ============================================================================
+ * HELP CENTER (FAQ)
+ * ============================================================================
+ * 
+ * Purpose:
+ * Provides self-service support for both Customers and Cleaners.
+ * 
+ * Logic:
+ * - Dynamically switches content based on `selectedRole` (Cleaner vs Customer).
+ * - Implements category-based filtering and search.
+ */
 import { Search, ChevronLeft, ChevronDown, ChevronUp, MessageCircle, Mail, Phone, FileText, Sparkles, Home } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 

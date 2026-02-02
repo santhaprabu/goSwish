@@ -1,8 +1,46 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * JOB EXECUTION WORKFLOW
+ * ============================================================================
+ * 
+ * Purpose:
+ * Handles the "Active Job" experience for Cleaners.
+ * 
+ * State Machine Phases:
+ * 1. Overview: cleaner reviews details before starting.
+ * 2. Trip: GPS tracking simulation during travel.
+ * 3. Verification: 2-way Code Exchange at the door (Security).
+ * 4. Execution: Checklist management during cleaning.
+ * 5. Completion: Check-out and Review submission.
+ * 
+ * Key Logic:
+ * - GPS Polling interval in 'Trip' phase.
+ * - OTP Verification logic in 'Verification' phase.
+ */
+/**
+ * ============================================================================
+ * JOB EXECUTION WORKFLOW
+ * ============================================================================
+ * 
+ * Purpose:
+ * Handles the "Active Job" experience for Cleaners.
+ * 
+ * State Machine Phases:
+ * 1. Overview: cleaner reviews details before starting.
+ * 2. Trip: GPS tracking simulation during travel.
+ * 3. Verification: 2-way Code Exchange at the door (Security).
+ * 4. Execution: Checklist management during cleaning.
+ * 5. Completion: Check-out and Review submission.
+ * 
+ * Key Logic:
+ * - GPS Polling interval in 'Trip' phase.
+ * - OTP Verification logic in 'Verification' phase.
+ */
 import {
     MapPin, Camera, CheckSquare, Clock, Navigation,
     Upload, ChevronRight, Check, X, AlertCircle, Play,
-    Square, Image as ImageIcon, Loader2, ShieldCheck, Lock
+    Square, Image as ImageIcon, Loader2, ShieldCheck, Lock, Star
 } from 'lucide-react';
 import {
     updateBookingTracking,
@@ -13,7 +51,8 @@ import {
     getBookingWithTracking,
     rateCustomer
 } from '../storage';
-import { Star } from 'lucide-react';
+
+import OTPInput from './OTPInput';
 
 // Job Execution - Complete workflow for cleaners
 export default function JobExecution({ job, onComplete, onBack }) {
@@ -94,7 +133,38 @@ export default function JobExecution({ job, onComplete, onBack }) {
         generateChecklist();
     }, []);
 
-    const handleStartTrip = () => {
+    const handleStartTrip = async () => {
+        // Validate that today's date matches the scheduled date
+        const today = new Date().toISOString().split('T')[0];
+        const scheduledDate = job.selectedDate?.date || job.scheduledDate;
+
+        if (!scheduledDate) {
+            alert("Unable to verify scheduled date. Please contact support.");
+            return;
+        }
+
+        // Parse and compare dates
+        const scheduledDateStr = new Date(scheduledDate).toISOString().split('T')[0];
+
+        if (today !== scheduledDateStr) {
+            const formattedScheduledDate = new Date(scheduledDate).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            alert(`You can only start this cleaning on the scheduled date.\n\nScheduled Date: ${formattedScheduledDate}\n\nPlease return on the scheduled date to begin.`);
+            return;
+        }
+
+        // Generate Verification Codes immediately 
+        try {
+            const { cleanerCode } = await generateVerificationCodes(job.id);
+            setMyCode(cleanerCode);
+        } catch (e) {
+            console.error("Error generating codes", e);
+        }
+
         setTripStatus('in_progress');
         setStartTime(new Date());
         setCurrentStep('trip');
@@ -111,21 +181,27 @@ export default function JobExecution({ job, onComplete, onBack }) {
             setDistance(prev => {
                 const newDist = Math.max(0, prev - 0.3);
                 const newEta = Math.ceil((newDist / 3.2) * 12);
-                updateBookingTracking(job.id, {
+
+                const trackingUpdate = {
                     status: newDist === 0 ? 'arrived' : 'on_the_way',
                     lat: currentLocation.lat + (Math.random() * 0.005 - 0.0025),
                     lng: currentLocation.lng + (Math.random() * 0.005 - 0.0025),
                     distance: newDist,
                     eta: newEta
-                });
+                };
+
+                updateBookingTracking(job.id, trackingUpdate);
+
                 if (newDist === 0) {
                     clearInterval(interval);
                     setTripStatus('arrived');
+                    setArrivalTime(new Date());
+                    // We stay on the same screen, but the UI will adapt to show the OTP input
                 }
                 return newDist;
             });
             setEta(prev => Math.max(0, prev - 1));
-        }, 3000);
+        }, 1000); // Speed up for demo
     };
 
     const handleArrived = async () => {
@@ -144,7 +220,7 @@ export default function JobExecution({ job, onComplete, onBack }) {
     };
 
     const handleVerifyCode = async () => {
-        if (inputCode.length !== 4) return;
+        if (inputCode.length !== 6) return;
         try {
             const success = await verifyJobCode(job.id, 'cleaner', inputCode);
             if (success) {
@@ -157,7 +233,7 @@ export default function JobExecution({ job, onComplete, onBack }) {
                     setJobStatus('in_progress');
                 }
             } else {
-                alert("Incorrect code. Please ask the customer for their 4-digit code.");
+                alert("Incorrect code. Please ask the customer for their 6-digit code.");
             }
         } catch (e) {
             console.error(e);
@@ -284,27 +360,97 @@ export default function JobExecution({ job, onComplete, onBack }) {
         return (
             <div className="min-h-screen bg-gray-50 pb-24">
                 <div className="app-bar bg-secondary-600 text-white">
-                    <div className="px-4 py-3"><h1 className="text-lg font-semibold text-center">{tripStatus === 'arrived' ? 'Arrived' : 'On the Way'}</h1></div>
+                    <div className="px-4 py-3">
+                        <h1 className="text-lg font-semibold text-center">
+                            {tripStatus === 'arrived' ? 'Arrived at Destination' : 'En Route to Client'}
+                        </h1>
+                    </div>
                 </div>
+
                 <div className="px-6 py-6 space-y-6">
-                    {/* Map Simulation */}
-                    <div className="card p-0 overflow-hidden h-64 bg-gray-100 relative">
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="text-center">
-                                <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                                <p className="text-sm text-gray-500">Map View</p>
-                            </div>
+                    {/* Trip Info Header */}
+                    <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                        <div className="w-12 h-12 bg-secondary-50 rounded-full flex items-center justify-center">
+                            <Navigation className={`w-6 h-6 text-secondary-600 ${tripStatus === 'in_progress' ? 'animate-pulse' : ''}`} />
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-gray-900">{job.house?.address?.street || job.address?.street}</p>
+                            <p className="text-xs text-gray-500">{job.house?.address?.city || job.address?.city}, TX</p>
                         </div>
                     </div>
-                    {tripStatus === 'in_progress' && (
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="card p-4 text-center"><p className="text-sm text-gray-500">Distance</p><p className="text-2xl font-bold">{distance.toFixed(1)} mi</p></div>
-                            <div className="card p-4 text-center"><p className="text-sm text-gray-500">ETA</p><p className="text-2xl font-bold">{eta} min</p></div>
+
+                    {/* Progress Stats */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="card p-4 text-center">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Distance</p>
+                            <p className="text-2xl font-black text-gray-900">{distance.toFixed(1)} <span className="text-sm font-bold text-gray-400">mi</span></p>
                         </div>
-                    )}
-                    {tripStatus === 'in_progress' && distance <= 0.5 && (
-                        <button onClick={handleArrived} className="btn btn-secondary w-full py-4 text-lg"><Check className="w-5 h-5 mr-2" /> I've Arrived</button>
-                    )}
+                        <div className="card p-4 text-center">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Arrival</p>
+                            <p className="text-2xl font-black text-secondary-600">{eta} <span className="text-sm font-bold text-secondary-400">min</span></p>
+                        </div>
+                    </div>
+
+                    {/* Verification Code Section (Visible once trip starts) */}
+                    <div className="card p-6 bg-secondary-900 text-white border-none shadow-xl relative overflow-hidden">
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-4 text-secondary-400">
+                                <ShieldCheck className="w-5 h-5" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Safety Verification</span>
+                            </div>
+
+                            <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Give this to homeowner</p>
+                            <div className="text-4xl font-black text-center tracking-[0.2em] bg-white/10 py-4 rounded-2xl border border-white/10 mb-6">
+                                {myCode || '......'}
+                            </div>
+
+                            {tripStatus === 'arrived' && (
+                                <div className="animate-in slide-in-from-bottom duration-500">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-3">Ask customer for their code</p>
+                                    <div className="flex justify-center mb-6">
+                                        <OTPInput
+                                            length={6}
+                                            value={inputCode}
+                                            onChange={setInputCode}
+                                        />
+                                    </div>
+
+                                    {!verificationStatus.cleanerVerified ? (
+                                        <button
+                                            onClick={handleVerifyCode}
+                                            disabled={inputCode.length !== 6}
+                                            className="w-full py-4 bg-secondary-500 text-white font-black rounded-xl shadow-lg active:scale-95 transition-all text-sm uppercase tracking-widest disabled:opacity-50"
+                                        >
+                                            {inputCode.length === 6 ? 'Verify & Start Cleaning' : 'Enter 6-digit Code'}
+                                        </button>
+                                    ) : (
+                                        <div className="bg-success-500/20 text-success-400 p-4 rounded-xl flex items-center justify-center gap-3 border border-success-500/30">
+                                            <div className="w-6 h-6 rounded-full bg-success-500 flex items-center justify-center">
+                                                <Check className="w-4 h-4 text-white" />
+                                            </div>
+                                            <span className="font-bold text-sm">Code Verified. Waiting for Client...</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {tripStatus === 'in_progress' && (
+                                <div className="text-center py-4 bg-white/5 rounded-xl border border-dashed border-white/10">
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase">Verification will unlock upon arrival</p>
+                                </div>
+                            )}
+                        </div>
+                        <Lock className="absolute -bottom-6 -right-6 w-32 h-32 text-white/5 -rotate-12" />
+                    </div>
+
+                    {/* Placeholder Map */}
+                    <div className="h-48 bg-gray-200 rounded-3xl overflow-hidden relative border border-gray-100 italic flex items-center justify-center text-gray-400 text-sm">
+                        <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v10/static/-96.797,32.776,12/400x200?access_token=pk.mock')] bg-cover opacity-50" />
+                        <div className="relative z-10 flex flex-col items-center gap-2">
+                            <Navigation className="w-8 h-8 animate-bounce text-secondary-500" />
+                            <span>Live GPS Tracking</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         );
@@ -324,20 +470,17 @@ export default function JobExecution({ job, onComplete, onBack }) {
                     <div className="w-full card p-6 mb-6 bg-secondary-50 border-secondary-200">
                         <p className="text-sm font-bold text-secondary-800 uppercase mb-2">Your Code (Tell Customer)</p>
                         <div className="text-4xl font-mono font-bold text-center tracking-widest bg-white py-4 rounded-lg border border-secondary-100">
-                            {myCode || '....'}
+                            {myCode || '......'}
                         </div>
                     </div>
 
                     <div className="w-full card p-6 mb-8">
                         <p className="text-sm font-bold text-gray-700 uppercase mb-2">Customer Code (Enter Here)</p>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                maxLength={4}
+                        <div className="flex justify-center">
+                            <OTPInput
+                                length={6}
                                 value={inputCode}
-                                onChange={(e) => setInputCode(e.target.value)}
-                                placeholder="0000"
-                                className="flex-1 text-center text-3xl font-mono p-3 border-2 border-gray-200 rounded-lg focus:border-secondary-500 outline-none"
+                                onChange={setInputCode}
                             />
                         </div>
                     </div>
@@ -345,7 +488,7 @@ export default function JobExecution({ job, onComplete, onBack }) {
                     {!verificationStatus.cleanerVerified ? (
                         <button
                             onClick={handleVerifyCode}
-                            disabled={inputCode.length !== 4}
+                            disabled={inputCode.length !== 6}
                             className="btn btn-secondary w-full py-4 text-lg"
                         >
                             Verify Code

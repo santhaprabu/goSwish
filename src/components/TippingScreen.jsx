@@ -1,4 +1,17 @@
 import { useState } from 'react';
+/*
+ * ============================================================================
+ * TIPPING INTERFACE
+ * ============================================================================
+ * 
+ * Purpose:
+ * Allows customers to tip Cleaners after a job is completed.
+ * 
+ * Features:
+ * - Preset percentages (10%, 15%, 20%) calculated on the fly.
+ * - Custom amount input.
+ * - Quick "Thank You" messages.
+ */
 import { DollarSign, Star, Heart, ThumbsUp, X } from 'lucide-react';
 
 // Tipping Screen - After job approval
@@ -71,8 +84,8 @@ export default function TippingScreen({ job, cleaner, onComplete, onSkip }) {
                             <Star
                                 key={i}
                                 className={`w-4 h-4 ${i < Math.floor(cleaner.rating || 5)
-                                        ? 'fill-yellow-400 text-yellow-400'
-                                        : 'text-gray-300'
+                                    ? 'fill-yellow-400 text-yellow-400'
+                                    : 'text-gray-300'
                                     }`}
                             />
                         ))}

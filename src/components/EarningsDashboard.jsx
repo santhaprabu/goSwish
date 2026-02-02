@@ -1,4 +1,22 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * EARNINGS DASHBOARD
+ * ============================================================================
+ * 
+ * Purpose:
+ * Visual analytics for Cleaner earnings.
+ * 
+ * Features:
+ * - Stats Cards (Total, Weekly, Daily, Tips).
+ * - Performance Graphs (Weekly Trends).
+ * - Breakdown by Service Type.
+ * - Tips analysis.
+ * 
+ * Logic:
+ * - Aggregates data from `getCleanerEarning` and job history.
+ * - Calculates percentage trends vs previous period.
+ */
 import { useApp } from '../context/AppContext';
 import {
     getCleanerEarnings,
@@ -32,6 +50,23 @@ const StatCard = ({ icon: Icon, label, value, subValue, trend, bgColor = 'bg-gra
     </div>
 );
 
+/**
+ * ============================================================================
+ * EARNINGS DASHBOARD
+ * ============================================================================
+ * 
+ * Purpose:
+ * Visualizes the Cleaner's financial performance.
+ * 
+ * Features:
+ * 1. Period Aggregation: Breaks down earnings by Today, Week, Month, Year.
+ * 2. Visual Graphs: Daily earning trends.
+ * 3. Recent Transactions: Line-item history of jobs.
+ * 
+ * Data Note:
+ * This component relies on `getCleanerEarnings` (helpers.js) for the heavy lifting.
+ * It's purely a "View" component that handles display logic.
+ */
 export default function EarningsDashboard({ onBack, onViewPayouts }) {
     const { user } = useApp();
     const [period, setPeriod] = useState('week');
@@ -81,14 +116,31 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
 
                 // Calculate Year Earnings (Current Year)
                 const currentYear = new Date().getFullYear();
+
+                // Helper to extract valid date (same as in helpers.js)
+                const extractDate = (j) => {
+                    const candidates = [j.completedAt, j.updatedAt, j.createdAt, j.endTime];
+                    for (const c of candidates) {
+                        if (c && typeof c === 'string') {
+                            if (c.includes('T')) return c.split('T')[0];
+                            if (/^\d{4}-\d{2}-\d{2}$/.test(c)) return c;
+                        }
+                    }
+                    return null;
+                };
+
                 const yearJobs = allJobs.filter(j => {
-                    if (j.status !== 'completed') return false;
-                    const d = new Date(j.completedAt || j.endTime || j.createdAt);
+                    if (!['completed', 'approved', 'completed_pending_approval'].includes(j.status)) return false;
+                    const dateStr = extractDate(j);
+                    if (!dateStr) return false;
+                    const d = new Date(dateStr);
                     return d.getFullYear() === currentYear;
                 });
-                const yearEarnings = yearJobs.reduce((sum, j) => sum + (j.amount || j.earnings || 0), 0);
-                const yearTips = yearJobs.reduce((sum, j) => sum + (j.tip || 0), 0);
-                const yearHours = yearJobs.reduce((sum, j) => sum + (j.duration || 2), 0);
+
+                // Correctly use earnings (net)
+                const yearEarnings = yearJobs.reduce((sum, j) => sum + Number(j.earnings || j.amount || 0), 0);
+                const yearTips = yearJobs.reduce((sum, j) => sum + Number(j.tip || 0), 0);
+                const yearHours = yearJobs.reduce((sum, j) => sum + Number(j.duration || 2), 0);
 
                 // Helper to calculate trend
                 const calculateTrend = (currentEarnings, jobs, daysLookback) => {
@@ -102,14 +154,18 @@ export default function EarningsDashboard({ onBack, onViewPayouts }) {
                     .slice(0, 10)
                     .map(job => {
                         const isPayout = job.id.startsWith('txn_') || job.type === 'payout' || job.type === 'withdrawal';
+                        // Extract valid date
+                        const dateStr = extractDate(job) || job.scheduledDate || job.createdAt;
+
                         return {
                             id: job.id,
                             type: isPayout ? 'payout' : 'earning',
                             description: isPayout
                                 ? (job.description || 'Payout')
                                 : `${job.serviceType || 'Clean'} - ${job.customerName || 'Customer'}`,
-                            amount: job.amount || job.earnings || 0,
-                            date: new Date(job.completedAt || job.scheduledDate || job.createdAt).toLocaleDateString(),
+                            // Use net earnings for jobs
+                            amount: isPayout ? (job.amount || 0) : Number(job.earnings || job.amount || 0),
+                            date: new Date(dateStr).toLocaleDateString(),
                             tip: job.tip || 0
                         };
                     });

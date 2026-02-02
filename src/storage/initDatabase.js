@@ -214,8 +214,8 @@ const initSettings = async () => {
     const settings = {
         id: 'app',
         taxRate: 0.0825, // 8.25%
-        platformFee: 0.15, // 15%
-        cleanerEarningsRate: 0.70, // 70%
+        platformFee: 0.10, // 10%
+        cleanerEarningsRate: 0.90, // 90%
         minBookingAmount: 50,
         maxBookingAmount: 1000,
         cancellationFee: 25,
@@ -347,3 +347,37 @@ export const resetDatabase = async () => {
         };
     }
 };
+
+/**
+ * Update platform fee settings
+ * Call this to update existing settings to 10% platform fee (90% to cleaner)
+ */
+export const updatePlatformFee = async (platformFeePercent = 10) => {
+    try {
+        const cleanerEarningsRate = (100 - platformFeePercent) / 100; // e.g., 10% fee = 0.90 earnings
+        const platformFee = platformFeePercent / 100; // e.g., 10% = 0.10
+
+        const { updateDoc } = await import('./db.js');
+
+        await updateDoc(COLLECTIONS.SETTINGS, 'app', {
+            platformFee: platformFee,
+            cleanerEarningsRate: cleanerEarningsRate,
+            updatedAt: new Date().toISOString(),
+        });
+
+        console.log(`✅ Platform fee updated to ${platformFeePercent}% (Cleaner earns ${100 - platformFeePercent}%)`);
+
+        return {
+            success: true,
+            platformFee: platformFee,
+            cleanerEarningsRate: cleanerEarningsRate,
+        };
+    } catch (error) {
+        console.error('❌ Error updating platform fee:', error);
+        return {
+            success: false,
+            error: error.message,
+        };
+    }
+};
+

@@ -1,10 +1,23 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Home, Sparkles, MapPin, RefreshCw, Loader2, AlertCircle, MessageSquare, Star, X, User } from 'lucide-react';
+/*
+ * ============================================================================
+ * CUSTOMER BOOKINGS LIST
+ * ============================================================================
+ * 
+ * Purpose:
+ * The primary dashboard view for customers to see their history and active jobs.
+ * 
+ * Logic:
+ * - Fetches all bookings and filters by `customerId`.
+ * - Aggregates data: Merges with `houses` and `cleaner` details.
+ * - Status Handling: Visualizes distinctive states (Placed vs Confirmed vs In Progress).
+ */
+import { Calendar, Clock, Home, Sparkles, MapPin, RefreshCw, Loader2, AlertCircle, MessageSquare, Star, X, User, Users, ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { COLLECTIONS, getDocs } from '../storage/db';
 import { createReview } from '../storage';
 
-export default function MyBookings({ onMessaging, onTrackJob }) {
+export default function MyBookings({ onMessaging, onTrackJob, onViewTopCleaners, onViewBooking }) {
     const { user, serviceTypes, addOns, startChat } = useApp();
     const [bookings, setBookings] = useState([]);
     const [houses, setHouses] = useState([]);
@@ -349,6 +362,21 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
                     <p className="text-gray-400 font-medium mb-10 max-w-xs leading-relaxed">
                         You haven't booked any cleanings yet. Experience a spotless home today.
                     </p>
+
+                    {/* NEW: Top Cleaners Button in Empty State */}
+                    <button
+                        onClick={onViewTopCleaners}
+                        className="w-full card p-6 bg-secondary-50 border-secondary-100 flex items-center gap-4 group hover:border-black transition-all"
+                    >
+                        <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm border border-secondary-200">
+                            <Users className="w-6 h-6 text-secondary-600" />
+                        </div>
+                        <div className="flex-1 text-left">
+                            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-tight">Top Rated Cleaners</h3>
+                            <p className="text-xs text-gray-500">View top-rated pros in your area</p>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
+                    </button>
                 </div>
             </div>
         );
@@ -374,6 +402,23 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
                 </button>
             </div>
 
+            {/* NEW: Top Cleaners Quick Link */}
+            <div className="px-6 mb-6">
+                <button
+                    onClick={onViewTopCleaners}
+                    className="w-full p-4 bg-gray-900 rounded-[1.5rem] flex items-center gap-4 active:scale-[0.98] transition-all"
+                >
+                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                        <Users className="w-5 h-5 text-secondary-500" />
+                    </div>
+                    <div className="flex-1 text-left">
+                        <h3 className="text-xs font-black text-white uppercase tracking-widest">Meet Local Pros</h3>
+                        <p className="text-[10px] text-white/50 font-bold uppercase tracking-tight">Top rated cleaners available now</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-white/40" />
+                </button>
+            </div>
+
             {/* Bookings List */}
             <div className="px-6 space-y-4">
                 {sortedBookings.map((booking, index) => {
@@ -394,7 +439,8 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
                     return (
                         <div
                             key={booking.id || index}
-                            className="bg-white rounded-[2rem] p-5 relative transition-all shadow-[0_4px_20px_-10px_rgba(0,0,0,0.08)] border border-gray-200"
+                            onClick={() => onViewBooking?.(booking)}
+                            className="bg-white rounded-[2rem] p-5 relative transition-all shadow-[0_4px_20px_-10px_rgba(0,0,0,0.08)] border border-gray-200 cursor-pointer hover:shadow-lg hover:border-gray-300 active:scale-[0.99]"
                         >
                             {/* Card Header: Status & ID */}
                             <div className="flex justify-between items-start mb-4">
@@ -451,7 +497,7 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
                                 <div className="flex items-center gap-2">
                                     {booking.cleanerId && (
                                         <button
-                                            onClick={handleMessageCleaner}
+                                            onClick={(e) => { e.stopPropagation(); handleMessageCleaner(); }}
                                             className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-full transition-all"
                                             title="Message Cleaner"
                                         >
@@ -461,7 +507,7 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
 
                                     {['on_the_way', 'arrived', 'in_progress', 'completed_pending_approval'].includes(booking.status) && (
                                         <button
-                                            onClick={() => onTrackJob?.(booking)}
+                                            onClick={(e) => { e.stopPropagation(); onTrackJob?.(booking); }}
                                             className="bg-black text-white text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-full shadow-md active:scale-95 transition-all"
                                         >
                                             {booking.status === 'completed_pending_approval' ? 'Review' : 'Track'}
@@ -470,7 +516,7 @@ export default function MyBookings({ onMessaging, onTrackJob }) {
 
                                     {booking.status === 'completed' && (
                                         <button
-                                            onClick={() => setReviewingBooking(booking)}
+                                            onClick={(e) => { e.stopPropagation(); setReviewingBooking(booking); }}
                                             className="bg-secondary-500 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2.5 rounded-full shadow-md active:scale-95 transition-all"
                                         >
                                             Rate Clean

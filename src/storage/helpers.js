@@ -1,9 +1,125 @@
 /**
- * Storage Helper Functions
- * High-level functions for common operations
+ * ============================================================================
+ * GO-SWISH STORAGE HELPERS - CORE BACKEND LOGIC
+ * ============================================================================
+ * 
+ * This file acts as the "Service Layer" for the application. It handles:
+ * 1. Data Parsing & Validation (ensuring clean data enters the DB)
+ * 2. Complex Business Logic (e.g., matching cleaners, calculating earnings)
+ * 3. Atomic Operations (e.g., verifying codes, updating job statuses)
+ * 
+ * ARCHITECTURE NOTE:
+ * We use a "Doc-based" NoSQL approach (simulated). 
+ * - 'BOOKINGS' represent the Homeowner's request (The "Demand").
+ * - 'JOBS' represent the Cleaner's assignment (The "Supply").
+ * 
+ * Key Relationship:
+ * One Booking -> (matches to) -> One Job (typically).
+ * However, we keep them separate so we can have multiple 'Job Offers' for a single booking
+ * before one is accepted.
+ * 
+ * @module StorageHelpers
  */
 
-import { COLLECTIONS, addDoc, setDoc, updateDoc, getDoc, getDocs, queryDocs, deleteDoc, generateId } from './db.js';
+import { COLLECTIONS, addDoc, setDoc, updateDoc, getDoc, getDocs, queryDocs, deleteDoc, generateId, conditionalUpdate, atomicIncrement } from './db.js';
+
+// ============================================
+// VALIDATION CONSTANTS
+// ============================================
+
+/**
+ * ALLOWED BOOKING STATUSES (The Lifecycle of a Booking)
+ * 
+ * Flow:
+ * 1. booking-placed: User submits request.
+ * 2. matched/scheduled: System finds a cleaner.
+ * 3. on_the_way -> arrived -> in_progress: Day of service.
+ * 4. completed_pending_approval: Cleaner marks finished.
+ * 5. approved: Homeowner confirms (or auto-confirm).
+ */
+export const ALLOWED_BOOKING_STATUSES = [
+    'booking-placed',
+    'pending',
+    'confirmed',
+    'matched',
+    'scheduled',
+    'on_the_way',
+    'arrived',
+    'in_progress',
+    'completed_pending_approval',
+    'completed',
+    'approved',
+    'cancelled'
+];
+
+/**
+ * ALLOWED JOB STATUSES (The Lifecycle of a Cleaner's Task)
+ * Note: These largely mirror booking statuses but strictly track the Work Unit.
+ */
+export const ALLOWED_JOB_STATUSES = [
+    'scheduled',
+    'confirmed',
+    'in_progress',
+    'completed',
+    'cancelled'
+];
+
+// ============================================
+// VALIDATION HELPERS
+// ============================================
+
+/**
+ * Validate verification code format
+ * @param {string} code - Verification code to validate
+ * @returns {boolean} True if valid
+ */
+const isValidVerificationCode = (code) => {
+    if (!code || typeof code !== 'string') return false;
+    return /^\d{6}$/.test(code); // Must be exactly 6 digits
+};
+
+/**
+ * Validate booking status
+ * @param {string} status - Status to validate
+ * @returns {boolean} True if valid
+ */
+const isValidBookingStatus = (status) => {
+    return ALLOWED_BOOKING_STATUSES.includes(status);
+};
+
+/**
+ * Validate job status
+ * @param {string} status - Status to validate
+ * @returns {boolean} True if valid
+ */
+const isValidJobStatus = (status) => {
+    return ALLOWED_JOB_STATUSES.includes(status);
+};
+
+/**
+ * Sanitize and validate input
+ * @param {any} value - Value to validate
+ * @param {string} type - Expected type ('string', 'number', 'object', 'array')
+ * @param {boolean} required - Whether value is required
+ * @returns {{valid: boolean, error?: string, value: any}}
+ */
+const validateInput = (value, type, required = true) => {
+    if (required && (value === null || value === undefined)) {
+        return { valid: false, error: 'Required field is missing' };
+    }
+
+    if (!required && (value === null || value === undefined)) {
+        return { valid: true, value };
+    }
+
+    const actualType = Array.isArray(value) ? 'array' : typeof value;
+
+    if (actualType !== type) {
+        return { valid: false, error: `Expected ${type}, got ${actualType}` };
+    }
+
+    return { valid: true, value };
+};
 
 // ============================================
 // USER OPERATIONS
@@ -186,8 +302,12 @@ export const createBooking = async (customerId, bookingData) => {
         specialNotes: bookingData.specialNotes || '',
         paymentMethod: bookingData.paymentMethod || 'card',
         totalAmount: bookingData.totalAmount,
+        pricingBreakdown: bookingData.pricingBreakdown || null,
+        discount: bookingData.discount || null,
         status: 'booking-placed',
         paymentStatus: 'pending',
+        cleanerId: null, // Initialize as null for conditional update
+        version: 1, // Initialize version for optimistic locking
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
     };
@@ -338,119 +458,144 @@ export const createJob = async (bookingId) => {
  * Accept a job offer (assign cleaner to booking and create job)
  */
 export const acceptJobOffer = async (bookingId, cleanerId, jobDetails) => {
-    // 1. Get current booking
-    const booking = await getBookingById(bookingId);
-    if (!booking) throw new Error('Booking not found');
-    if (booking.cleanerId) throw new Error('Job already taken');
-
-    // 2. Fetch related data
-    const [house, customer] = await Promise.all([
-        getDoc(COLLECTIONS.HOUSES, booking.houseId),
-        getDoc(COLLECTIONS.USERS, booking.customerId)
-    ]);
-
-    // Check for conflict before accepting
-    const bookingDates = booking.dates || [booking.date]; // Fallback
-    // Ensure timeSlots is formatted correctly or derived
-    const timeSlots = booking.timeSlots || { [bookingDates[0]]: ['morning'] };
-
-    // Note: checkCleanerConflict is defined later in file, so we might need to hoist or use module scope 
-    // BUT since we are in the same module, we can call it if it's hoisted or defined. 
-    // To be safe, I'll rely on it being available or move definition up.
-    // Actually, closures defined with `const` aren't hoisted. 
-    // I should define checkCleanerConflict AT THE TOP or before use.
-    // However, for this edit, I will duplicate the logic slightly or Assume the user accepts I move definition.
-    // BETTER STRATEGY: I will define `checkCleanerConflict` helper at top of file in next step if needed, or inline check here.
-
-    // Inline check for now to be safe:
-    const myJobs = await queryDocs(COLLECTIONS.JOBS, 'cleanerId', cleanerId);
-    const hasConflict = myJobs.some(j => {
-        if (j.status !== 'scheduled' && j.status !== 'in_progress') return false;
-
-        const jDate = new Date(j.scheduledDate || j.startTime).toISOString().split('T')[0];
-        if (bookingDates.includes(jDate)) {
-            // Simple conflicting day check for safety
-            // If we really want slot check:
-            const hour = new Date(j.startTime || j.scheduledDate).getHours();
-            let slot = 'morning';
-            if (hour >= 12) slot = 'afternoon';
-            if (hour >= 15) slot = 'evening';
-
-            const requestedSlots = timeSlots[jDate] || [];
-            if (requestedSlots.includes(slot)) return true;
-        }
-        return false;
-    });
-
-    if (hasConflict) {
-        throw new Error("You already have a booking at this time block.");
-    }
-
-    // 3. Update booking
-    await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
-        cleanerId: cleanerId,
-        status: 'confirmed',
-        updatedAt: new Date().toISOString()
-    });
-
-    // 4. Create Job
-    const job = {
-        id: generateId('job'),
-        bookingId: booking.id,
-        customerId: booking.customerId,
-        cleanerId: cleanerId,
-        houseId: booking.houseId,
-        serviceType: booking.serviceTypeId,
-        amount: booking.totalAmount,
-        earnings: booking.totalAmount * 0.7, // 70% split
-        status: 'scheduled',
-
-        // Schedule details from acceptance
-        scheduledDate: jobDetails.date,
-        startTime: jobDetails.startTime,
-        endTime: jobDetails.endTime,
-        duration: 3, // Should ideally come from booking estimation
-
-        // Snapshot data
-        customerName: customer ? `${customer.firstName} ${customer.lastName}` : 'Customer',
-        address: house ? `${house.address.street}, ${house.address.city}` : 'Unknown Address',
-
-        checklistItems: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    };
-
-    await setDoc(COLLECTIONS.JOBS, job.id, job);
-
-    // 5. Notify Customer
     try {
-        const cleaner = await getDoc(COLLECTIONS.CLEANERS, cleanerId);
-        let cleanerName = 'A cleaner';
-        if (cleaner) {
-            const cleanerUser = await getDoc(COLLECTIONS.USERS, cleaner.userId);
-            if (cleanerUser) cleanerName = `${cleanerUser.firstName} ${cleanerUser.lastName}`;
+        // 1. Get current booking with all validations
+        const booking = await getBookingById(bookingId);
+        if (!booking) {
+            throw new Error('Booking not found');
         }
 
-        const notifId = generateId('notification');
-        await setDoc(COLLECTIONS.NOTIFICATIONS, notifId, {
-            id: notifId,
-            userId: booking.customerId,
-            type: 'booking_accepted',
-            title: 'Booking Confirmed!',
-            message: `${cleanerName} has accepted your booking for ${jobDetails.date}.`,
-            relatedId: booking.id,
-            read: false,
-            createdAt: new Date().toISOString()
+        if (booking.cleanerId) {
+            throw new Error('Job already taken by another cleaner');
+        }
+
+        // 2. Check for schedule conflicts BEFORE attempting to claim
+        const bookingDates = booking.dates || [booking.date];
+        const timeSlots = booking.timeSlots || { [bookingDates[0]]: ['morning'] };
+
+        const myJobs = await queryDocs(COLLECTIONS.JOBS, 'cleanerId', cleanerId);
+        const hasConflict = myJobs.some(j => {
+            if (j.status !== 'scheduled' && j.status !== 'in_progress') return false;
+
+            const jDate = new Date(j.scheduledDate || j.startTime).toISOString().split('T')[0];
+            if (bookingDates.includes(jDate)) {
+                const hour = new Date(j.startTime || j.scheduledDate).getHours();
+                let slot = 'morning';
+                if (hour >= 12) slot = 'afternoon';
+                if (hour >= 15) slot = 'evening';
+
+                const requestedSlots = timeSlots[jDate] || [];
+                if (requestedSlots.includes(slot)) return true;
+            }
+            return false;
         });
-    } catch (e) {
-        console.warn('Failed to send notification', e);
+
+        if (hasConflict) {
+            throw new Error("You already have a booking at this time block.");
+        }
+
+        // 3. Use conditional update with optimistic locking to claim the job
+        //    Only update if cleanerId is still null
+        const currentVersion = booking.version || 0;
+        const claimResult = await conditionalUpdate(
+            COLLECTIONS.BOOKINGS,
+            bookingId,
+            {
+                cleanerId: cleanerId,
+                status: 'confirmed',
+                version: currentVersion + 1,
+                updatedAt: new Date().toISOString()
+            },
+            {
+                cleanerId: null,  // Only claim if no cleaner assigned
+                version: currentVersion  // And version hasn't changed
+            }
+        );
+
+        if (!claimResult.success) {
+            if (claimResult.error === 'Condition not met') {
+                throw new Error('Job was just claimed by another cleaner. Please try a different job.');
+            }
+            throw new Error(claimResult.error || 'Failed to claim job');
+        }
+
+        // Job successfully claimed! Now fetch related data
+        const [house, customer, settings] = await Promise.all([
+            getDoc(COLLECTIONS.HOUSES, booking.houseId),
+            getDoc(COLLECTIONS.USERS, booking.customerId),
+            getAppSettings()
+        ]);
+
+        const earningsRate = settings?.cleanerEarningsRate || 0.90;
+
+        // 4. Create Job record
+        const job = {
+            id: generateId('job'),
+            bookingId: booking.id,
+            customerId: booking.customerId,
+            cleanerId: cleanerId,
+            houseId: booking.houseId,
+            serviceType: booking.serviceTypeId,
+            amount: booking.totalAmount,
+            earnings: (booking.pricingBreakdown?.subtotal || booking.totalAmount) * earningsRate, // Dynamic split on subtotal
+            status: 'confirmed', // Match booking status
+
+            // Schedule details from acceptance
+            scheduledDate: jobDetails.date,
+            startTime: jobDetails.startTime,
+            endTime: jobDetails.endTime,
+            duration: 3,
+
+            // Snapshot data
+            customerName: customer ? `${customer.firstName} ${customer.lastName}` : 'Customer',
+            address: house ? `${house.address.street}, ${house.address.city}` : 'Unknown Address',
+
+            checklistItems: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
+        await setDoc(COLLECTIONS.JOBS, job.id, job);
+
+        // 5. Notify Customer (non-critical, don't fail if this errors)
+        try {
+            const cleaner = await getDoc(COLLECTIONS.CLEANERS, cleanerId);
+            let cleanerName = 'A cleaner';
+            if (cleaner) {
+                const cleanerUser = await getDoc(COLLECTIONS.USERS, cleaner.userId);
+                if (cleanerUser) cleanerName = `${cleanerUser.firstName} ${cleanerUser.lastName}`;
+            }
+
+            const notifId = generateId('notification');
+            await setDoc(COLLECTIONS.NOTIFICATIONS, notifId, {
+                id: notifId,
+                userId: booking.customerId,
+                type: 'booking_accepted',
+                title: 'Booking Confirmed!',
+                message: `${cleanerName} has accepted your booking for ${jobDetails.date}.`,
+                relatedId: booking.id,
+                read: false,
+                createdAt: new Date().toISOString()
+            });
+        } catch (notifError) {
+            console.warn('Failed to send notification:', notifError);
+            // Continue anyway - notification failure shouldn't block job acceptance
+        }
+
+        // 6. Remove job offer notifications (cleanup, non-critical)
+        try {
+            await deleteJobOfferNotifications(booking.id);
+        } catch (cleanupError) {
+            console.warn('Failed to delete job offer notifications:', cleanupError);
+            // Continue anyway
+        }
+
+        return job;
+
+    } catch (error) {
+        console.error(`Error accepting job offer ${bookingId}:`, error);
+        throw error; // Re-throw to let caller handle
     }
-
-    // 6. Remove "Job Offer" notifications for this booking from ALL cleaners
-    // This cleans up the noise for others since the job is now taken
-    await deleteJobOfferNotifications(booking.id);
-
-    return job;
 };
 
 /**
@@ -496,17 +641,32 @@ export const updateJob = async (jobId, updates) => {
  * Update job status
  */
 export const updateJobStatus = async (jobId, status) => {
-    const updates = {
-        status,
-    };
+    try {
+        // Validate status
+        if (!isValidJobStatus(status)) {
+            throw new Error(`Invalid job status: ${status}. Allowed values: ${ALLOWED_JOB_STATUSES.join(', ')}`);
+        }
 
-    if (status === 'in_progress') {
-        updates.startTime = new Date().toISOString();
-    } else if (status === 'completed') {
-        updates.endTime = new Date().toISOString();
+        // Validate jobId
+        if (!jobId || typeof jobId !== 'string') {
+            throw new Error('Invalid job ID');
+        }
+
+        const updates = {
+            status,
+        };
+
+        if (status === 'in_progress') {
+            updates.startTime = new Date().toISOString();
+        } else if (status === 'completed') {
+            updates.endTime = new Date().toISOString();
+        }
+
+        return await updateDoc(COLLECTIONS.JOBS, jobId, updates);
+    } catch (error) {
+        console.error(`Error updating job status for ${jobId}:`, error);
+        throw error;
     }
-
-    return await updateDoc(COLLECTIONS.JOBS, jobId, updates);
 };
 
 // ============================================
@@ -651,20 +811,34 @@ export const validatePromoCode = async (code, userId, serviceType, amount) => {
 };
 
 /**
- * Apply promo code
+ * Apply promo code with atomic increment to prevent race conditions
+ * @param {string} promoId - Promo code ID
+ * @returns {Promise<boolean>} True if successfully applied
  */
 export const applyPromoCode = async (promoId) => {
-    const promo = await getDoc(COLLECTIONS.PROMO_CODES, promoId);
+    try {
+        const promo = await getDoc(COLLECTIONS.PROMO_CODES, promoId);
 
-    if (!promo) {
+        if (!promo) {
+            console.error('Promo code not found:', promoId);
+            return false;
+        }
+
+        // Check if max uses would be exceeded (with buffer for safety)
+        const currentCount = promo.usedCount || 0;
+        if (currentCount >= promo.maxUses) {
+            console.warn('Promo code max uses reached:', promoId);
+            return false;
+        }
+
+        // Use atomic increment to prevent race condition
+        await atomicIncrement(COLLECTIONS.PROMO_CODES, promoId, 'usedCount', 1);
+
+        return true;
+    } catch (error) {
+        console.error(`Error applying promo code ${promoId}:`, error);
         return false;
     }
-
-    await updateDoc(COLLECTIONS.PROMO_CODES, promoId, {
-        usedCount: promo.usedCount + 1,
-    });
-
-    return true;
 };
 
 // ============================================
@@ -861,35 +1035,65 @@ export const createTransaction = async (cleanerId, transactionData) => {
 
 /**
  * Get cleaner earnings
+ * 
+ * EDUCATIONAL NOTE:
+ * Calculating earnings is critical and sensitive. 
+ * We must ensure:
+ * 1. We only count COMPLETED/PAID jobs.
+ * 2. We use the CLEANER'S SHARE (Net), not the total charge (Gross).
+ * 3. We handle Timezones correctly (UTC vs Local) so "Today" is accurate.
+ * 
+ * @param {string} cleanerId - The Cleaner's ID
+ * @param {string} period - 'today', 'week', 'month', 'all'
  */
 export const getCleanerEarnings = async (cleanerId, period = 'all') => {
     const jobs = await getCleanerJobs(cleanerId);
-    const completedJobs = jobs.filter(j => j.status === 'completed');
+    // Include approved jobs as valid completed jobs for earnings
+    const completedJobs = jobs.filter(j => ['completed', 'approved', 'completed_pending_approval'].includes(j.status));
 
     // Filter by period
     const now = new Date();
+    // Use UTC date string for consistent comparison
+    const today = now.toISOString().split('T')[0];
+
     let filteredJobs = completedJobs;
 
+    // Helper to extract valid YYYY-MM-DD date
+    const extractDate = (j) => {
+        // Priority: completedAt > updatedAt > createdAt > endTime (if valid date)
+        const candidates = [j.completedAt, j.updatedAt, j.createdAt, j.endTime];
+        for (const c of candidates) {
+            if (c && typeof c === 'string') {
+                if (c.includes('T')) return c.split('T')[0]; // ISO string
+                if (/^\d{4}-\d{2}-\d{2}$/.test(c)) return c; // YYYY-MM-DD
+            }
+        }
+        return null;
+    };
+
     if (period === 'today') {
-        const today = now.toISOString().split('T')[0];
-        filteredJobs = completedJobs.filter(j =>
-            j.completedAt?.startsWith(today) || j.endTime?.startsWith(today)
-        );
+        filteredJobs = completedJobs.filter(j => {
+            const dateStr = extractDate(j);
+            return dateStr === today;
+        });
     } else if (period === 'week') {
         const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         filteredJobs = completedJobs.filter(j => {
-            const jobDate = new Date(j.completedAt || j.endTime || j.createdAt);
-            return jobDate >= weekAgo;
+            const dateStr = extractDate(j);
+            if (!dateStr) return false;
+            return new Date(dateStr) >= weekAgo;
         });
     } else if (period === 'month') {
         const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         filteredJobs = completedJobs.filter(j => {
-            const jobDate = new Date(j.completedAt || j.endTime || j.createdAt);
-            return jobDate >= monthAgo;
+            const dateStr = extractDate(j);
+            if (!dateStr) return false;
+            return new Date(dateStr) >= monthAgo;
         });
     }
 
-    const earnings = filteredJobs.reduce((sum, j) => sum + Number(j.amount || j.earnings || 0), 0);
+    // Fix: Prioritize 'earnings' (net) over 'amount' (gross)
+    const earnings = filteredJobs.reduce((sum, j) => sum + Number(j.earnings || j.amount || 0), 0);
     const tips = filteredJobs.reduce((sum, j) => sum + Number(j.tip || 0), 0);
     const hours = filteredJobs.reduce((sum, j) => sum + Number(j.duration || 2), 0); // Default 2 hours per job
 
@@ -907,13 +1111,24 @@ export const getCleanerEarnings = async (cleanerId, period = 'all') => {
  */
 export const getCleanerDailyEarnings = async (cleanerId, days = 7) => {
     const jobs = await getCleanerJobs(cleanerId);
-    // Include 'completed' and 'scheduled' for better visualization if needed, but usually earnings are for completed.
-    // However, user data showed 'regular' jobs which might be completed.
-    // Let's stick to 'completed' but ensure we parse amounts properly.
-    const completedJobs = jobs.filter(j => j.status === 'completed');
+    // Include all paid/completed statuses
+    const completedJobs = jobs.filter(j => ['completed', 'approved', 'completed_pending_approval'].includes(j.status));
 
     const dailyEarnings = [];
     const now = new Date();
+
+    // Helper to extract valid YYYY-MM-DD date
+    const extractDate = (j) => {
+        // Priority: completedAt > updatedAt > createdAt > endTime (if valid date)
+        const candidates = [j.completedAt, j.updatedAt, j.createdAt, j.endTime];
+        for (const c of candidates) {
+            if (c && typeof c === 'string') {
+                if (c.includes('T')) return c.split('T')[0]; // ISO string
+                if (/^\d{4}-\d{2}-\d{2}$/.test(c)) return c; // YYYY-MM-DD
+            }
+        }
+        return null;
+    };
 
     for (let i = days - 1; i >= 0; i--) {
         const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
@@ -921,14 +1136,15 @@ export const getCleanerDailyEarnings = async (cleanerId, days = 7) => {
         const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
 
         const dayJobs = completedJobs.filter(j => {
-            const jobDate = (j.completedAt || j.endTime || j.scheduledDate || j.createdAt || '').split('T')[0];
-            return jobDate === dateStr;
+            const jobDateStr = extractDate(j);
+            return jobDateStr === dateStr;
         });
 
         dailyEarnings.push({
             day: dayName,
             date: dateStr,
-            earnings: dayJobs.reduce((sum, j) => sum + Number(j.amount || j.earnings || 0), 0),
+            // Fix: Prioritize 'earnings' (net) over 'amount' (gross)
+            earnings: dayJobs.reduce((sum, j) => sum + Number(j.earnings || j.amount || 0), 0),
             jobs: dayJobs.length,
         });
     }
@@ -1404,8 +1620,13 @@ export const broadcastNewJob = async (booking) => {
     try {
         console.log('🔍 Matching cleaners for broadcasting:', booking.id);
 
-        const house = await getDoc(COLLECTIONS.HOUSES, booking.houseId);
+        const [house, settings] = await Promise.all([
+            getDoc(COLLECTIONS.HOUSES, booking.houseId),
+            getAppSettings()
+        ]);
         if (!house) return;
+
+        const earningsRate = settings?.cleanerEarningsRate || 0.90;
 
         const previousBookings = await getCustomerBookings(booking.customerId);
         const previousCleaners = new Set(
@@ -1431,7 +1652,8 @@ export const broadcastNewJob = async (booking) => {
         console.log(`🎯 Broadcasting to top ${topMatches.length} matches`);
 
         const createPromises = topMatches.map(({ cleaner, score, matchDescription }) => {
-            const earnings = Math.round(booking.totalAmount * 0.7);
+            const baseAmount = booking.pricingBreakdown?.subtotal || booking.totalAmount || 0;
+            const earnings = Math.round(baseAmount * earningsRate);
             const notif = {
                 id: generateId('notification'),
                 userId: cleaner.userId,
@@ -1483,12 +1705,10 @@ export const getBookingWithTracking = async (bookingId) => {
  * Generate Verification Codes when Cleaner Arrives
  */
 export const generateVerificationCodes = async (bookingId) => {
-    const cleanerCode = Math.floor(1000 + Math.random() * 9000).toString();
-    const customerCode = Math.floor(1000 + Math.random() * 9000).toString();
+    const cleanerCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const customerCode = Math.floor(100000 + Math.random() * 900000).toString();
 
     await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
-        status: 'arrived',
-        arrivedAt: new Date().toISOString(),
         verificationCodes: {
             cleanerCode,
             customerCode,
@@ -1502,48 +1722,143 @@ export const generateVerificationCodes = async (bookingId) => {
 };
 
 /**
- * Verify Code (Simulates check)
+ * Verify Code with proper validation and error handling
+ * @param {string} bookingId - Booking ID
+ * @param {string} role - Role of verifier ('cleaner' or 'homeowner')
+ * @param {string} codeProvided - 6-digit verification code
+ * @returns {Promise<boolean>} True if verification successful
  */
 export const verifyJobCode = async (bookingId, role, codeProvided) => {
-    const booking = await getDoc(COLLECTIONS.BOOKINGS, bookingId);
-    if (!booking || !booking.verificationCodes) return false;
-
-    const { cleanerCode, customerCode } = booking.verificationCodes;
-
-    // If I am cleaner, I need to match the Customer's code
-    if (role === 'cleaner') {
-        if (codeProvided === customerCode) {
-            await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
-                'verificationCodes.cleanerVerified': true
-            });
-            return true;
+    try {
+        // Input validation
+        if (!bookingId || typeof bookingId !== 'string') {
+            console.error('Invalid bookingId provided to verifyJobCode');
+            return false;
         }
-    }
-    // If I am customer, I need to match the Cleaner's code
-    else if (role === 'homeowner') {
-        if (codeProvided === cleanerCode) {
-            await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
-                'verificationCodes.customerVerified': true
-            });
-            return true;
+
+        if (!['cleaner', 'homeowner'].includes(role)) {
+            console.error('Invalid role provided to verifyJobCode:', role);
+            return false;
         }
+
+        if (!isValidVerificationCode(codeProvided)) {
+            console.error('Invalid verification code format:', codeProvided);
+            return false;
+        }
+
+        const booking = await getDoc(COLLECTIONS.BOOKINGS, bookingId);
+        if (!booking) {
+            console.error('Booking not found:', bookingId);
+            return false;
+        }
+
+        if (!booking.verificationCodes) {
+            console.error('Verification codes not generated for booking:', bookingId);
+            return false;
+        }
+
+        const { cleanerCode, customerCode, cleanerVerified, customerVerified } = booking.verificationCodes;
+
+        // If I am cleaner, I need to match the Customer's code
+        if (role === 'cleaner') {
+            // Check if already verified
+            if (cleanerVerified) {
+                return true; // Already verified, return success
+            }
+
+            if (codeProvided === customerCode) {
+                // Update with proper nested object (not string path)
+                await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
+                    verificationCodes: {
+                        ...booking.verificationCodes,
+                        cleanerVerified: true
+                    }
+                });
+                return true;
+            }
+        }
+        // If I am customer, I need to match the Cleaner's code
+        else if (role === 'homeowner') {
+            // Check if already verified
+            if (customerVerified) {
+                return true; // Already verified, return success
+            }
+
+            if (codeProvided === cleanerCode) {
+                // Update with proper nested object (not string path)
+                await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
+                    verificationCodes: {
+                        ...booking.verificationCodes,
+                        customerVerified: true
+                    }
+                });
+                return true;
+            }
+        }
+
+        return false;
+    } catch (error) {
+        console.error(`Error verifying code for booking ${bookingId}:`, error);
+        throw new Error('Failed to verify code. Please try again.');
     }
-    return false;
 };
 
 /**
  * Check if both Verified and Start Job
+ * Updates both booking AND job status for data consistency
+ * @param {string} bookingId - Booking ID
+ * @returns {Promise<boolean>} True if job started successfully
  */
 export const checkVerificationAndStart = async (bookingId) => {
-    const booking = await getDoc(COLLECTIONS.BOOKINGS, bookingId);
-    if (booking?.verificationCodes?.cleanerVerified && booking?.verificationCodes?.customerVerified) {
+    try {
+        const booking = await getDoc(COLLECTIONS.BOOKINGS, bookingId);
+
+        if (!booking) {
+            console.error('Booking not found:', bookingId);
+            return false;
+        }
+
+        // Check if both parties have verified
+        const bothVerified = booking?.verificationCodes?.cleanerVerified &&
+            booking?.verificationCodes?.customerVerified;
+
+        if (!bothVerified) {
+            return false; // Not both verified yet
+        }
+
+        // Check if already in progress
+        if (booking.status === 'in_progress') {
+            return true; // Already started
+        }
+
+        const now = new Date().toISOString();
+
+        // Update booking status
         await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
             status: 'in_progress',
-            jobStartedAt: new Date().toISOString()
+            jobStartedAt: now
         });
+
+        // Also update related job status for consistency
+        try {
+            const jobs = await queryDocs(COLLECTIONS.JOBS, 'bookingId', bookingId);
+            if (jobs && jobs.length > 0) {
+                const job = jobs[0];
+                await updateDoc(COLLECTIONS.JOBS, job.id, {
+                    status: 'in_progress',
+                    startTime: now
+                });
+            }
+        } catch (jobError) {
+            console.warn('Failed to update job status (booking updated):', jobError);
+            // Continue anyway - booking status is most important
+        }
+
         return true;
+    } catch (error) {
+        console.error(`Error starting job for booking ${bookingId}:`, error);
+        throw new Error('Failed to start job. Please try again.');
     }
-    return false;
 };
 
 /**
@@ -1562,39 +1877,83 @@ export const submitJobForApproval = async (bookingId, notes, photos) => {
  * Approve Job (Customer)
  */
 export const approveJob = async (bookingId, ratingData) => {
-    // 1. Update Booking
-    await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
-        status: 'approved',
-        approvedAt: new Date().toISOString(),
-        customerRating: ratingData
-    });
-
-    // 2. Create Review Record (Customer -> Cleaner)
     try {
+        // Fetch booking first to ensure it exists and get related data
         const booking = await getBookingById(bookingId);
-        if (booking && booking.cleanerId) {
-            const customer = await getUserById(booking.customerId);
-            const cleaner = await getUserById(booking.cleanerId);
-
-            await createReview({
-                bookingId: booking.id,
-                cleanerId: booking.cleanerId,
-                customerId: booking.customerId,
-                cleanerName: cleaner?.name || 'Cleaner',
-                customerName: customer?.name || 'Customer',
-                reviewerRole: 'homeowner',
-                rating: ratingData.rating || 5,
-                comment: ratingData.comment || '',
-                tags: ratingData.tags || [],
-                createdAt: new Date().toISOString()
-            });
+        if (!booking) {
+            throw new Error('Booking not found');
         }
-    } catch (e) {
-        console.warn('Failed to create cleaner review record', e);
-    }
 
-    // Trigger Payout Logic here (simulated)
-    return true;
+        if (booking.status === 'approved') {
+            console.warn('Job already approved:', bookingId);
+            return true; // Already approved, return success
+        }
+
+        // Validate that job is in correct state to be approved
+        // Allow approval if job is completed, pending approval, or even in_progress (express finish)
+        const validStatuses = ['completed_pending_approval', 'completed', 'in_progress', 'arrived'];
+        if (!validStatuses.includes(booking.status)) {
+            throw new Error(`Cannot approve job with status: ${booking.status}`);
+        }
+
+        const now = new Date().toISOString();
+
+        // 1. Update Booking status
+        await updateDoc(COLLECTIONS.BOOKINGS, bookingId, {
+            status: 'approved',
+            approvedAt: now,
+            customerRating: ratingData
+        });
+
+        // 2. Update related Job status for consistency
+        try {
+            const jobs = await queryDocs(COLLECTIONS.JOBS, 'bookingId', bookingId);
+            if (jobs && jobs.length > 0) {
+                await updateDoc(COLLECTIONS.JOBS, jobs[0].id, {
+                    status: 'completed',
+                    completedAt: now,
+                    endTime: jobs[0].endTime || now
+                });
+            }
+        } catch (jobError) {
+            console.warn('Failed to update job status (booking approved):', jobError);
+            // Continue anyway - booking approval is critical
+        }
+
+        // 3. Create Review Record (Customer -> Cleaner)
+        if (booking.cleanerId) {
+            try {
+                const [customer, cleaner] = await Promise.all([
+                    getUserById(booking.customerId),
+                    getUserById(booking.cleanerId)
+                ]);
+
+                await createReview({
+                    bookingId: booking.id,
+                    cleanerId: booking.cleanerId,
+                    customerId: booking.customerId,
+                    cleanerName: cleaner?.name || 'Cleaner',
+                    customerName: customer?.name || 'Customer',
+                    reviewerRole: 'homeowner',
+                    rating: ratingData.rating || 5,
+                    comment: ratingData.comment || '',
+                    tags: ratingData.tags || [],
+                    createdAt: now
+                });
+            } catch (reviewError) {
+                console.error('Failed to create review (booking still approved):', reviewError);
+                // Log error but don't fail the approval
+                // Review can be created separately if needed
+            }
+        }
+
+        // Trigger Payout Logic here (simulated)
+        return true;
+
+    } catch (error) {
+        console.error(`Error approving job ${bookingId}:`, error);
+        throw error; // Re-throw to let caller handle
+    }
 };
 
 /**

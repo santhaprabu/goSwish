@@ -1,5 +1,19 @@
 
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * PAYMENT & PAYOUT SETTINGS
+ * ============================================================================
+ * 
+ * Purpose:
+ * Dual-role component that handles:
+ * 1. Customers: Adding/Removing Credit Cards (Stripe Integration).
+ * 2. Cleaners: Managing Payout Frequency and Bank Accounts.
+ * 
+ * Logic:
+ * - Checks `STRIPE_KEY` environment variable.
+ * - Uses Stripe Elements for secure card input.
+ */
 import { CreditCard, Plus, Trash2, ChevronLeft, CheckCircle2, Wallet, X, Building, Check, Clock, CalendarDays, Calendar } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getCleanerByUserId, updateCleanerProfile } from '../storage';

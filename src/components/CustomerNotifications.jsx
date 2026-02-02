@@ -1,4 +1,17 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * CUSTOMER NOTIFICATION CENTER
+ * ============================================================================
+ * 
+ * Purpose:
+ * Alerts customers about booking updates.
+ * 
+ * Key Events:
+ * - JOB_ACCEPTED: Cleaner has taken the job.
+ * - ON_THE_WAY: Cleaner is en route.
+ * - COMPLETED: Job finished, prompt for review.
+ */
 import { useApp } from '../context/AppContext';
 import {
     getUserNotifications,

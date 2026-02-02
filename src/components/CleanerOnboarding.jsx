@@ -1,4 +1,23 @@
 import { useState } from 'react';
+/*
+ * ============================================================================
+ * CLEANER ONBOARDING WIZARD
+ * ============================================================================
+ * 
+ * Purpose:
+ * Forces new cleaners to complete a profile before accessing the dashboard.
+ * 
+ * Steps:
+ * 1. Profile (Bio, Experience, Languages)
+ * 2. Photo (Face detection placeholder)
+ * 3. Location (Service Radius logic)
+ * 4. Availability (Weekly schedule)
+ * 5. Verification (Mock SSN/Background check)
+ * 6. Bank (Stripe Connect placeholder)
+ * 
+ * Logic:
+ * Uses `useApp().updateUser()` to save progress incrementally.
+ */
 import { useApp } from '../context/AppContext';
 import {
   User, Camera, MapPin, Calendar, Shield, DollarSign,

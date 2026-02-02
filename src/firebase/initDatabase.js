@@ -220,7 +220,7 @@ export async function initializeDatabase() {
         batch.set(settingsRef, {
             taxRate: 0.0825, // 8.25%
             platformFee: 0.15, // 15%
-            cleanerEarningsRate: 0.70, // 70% to cleaner
+            cleanerEarningsRate: 0.90, // 90% to cleaner (10% platform fee)
             minBookingAmount: 50,
             maxBookingAmount: 1000,
             defaultServiceRadius: 10, // miles

@@ -1,4 +1,19 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * ENHANCED CLEANER PROFILE
+ * ============================================================================
+ * 
+ * Purpose:
+ * Full profile management suite for Cleaners.
+ * 
+ * Features:
+ * - Edit Bio, Headline, Experience.
+ * - Manage Service Area (Radius slider).
+ * - Manage Specialties & Languages.
+ * - Portfolio Gallery management.
+ * - View Stats (Earnings, Rating, Job Count).
+ */
 import { useApp } from '../context/AppContext';
 import { getCleanerByUserId, getCleanerReviewsWithStats, updateCleanerProfile, getCleanerJobs } from '../storage';
 import {

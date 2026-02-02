@@ -1,4 +1,20 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * NOTIFICATION CENTER
+ * ============================================================================
+ * 
+ * Purpose:
+ * Central hub for alerts: Jobs, Payments, System Messages.
+ * 
+ * Types Handled:
+ * - NEW_JOB / job_offer: Critical for marketplace liquidity.
+ * - PAYMENT_RECEIVED: Engagement driver.
+ * - SYSTEM: Admin announcements.
+ * 
+ * Logic:
+ * Supports "Mark All Read" and "Filter by Type" for usability.
+ */
 import { useApp } from '../context/AppContext';
 import {
     getUserNotifications,

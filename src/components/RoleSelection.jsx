@@ -1,4 +1,16 @@
 import { Home, Sparkles, ArrowRight } from 'lucide-react';
+/*
+ * ============================================================================
+ * ROLE SELECTION SCREEN
+ * ============================================================================
+ * 
+ * Purpose:
+ * First interactive screen where users choose their path:
+ * 1. Homeowner (Customer)
+ * 2. Cleaner (Service Provider)
+ * 
+ * This choice sets the global `role` context.
+ */
 import { useApp } from '../context/AppContext';
 
 export default function RoleSelection({ onRoleSelected }) {

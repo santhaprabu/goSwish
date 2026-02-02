@@ -1,4 +1,16 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * BANKING INFORMATION FORM
+ * ============================================================================
+ * 
+ * Purpose:
+ * Captures bank details for Cleaner payouts (Stripe Connect integration point).
+ * 
+ * Security:
+ * - Validates Routing/Account number formats.
+ * - Stores data securely (in production, this would tokenize via Stripe).
+ */
 import { ChevronLeft, Building, CreditCard, User, Check, AlertCircle, Lock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getCleanerByUserId, updateCleanerProfile } from '../storage';

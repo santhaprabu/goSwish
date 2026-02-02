@@ -1,4 +1,17 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * SPLASH SCREEN
+ * ============================================================================
+ * 
+ * Purpose:
+ * The initial branding screen shown on app launch.
+ * 
+ * Features:
+ * - Animated Logo entry.
+ * - Rotating value propositions (Trusted, Secure, etc).
+ * - Seamless transition to Welcome Screen.
+ */
 
 export default function SplashScreen({ onComplete }) {
     const [fadeOut, setFadeOut] = useState(false);

@@ -1,5 +1,19 @@
 
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * NOTIFICATION PREFERENCES
+ * ============================================================================
+ * 
+ * Purpose:
+ * Allows users to toggle specific notification channels and types.
+ * 
+ * Channels: Push, Email, SMS.
+ * Types: Reminders, Promotions.
+ * 
+ * Logic:
+ * - Persists settings to the user's profile in the database.
+ */
 import { ChevronLeft, Bell, Mail, MessageSquare, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 

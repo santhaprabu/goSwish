@@ -1,4 +1,17 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * LIVE TRACKING (MAP VIEW)
+ * ============================================================================
+ * 
+ * Purpose:
+ * Shows the Customer where their Cleaner is on a map.
+ * 
+ * Features:
+ * - Real-time lat/lng updates via polling.
+ * - ETA and Distance calculation.
+ * - Provides immediate contact actions (Call/Text).
+ */
 import {
     MapPin, Navigation, Phone, MessageCircle, Clock,
     User, Car, Home, ChevronRight, Loader2

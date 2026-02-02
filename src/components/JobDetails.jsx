@@ -1,4 +1,20 @@
 import React from 'react';
+/*
+ * ============================================================================
+ * CLEANER JOB DETAIL VIEW
+ * ============================================================================
+ * 
+ * Purpose:
+ * The detailed view for a Cleaner when they click a job in their schedule.
+ * 
+ * Difference from BookingDetails:
+ * - `BookingDetails.jsx` is the "Source of Truth" mostly for Customers/Admin.
+ * - `JobDetails.jsx` is optimized for the Cleaner's "Day Of" experience.
+ * 
+ * Features:
+ * - Action Buttons: "Start Trip", "Message Customer".
+ * - Earnings Calculation Display.
+ */
 import { ChevronLeft, Check, Play, Clock, User, MessageSquare, MapPin } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -26,9 +42,23 @@ export default function JobDetails({ job, onBack, onStartJob, onMessaging }) {
         }
     };
 
+    // Helper to parse date string without timezone issues
+    const parseDateString = (dateStr) => {
+        if (!dateStr) return new Date();
+
+        // If it's a date-only string (YYYY-MM-DD), parse it as local time
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+
+        // Otherwise parse normally
+        return new Date(dateStr);
+    };
+
     // Helper to insure we have displayable values
     const earningsDisplay = job.displayEarnings || (typeof job.earnings === 'number' ? job.earnings.toFixed(2) : job.earnings);
-    const dateDisplay = job.formattedDate || new Date(job.date || job.scheduledDate).toLocaleDateString();
+    const dateDisplay = job.formattedDate || parseDateString(job.date || job.scheduledDate).toLocaleDateString();
     const timeDisplay = job.timeRange || `${job.startTime} - ${job.endTime}`;
     const serviceTypeDisplay = (job.serviceType || 'Cleaning').replace('-', ' ');
 

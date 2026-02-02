@@ -1,6 +1,18 @@
 // ShiftManagement.jsx - Cleaner Shift/Availability Management
-
 import { useState, useEffect, useCallback } from 'react';
+/*
+ * ============================================================================
+ * SHIFT & AVAILABILITY MANAGER
+ * ============================================================================
+ * 
+ * Purpose:
+ * Allows Cleaners to set their working hours (Morning/Afternoon/Evening).
+ * 
+ * Logic:
+ * - Visualizes a 7-day rolling window.
+ * - Prevents modification of 'Booked' slots.
+ * - Supports 'Bulk Update' for quickly blocking time off.
+ */
 import {
     ChevronLeft, ChevronRight, Check, X, Calendar,
     Clock, AlertCircle, CalendarDays, SkipForward, Ban

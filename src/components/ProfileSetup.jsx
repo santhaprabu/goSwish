@@ -1,4 +1,17 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * PROFILE SETUP WIZARD
+ * ============================================================================
+ * 
+ * Purpose:
+ * Handles initial profile creation and editing for all users.
+ * 
+ * Features:
+ * - Image Upload (Client-side preview).
+ * - Role-based conditional fields (Cleaners see Address, Customers just basics).
+ * - Validation (Phone number formatting, Name checks).
+ */
 import {
     User, Phone, Camera, ArrowLeft, Check, Loader2,
     AlertCircle, X, ImagePlus

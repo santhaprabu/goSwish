@@ -1,4 +1,17 @@
 import { useState, useEffect } from 'react';
+/*
+ * ============================================================================
+ * PAYOUT MANAGEMENT (Cleaners)
+ * ============================================================================
+ * 
+ * Purpose:
+ * Cleaners use this screen to view earnings and request payouts.
+ * 
+ * Features:
+ * - Transaction history (Earned vs withdrawn).
+ * - "Request Payout" button logic.
+ * - Balance calculation.
+ */
 import { useApp } from '../context/AppContext';
 import { getCleanerJobs, getCleanerByUserId, createTransaction } from '../storage';
 import { ChevronLeft, Download, Plus, DollarSign, Calendar, ArrowUpRight, ArrowDownLeft, AlertCircle } from 'lucide-react';

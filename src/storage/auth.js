@@ -1,6 +1,16 @@
 /**
- * Local Authentication System
- * Provides user authentication with persistent sessions
+ * ============================================================================
+ * AUTHENTICATION SYSTEM (Local & Secure)
+ * ============================================================================
+ * 
+ * Purpose:
+ * Manages User Sessions, Login, and Signup locally.
+ * 
+ * Security Note:
+ * Even though this is a local demo, we use industry-standard security:
+ * 1. PBKDF2 Hashing: Passwords are NEVER stored in plain text.
+ * 2. Salting: Unique salt per user prevents rainbow table attacks.
+ * 3. Session Management: sessionStorage is used for ephemeral access.
  */
 
 import { COLLECTIONS, addDoc, setDoc, updateDoc, getDoc, getDocs, queryDocs, generateId } from './db.js';

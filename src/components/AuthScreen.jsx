@@ -1,4 +1,22 @@
 import { useState } from 'react';
+
+/**
+ * ============================================================================
+ * AUTHENTICATION SCREEN
+ * ============================================================================
+ * 
+ * Purpose:
+ * Provides the UI for User Login and Registration.
+ * 
+ * Features:
+ * 1. Dual Mode: Toggles between "Login" and "Signup" forms.
+ * 2. Role-Aware: Knows if you are signing up as a Cleaner or Homeowner.
+ * 3. Simulated Social: "Continue with Google/Apple" buttons mock the OAuth flow.
+ * 
+ * Logic:
+ * It delegates the actual authentication to `useApp().login()` or `.signup()`,
+ * which in turn calls the secure `storage/auth.js` methods.
+ */
 import {
     ArrowLeft, Eye, EyeOff, Mail, Lock, AlertCircle,
     CheckCircle2, Loader2, Chrome, Apple, ChevronRight

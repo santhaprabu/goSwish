@@ -1,10 +1,21 @@
 /**
- * IndexedDB Storage Layer
- * Provides persistent storage with a Firebase-like API
+ * ============================================================================
+ * INDEXED DB STORAGE LAYER
+ * ============================================================================
+ * 
+ * Purpose:
+ * This acts as our "Database". Instead of a remote server (SQL/NoSQL), we use
+ * the browser's persistent IndexedDB. This makes the app:
+ * 1. Offline-first: Works without internet.
+ * 2. Prototype-friendly: No backend setup required.
+ * 3. Fast: Local read/writes.
+ * 
+ * We use a "Doc-based" API pattern (addDoc, getDoc) to mimic Firebase/Firestore,
+ * making future migration to a real backend easy.
  */
 
 const DB_NAME = 'GoSwishDB';
-const DB_VERSION = 2;
+const DB_VERSION = 4;
 
 // Collection names
 export const COLLECTIONS = {
@@ -225,6 +236,108 @@ export const updateDoc = async (collection, id, updates) => {
                 ...updates,
                 id,
                 createdAt: existing.createdAt,
+                updatedAt: new Date().toISOString(),
+            };
+
+            const updateRequest = objectStore.put(updated);
+
+            updateRequest.onsuccess = () => resolve({ id, ...updated });
+            updateRequest.onerror = () => reject(updateRequest.error);
+        };
+
+        getRequest.onerror = () => reject(getRequest.error);
+    });
+};
+
+/**
+ * Conditional update with optimistic locking
+ * Updates document only if condition matches current state
+ * @param {string} collection - Collection name
+ * @param {string} id - Document ID
+ * @param {object} updates - Updates to apply
+ * @param {object} condition - Condition that must match (e.g., { version: 1, status: 'pending' })
+ * @returns {Promise<{success: boolean, doc?: object, error?: string}>}
+ */
+export const conditionalUpdate = async (collection, id, updates, condition) => {
+    await initDB();
+
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([collection], 'readwrite');
+        const objectStore = transaction.objectStore(collection);
+
+        const getRequest = objectStore.get(id);
+
+        getRequest.onsuccess = () => {
+            const existing = getRequest.result;
+
+            if (!existing) {
+                resolve({ success: false, error: 'Document not found' });
+                return;
+            }
+
+            // Check if all conditions match
+            const conditionsMet = Object.keys(condition).every(key => {
+                return existing[key] === condition[key];
+            });
+
+            if (!conditionsMet) {
+                resolve({ success: false, error: 'Condition not met', doc: existing });
+                return;
+            }
+
+            // Conditions met, apply update
+            const updated = {
+                ...existing,
+                ...updates,
+                id,
+                createdAt: existing.createdAt,
+                updatedAt: new Date().toISOString(),
+            };
+
+            const updateRequest = objectStore.put(updated);
+
+            updateRequest.onsuccess = () => {
+                resolve({ success: true, doc: { id, ...updated } });
+            };
+
+            updateRequest.onerror = () => {
+                reject(updateRequest.error);
+            };
+        };
+
+        getRequest.onerror = () => reject(getRequest.error);
+    });
+};
+
+/**
+ * Atomic increment operation
+ * @param {string} collection - Collection name
+ * @param {string} id - Document ID
+ * @param {string} field - Field to increment
+ * @param {number} amount - Amount to increment by (default: 1)
+ * @returns {Promise<object>} Updated document
+ */
+export const atomicIncrement = async (collection, id, field, amount = 1) => {
+    await initDB();
+
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([collection], 'readwrite');
+        const objectStore = transaction.objectStore(collection);
+
+        const getRequest = objectStore.get(id);
+
+        getRequest.onsuccess = () => {
+            const existing = getRequest.result;
+
+            if (!existing) {
+                reject(new Error('Document not found'));
+                return;
+            }
+
+            const currentValue = existing[field] || 0;
+            const updated = {
+                ...existing,
+                [field]: currentValue + amount,
                 updatedAt: new Date().toISOString(),
             };
 
