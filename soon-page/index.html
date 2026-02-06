@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Mopt - The new era of home cleaning. Join the waitlist today.">
+    <title>Mopt | Coming Soon</title>
+
+    <!-- Google Fonts - Using reliable Outfit font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css?v=3">
+</head>
+
+<body>
+    <!-- Background Container -->
+    <div class="bg-container">
+        <div id="particles-js"></div>
+        <div class="bg-image"></div>
+        <div class="bg-color"></div>
+        <div class="bg-pattern"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content-wrapper">
+        <main class="main-content">
+            <!-- Logo -->
+            <div class="logo-container fade-in">
+                <img src="assets/img/mopt-logo.png" alt="Mopt Logo" class="main-logo">
+            </div>
+
+            <!-- Title & Subtitle -->
+            <div class="text-content fade-in delay-1">
+                <h1 class="title">Coming Soon</h1>
+                <p class="subtitle">Bringing the sparkle to your doorstep. Join the waitlist for the new era of home
+                    cleaning.</p>
+            </div>
+
+            <!-- Audience Cards - Side by Side -->
+            <div class="audience-cards-row fade-in delay-2">
+                <!-- For Homeowners Card -->
+                <div class="audience-card-compact" id="homeowners">
+                    <div class="card-icon-header">
+                        <i class="fas fa-house-chimney"></i>
+                    </div>
+                    <p class="eyebrow">For Homeowners</p>
+                    <h2 class="section-title">Get your weekends back.</h2>
+                    <p class="section-subtitle">
+                        Book trusted cleaners in under 60 seconds - no calls, no quotes, no waiting.
+                    </p>
+
+                    <ul class="feature-list">
+                        <li>See pricing before you book.</li>
+                        <li>Schedule for today or later.</li>
+                        <li>Vetted cleaners and in-app support.</li>
+                        <li>Manage everything from your phone.</li>
+                    </ul>
+
+                    <div class="cta-row">
+                        <button class="btn btn-primary" id="ctaHomeowner" type="button">
+                            Get $50 Off — Join Waitlist
+                        </button>
+                        <p class="cta-note">Launching July 2026 in the Dallas-Fort Worth area, Texas</p>
+                    </div>
+                </div>
+
+                <!-- For Cleaners Card -->
+                <div class="audience-card-compact" id="cleaners">
+                    <div class="card-icon-header">
+                        <i class="fas fa-broom"></i>
+                    </div>
+                    <p class="eyebrow">For Cleaners</p>
+                    <h2 class="section-title">Work when you want. Get paid fairly.</h2>
+                    <p class="section-subtitle">
+                        Steady jobs, respectful clients, and simple payouts - right in the app.
+                    </p>
+
+                    <ul class="feature-list">
+                        <li>Choose your own schedule.</li>
+                        <li>Weekly direct deposit.</li>
+                        <li>No more chasing payments.</li>
+                        <li>See job details before you accept.</li>
+                    </ul>
+
+                    <div class="cta-row">
+                        <button class="btn btn-primary" id="ctaCleaner" type="button">
+                            Apply to Clean with Mopt
+                        </button>
+                        <p class="cta-note">Now registering cleaners in the Dallas-Fort Worth area, Texas</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <div class="form-container fade-in delay-3">
+                <form id="waitlist-form">
+                    <p class="form-label">I want to join as a:</p>
+
+                    <div class="role-selector">
+                        <label class="role-option">
+                            <input type="radio" name="role" value="homeowner">
+                            <div class="role-box">
+                                <i class="fas fa-house-chimney"></i>
+                                <span>Homeowner</span>
+                            </div>
+                        </label>
+                        <label class="role-option">
+                            <input type="radio" name="role" value="cleaner">
+                            <div class="role-box">
+                                <i class="fas fa-broom"></i>
+                                <span>Cleaner</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="input-row">
+                        <select id="state" required>
+                            <option value="" disabled selected>Select State</option>
+                            <option value="TX">Texas</option>
+                            <option value="UT">Utah</option>
+                            <option value="GA">Georgia</option>
+                            <option value="CO">Denver</option>
+                            <option value="OTHER">Other</option>
+                        </select>
+                        <input type="email" id="email" placeholder="Email Address" required>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submit-btn">
+                        <span class="btn-text">Notify Me</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+
+                    <p id="error-message" class="error-text hidden">Please select a role to continue.</p>
+                </form>
+
+                <!-- Success Message -->
+                <div id="success-message" class="success-message hidden">
+                    <div class="success-circle">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <h3>You're on the list!</h3>
+                    <p>We'll notify you as soon as Mopt launches in your area.</p>
+                    <button class="reset-btn" id="reset-btn">Add Another Email</button>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- Footer / Socials -->
+    <footer style="position: relative; z-index: 10; padding-bottom: 40px;">
+        <div class="footer-socials fade-in delay-3">
+            <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+            <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+            <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+        </div>
+    </footer>
+
+    <!-- Floating Scroll Indicator -->
+    <div class="floating-scroll-hint" id="floatingScrollHint">
+        <i class="fas fa-chevron-down"></i>
+        <span>Scroll for more</span>
+    </div>
+
+    <!-- Particles.js -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script src="script.js"></script>
+    <script src="analytics.js"></script>
+
+    <!-- Interaction Script -->
+    <script>
+        (function () {
+            const waitlistEl = document.getElementById('waitlist-form'); // Using form ID as scroll target
+            const emailEl = document.getElementById('email');
+
+            // Select radio inputs instead of buttons
+            const roleHomeownerInput = document.querySelector('input[name="role"][value="homeowner"]');
+            const roleCleanerInput = document.querySelector('input[name="role"][value="cleaner"]');
+
+            const ctaHomeowner = document.getElementById('ctaHomeowner');
+            const ctaCleaner = document.getElementById('ctaCleaner');
+
+            function setRole(role) {
+                if (role === 'homeowner' && roleHomeownerInput) {
+                    roleHomeownerInput.checked = true;
+                } else if (role === 'cleaner' && roleCleanerInput) {
+                    roleCleanerInput.checked = true;
+                }
+            }
+
+            function scrollToWaitlistAndFocus(role) {
+                if (waitlistEl) {
+                    try {
+                        waitlistEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } catch (e) {
+                        waitlistEl.scrollIntoView(true);
+                    }
+                }
+                setRole(role);
+
+                if (emailEl) {
+                    setTimeout(() => emailEl.focus({ preventScroll: true }), 250);
+                }
+            }
+
+            if (ctaHomeowner) ctaHomeowner.addEventListener('click', () => scrollToWaitlistAndFocus('homeowner'));
+            if (ctaCleaner) ctaCleaner.addEventListener('click', () => scrollToWaitlistAndFocus('cleaner'));
+        })();
+
+        // Floating scroll hint - hide when near bottom
+        (function() {
+            const floatingHint = document.getElementById('floatingScrollHint');
+            if (!floatingHint) return;
+
+            function checkScroll() {
+                const scrollTop = window.scrollY || document.documentElement.scrollTop;
+                const scrollHeight = document.documentElement.scrollHeight;
+                const clientHeight = document.documentElement.clientHeight;
+                const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+                if (distanceFromBottom < 150) {
+                    floatingHint.classList.add('hidden');
+                } else {
+                    floatingHint.classList.remove('hidden');
+                }
+            }
+
+            window.addEventListener('scroll', checkScroll, { passive: true });
+            checkScroll();
+
+            // Click to scroll down smoothly
+            floatingHint.addEventListener('click', function() {
+                window.scrollBy({ top: window.innerHeight * 0.8, behavior: 'smooth' });
+            });
+        })();
+    </script>
+</body>
+
+</html>
