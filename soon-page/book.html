@@ -139,20 +139,14 @@
                         <!-- City -->
                         <div class="form-group">
                             <label class="form-label" data-i18n="book.city">City</label>
-                            <div class="select-wrapper">
-                                <select id="city" required>
-                                    <option value="" disabled selected data-i18n="book.selectCity">Select city</option>
-                                    <option value="Dallas">Dallas</option>
-                                    <option value="Fort Worth">Fort Worth</option>
-                                    <option value="Plano">Plano</option>
-                                    <option value="Arlington">Arlington</option>
-                                    <option value="Irving">Irving</option>
-                                    <option value="Frisco">Frisco</option>
-                                    <option value="McKinney">McKinney</option>
-                                    <option value="Denton">Denton</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
+                            <input type="text" id="city" data-i18n-placeholder="book.cityPlaceholder"
+                                placeholder="Enter your city" required>
+                        </div>
+
+                        <!-- State -->
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="book.state">State</label>
+                            <input type="text" id="state" value="Texas" required>
                         </div>
 
                         <!-- Zip Code -->

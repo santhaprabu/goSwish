@@ -274,7 +274,7 @@
     function initPricingUpdates() {
         // Listen for changes on all relevant inputs
         elements.sqft.addEventListener('input', updatePricing);
-        elements.city.addEventListener('change', updatePricing);
+        elements.city.addEventListener('input', updatePricing);
 
         document.querySelectorAll('input[name="serviceType"]').forEach(radio => {
             radio.addEventListener('change', updatePricing);
@@ -411,6 +411,7 @@
                 bathrooms: document.getElementById('bathrooms').value,
                 address: document.getElementById('address').value,
                 city: document.getElementById('city').value,
+                state: document.getElementById('state').value,
                 zipcode: document.getElementById('zipcode').value,
                 hasPets: elements.hasPets.checked,
                 petNotes: document.getElementById('petNotes').value
@@ -462,7 +463,7 @@
         document.getElementById('summaryService').textContent = formData.service.name;
         document.getElementById('summaryDate').textContent = formatDate(formData.schedule.date);
         document.getElementById('summaryTime').textContent = formData.schedule.timeRange;
-        document.getElementById('summaryAddress').textContent = `${formData.property.address}, ${formData.property.city}`;
+        document.getElementById('summaryAddress').textContent = `${formData.property.address}, ${formData.property.city}, ${formData.property.state}`;
         document.getElementById('summaryTotal').textContent = formData.pricing.total;
 
         // Show success section
