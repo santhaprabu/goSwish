@@ -6,7 +6,7 @@
 import { signUpWithEmail, forceResetUserPassword } from './auth.js';
 import {
     createCleanerProfile, createHouse, createPromoCode,
-    createReview, createNotification, createConversation, sendMessage,
+    createReview, createNotification,
     getCleanerByUserId, createTransaction
 } from './helpers.js';
 import { COLLECTIONS, setDoc, generateId } from './db.js';
@@ -533,11 +533,13 @@ const seedCleanerNotifications = async (cleanerUsers, customerUsers) => {
 
 /**
  * Seed messages/conversations for cleaners
+ * Now creates booking-scoped conversations - each conversation is tied to a booking
  */
 const seedCleanerMessages = async (cleanerUsers, customerUsers) => {
-    console.log('🚀 Creating conversations and messages...');
+    console.log('🚀 Creating booking-scoped conversations and messages...');
     let convCount = 0;
     let msgCount = 0;
+    let bookingCount = 0;
 
     const messageTemplates = [
         ['Hi! I just booked you for a deep clean.', 'Great! I look forward to it. Any specific areas you want me to focus on?'],
@@ -546,6 +548,9 @@ const seedCleanerMessages = async (cleanerUsers, customerUsers) => {
         ['Can you also clean the garage?', 'Sure! I can add that for an extra $30. Does that work?', 'Yes, that\'s perfect!'],
         ['Running about 10 mins late, sorry!', 'No problem, take your time!'],
     ];
+
+    const serviceTypes = ['regular', 'deep', 'move', 'windows'];
+    const cities = Object.keys(TEXAS_CITIES);
 
     for (const cleaner of cleanerUsers) {
         // Create 2-4 conversations per cleaner
@@ -560,24 +565,84 @@ const seedCleanerMessages = async (cleanerUsers, customerUsers) => {
             }
             usedCustomers.add(customer.uid);
 
-            const conv = await createConversation([cleaner.uid, customer.uid], {
+            // First create a booking for this conversation
+            const city = getRandom(cities);
+            const address = generateAddress(city);
+            const serviceType = getRandom(serviceTypes);
+            const isActive = i === 0; // First conversation is active, others are completed
+
+            const bookingId = generateId('booking');
+
+            // For active bookings: created a few days ago, cleaning today
+            // For completed bookings: created 2 weeks ago, cleaned 1 week ago
+            const daysAgoCreated = isActive ? getRandomNumber(2, 5) : getRandomNumber(10, 14);
+            const cleaningDaysFromNow = isActive ? 0 : -7; // Active = today, Completed = 1 week ago
+
+            const booking = {
+                id: bookingId,
+                customerId: customer.uid,
+                customerName: customer.name,
+                cleanerId: cleaner.uid,
+                cleanerName: cleaner.name,
+                serviceType,
+                status: isActive ? 'in_progress' : 'approved',
+                // When the cleaning is scheduled (today for active, 7 days ago for completed)
+                scheduledDate: new Date(Date.now() + cleaningDaysFromNow * 24 * 60 * 60 * 1000).toISOString(),
+                // When the booking was originally placed
+                createdAt: new Date(Date.now() - daysAgoCreated * 24 * 60 * 60 * 1000).toISOString(),
+                updatedAt: new Date().toISOString(),
+                address: address.street + ', ' + city,
+                amount: getRandomNumber(80, 200),
+            };
+            await setDoc(COLLECTIONS.BOOKINGS, bookingId, booking);
+            bookingCount++;
+
+            // Now create conversation tied to this booking
+            const convId = generateId('conv');
+            const conversation = {
+                id: convId,
+                participantIds: [cleaner.uid, customer.uid],
+                bookingId: bookingId,
                 cleanerName: cleaner.name,
                 customerName: customer.name,
-            });
+                serviceType: serviceType,
+                status: isActive ? 'active' : 'closed',
+                lastMessage: null,
+                lastMessageTime: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            };
+            await setDoc(COLLECTIONS.MESSAGES, convId, conversation);
             convCount++;
 
             // Add messages to conversation
             const messageThread = getRandom(messageTemplates);
             for (let m = 0; m < messageThread.length; m++) {
                 const senderId = m % 2 === 0 ? customer.uid : cleaner.uid;
-                await sendMessage(conv.id, senderId, messageThread[m]);
+                const msgId = generateId('msg');
+                const message = {
+                    id: msgId,
+                    conversationId: convId,
+                    senderId,
+                    content: messageThread[m],
+                    status: 'sent',
+                    createdAt: new Date().toISOString(),
+                };
+                await setDoc(COLLECTIONS.MESSAGES, msgId, message);
                 msgCount++;
+
+                // Update conversation's last message
+                conversation.lastMessage = messageThread[m];
+                conversation.lastMessageTime = message.createdAt;
             }
+
+            // Update conversation with last message info
+            await setDoc(COLLECTIONS.MESSAGES, convId, conversation);
         }
     }
 
-    console.log(`✅ Created ${convCount} conversations with ${msgCount} messages`);
-    return { convCount, msgCount };
+    console.log(`✅ Created ${bookingCount} bookings with ${convCount} conversations and ${msgCount} messages`);
+    return { convCount, msgCount, bookingCount };
 };
 
 /**
@@ -599,7 +664,9 @@ const seedCleanerJobs = async (cleanerProfiles, customerUsers) => {
             const serviceType = getRandom(serviceTypes);
             const status = i < numJobs - 2 ? 'completed' : getRandom(jobStatuses);
             const daysAgo = status === 'scheduled' ? -getRandomNumber(1, 7) : getRandomNumber(1, 60);
-            const scheduledDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+            const scheduledDate = new Date();
+            scheduledDate.setDate(scheduledDate.getDate() - daysAgo);
+            scheduledDate.setHours(9, 0, 0, 0); // Start everything at 9 AM for demo consistency
 
             let amount = 0;
             let duration = 2;
@@ -790,7 +857,7 @@ export const seedAllData = async () => {
         console.log('');
 
         // Create conversations and messages
-        await seedCleanerMessages(cleanerUsers, customerUsers);
+        // await seedCleanerMessages(cleanerUsers, customerUsers);
         console.log('');
 
         // Create payout transactions

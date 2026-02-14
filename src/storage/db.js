@@ -15,7 +15,7 @@
  */
 
 const DB_NAME = 'GoSwishDB';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 // Collection names
 export const COLLECTIONS = {
@@ -84,6 +84,7 @@ export const initDB = () => {
                         objectStore.createIndex('customerId', 'customerId', { unique: false });
                         objectStore.createIndex('cleanerId', 'cleanerId', { unique: false });
                         objectStore.createIndex('status', 'status', { unique: false });
+                        objectStore.createIndex('bookingId', 'bookingId', { unique: true }); // New unique index
                     }
 
                     if (collectionName === COLLECTIONS.JOBS) {
@@ -120,6 +121,12 @@ export const initDB = () => {
                         }
                         if (!objectStore.indexNames.contains('relatedId')) {
                             objectStore.createIndex('relatedId', 'relatedId', { unique: false });
+                        }
+                    }
+
+                    if (collectionName === COLLECTIONS.BOOKINGS) {
+                        if (!objectStore.indexNames.contains('bookingId')) {
+                            objectStore.createIndex('bookingId', 'bookingId', { unique: true });
                         }
                     }
                 }

@@ -50,3 +50,4 @@ credentials/
 *.sqlite
 *.sqlite3
 Untitled-1
+.vite/

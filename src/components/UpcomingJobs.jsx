@@ -10,11 +10,20 @@ import { useState, useEffect } from 'react';
  * Logic:
  * - Fetches jobs where status is 'scheduled' or 'confirmed'.
  * - Sorts chronologically.
- * - Parsing logic handles various date string formats from the DB.
+ * - Uses centralized date utilities for consistent timezone handling.
  */
 import { ChevronLeft, MapPin, Calendar, Clock, DollarSign, ChevronRight, User } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getCleanerByUserId, getCleanerJobs } from '../storage';
+import { formatBookingId } from '../utils/formatters';
+import {
+    parseLocalDate,
+    toLocalDateString,
+    getTodayString,
+    formatDisplayDate,
+    formatHourTo12,
+    extractHours
+} from '../utils/dateUtils';
 
 export default function UpcomingJobs({ onBack, onViewJob, embedded = false }) {
     const { user } = useApp();
@@ -49,24 +58,25 @@ export default function UpcomingJobs({ onBack, onViewJob, embedded = false }) {
                     return { ...job, house };
                 }));
 
-                const today = new Date().toISOString().split('T')[0];
+                // Use centralized date utility for today's date comparison
+                const today = getTodayString();
 
-                // Filter for upcoming jobs (scheduled/confirmed and date >= today)
+                // Filter for upcoming/active jobs (scheduled/confirmed/in_progress) irrespective of date
+                // This ensures "Overdue" jobs from yesterday are still visible until completed
                 const upcoming = jobsWithDetails.filter(job => {
-                    if (job.status !== 'scheduled' && job.status !== 'confirmed') return false;
+                    const isActive = ['scheduled', 'confirmed', 'in_progress', 'arrived'].includes(job.status);
+                    if (!isActive) return false;
 
                     const dateVal = job.scheduledDate || job.startTime;
                     if (!dateVal) return false;
 
-                    // Extract date string (handle both YYYY-MM-DD and full ISO strings)
-                    const jobDate = dateVal.split('T')[0];
-                    return jobDate >= today;
+                    return true;
                 });
 
-                // Sort by date then time
+                // Sort by date then time using centralized utility
                 upcoming.sort((a, b) => {
-                    const dateA = (a.scheduledDate || a.startTime || '').split('T')[0];
-                    const dateB = (b.scheduledDate || b.startTime || '').split('T')[0];
+                    const dateA = toLocalDateString(a.scheduledDate || a.startTime) || '';
+                    const dateB = toLocalDateString(b.scheduledDate || b.startTime) || '';
                     return dateA.localeCompare(dateB);
                 });
 
@@ -81,54 +91,18 @@ export default function UpcomingJobs({ onBack, onViewJob, embedded = false }) {
         loadJobs();
     }, [user]);
 
-    // Helper to parse date string without timezone issues
-    const parseDateString = (dateStr) => {
-        if (!dateStr) return new Date();
-
-        // If it's a date-only string (YYYY-MM-DD), parse it as local time
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-            const [year, month, day] = dateStr.split('-').map(Number);
-            return new Date(year, month - 1, day);
-        }
-
-        // Otherwise parse normally
-        return new Date(dateStr);
-    };
-
-    // Helper to parse time string (HH:MM) and combine with date
-    const parseTime = (dateStr, timeStr) => {
-        const date = parseDateString(dateStr);
-        if (!timeStr || !timeStr.includes(':')) {
-            return date.getHours();
-        }
-        const [hours] = timeStr.split(':').map(Number);
-        return hours;
-    };
-
-    // Format helper
+    // Format helper using centralized date utilities
     const formatJob = (job) => {
         const dateVal = job.scheduledDate || job.startTime || new Date().toISOString();
-        const validDate = parseDateString(dateVal);
+        const validDate = parseLocalDate(dateVal);
 
-        // Get hours from startTime if available, otherwise from parsed date
-        let hours = 9; // Default morning time
-        if (job.startTime && job.startTime.includes(':')) {
-            // If startTime is "09:00" format
-            hours = parseTime(dateVal, job.startTime);
-        } else if (validDate) {
-            hours = validDate.getHours();
-        }
+        // Get hours from startTime using centralized utility
+        let hours = extractHours(job.startTime) || validDate.getHours() || 9;
 
         const duration = job.duration || 3;
         const endHours = hours + duration;
 
-        const formatTime = (h) => {
-            const period = h >= 12 ? 'PM' : 'AM';
-            const hour12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
-            return `${hour12}:00 ${period}`;
-        };
-
-        const dateStr = validDate.toLocaleDateString('en-US', {
+        const dateStr = formatDisplayDate(dateVal, {
             weekday: 'short',
             month: 'short',
             day: 'numeric'
@@ -137,8 +111,19 @@ export default function UpcomingJobs({ onBack, onViewJob, embedded = false }) {
         return {
             ...job,
             formattedDate: dateStr,
-            timeRange: `${formatTime(hours)} - ${formatTime(endHours)}`,
-            displayEarnings: Number(job.amount || job.earnings || 50).toFixed(2)
+            timeRange: `${formatHourTo12(hours)} - ${formatHourTo12(endHours)}`,
+            displayEarnings: (() => {
+                // Use job.earnings directly - this is the 90% of subtotal calculated at job creation
+                const earnings = Number(job.earnings || 0);
+                if (earnings > 0) {
+                    return earnings.toFixed(2);
+                }
+                // Fallback: estimate from amount (total including tax)
+                const amount = Number(job.amount || 0);
+                const estimatedSubtotal = amount / 1.0825;
+                const estimatedEarnings = estimatedSubtotal * 0.9;
+                return estimatedEarnings > 0 ? estimatedEarnings.toFixed(2) : '50.00';
+            })()
         };
     };
 
@@ -188,7 +173,7 @@ export default function UpcomingJobs({ onBack, onViewJob, embedded = false }) {
                                                 {job.status}
                                             </span>
                                             <span className="text-xs font-mono font-semibold text-gray-500">
-                                                {job.bookingId || `#${job.id.slice(-6)}`}
+                                                {formatBookingId(job.bookingId)}
                                             </span>
                                         </div>
                                         <h3 className="text-lg font-bold text-gray-900 capitalize">

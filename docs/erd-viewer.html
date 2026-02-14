@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoSwish Database ERD</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        header h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .controls button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: white;
+            color: #4F46E5;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .controls button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .diagram-container {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: auto;
+        }
+        .diagram-container svg {
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+            height: auto;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .stat-card .number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #4F46E5;
+        }
+        .stat-card .label {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        .table-list {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .table-list h2 {
+            color: #1e293b;
+            margin-bottom: 20px;
+        }
+        .table-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .table-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .table-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+        .table-card .header {
+            padding: 12px 16px;
+            color: white;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .table-card .header.users { background: linear-gradient(135deg, #4F46E5, #3730A3); }
+        .table-card .header.cleaners { background: linear-gradient(135deg, #059669, #047857); }
+        .table-card .header.houses { background: linear-gradient(135deg, #EA580C, #C2410C); }
+        .table-card .header.bookings { background: linear-gradient(135deg, #7C3AED, #6D28D9); }
+        .table-card .header.jobs { background: linear-gradient(135deg, #0D9488, #0F766E); }
+        .table-card .header.other { background: linear-gradient(135deg, #4B5563, #374151); }
+        .table-card .content {
+            padding: 16px;
+        }
+        .table-card .field {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.9rem;
+        }
+        .table-card .field:last-child { border-bottom: none; }
+        .table-card .field .key {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: white;
+        }
+        .table-card .field .key.pk { background: #fbbf24; }
+        .table-card .field .key.fk { background: #60a5fa; }
+        .table-card .field .name { flex: 1; color: #334155; }
+        .table-card .field .type { color: #94a3b8; font-size: 0.8rem; }
+        footer {
+            text-align: center;
+            color: white;
+            opacity: 0.8;
+            margin-top: 40px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GoSwish Database ERD</h1>
+            <p>Entity Relationship Diagram - PostgreSQL Compatible Schema</p>
+        </header>
+
+        <div class="controls">
+            <button onclick="document.querySelector('.diagram-container').scrollIntoView({behavior:'smooth'})">View Diagram</button>
+            <button onclick="document.querySelector('.table-list').scrollIntoView({behavior:'smooth'})">View Tables</button>
+            <button onclick="window.open('erd-diagram.svg', '_blank')">Open SVG</button>
+            <button onclick="window.print()">Print</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="number">14</div>
+                <div class="label">Tables</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">23</div>
+                <div class="label">Foreign Keys</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">35+</div>
+                <div class="label">Indexes</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">15</div>
+                <div class="label">Enums</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">8</div>
+                <div class="label">Triggers</div>
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <object data="erd-diagram.svg" type="image/svg+xml" style="width: 100%; min-height: 800px;">
+                <img src="erd-diagram.svg" alt="GoSwish ERD Diagram" />
+            </object>
+        </div>
+
+        <div class="table-list">
+            <h2>Table Definitions</h2>
+            <div class="table-grid">
+                <!-- USERS -->
+                <div class="table-card">
+                    <div class="header users">
+                        <span>USERS</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key"></span><span class="name">email</span><span class="type">VARCHAR(255) UNIQUE</span></div>
+                        <div class="field"><span class="key"></span><span class="name">password_hash</span><span class="type">VARCHAR(512)</span></div>
+                        <div class="field"><span class="key"></span><span class="name">role</span><span class="type">ENUM</span></div>
+                        <div class="field"><span class="key"></span><span class="name">status</span><span class="type">ENUM</span></div>
+                        <div class="field"><span class="key"></span><span class="name">first_name, last_name</span><span class="type">VARCHAR</span></div>
+                        <div class="field"><span class="key"></span><span class="name">phone</span><span class="type">VARCHAR(20)</span></div>
+                        <div class="field"><span class="key"></span><span class="name">email_verified</span><span class="type">BOOLEAN</span></div>
+                    </div>
+                </div>
+
+                <!-- CLEANERS -->
+                <div class="table-card">
+                    <div class="header cleaners">
+                        <span>CLEANERS</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">user_id</span><span class="type">UUID UNIQUE</span></div>
+                        <div class="field"><span class="key"></span><span class="name">headline</span><span class="type">VARCHAR(200)</span></div>
+                        <div class="field"><span class="key"></span><span class="name">years_experience</span><span class="type">INTEGER</span></div>
+                        <div class="field"><span class="key"></span><span class="name">service_types</span><span class="type">TEXT[]</span></div>
+                        <div class="field"><span class="key"></span><span class="name">hourly_rate</span><span class="type">DECIMAL</span></div>
+                        <div class="field"><span class="key"></span><span class="name">rating</span><span class="type">DECIMAL(3,2)</span></div>
+                        <div class="field"><span class="key"></span><span class="name">verification_status</span><span class="type">ENUM</span></div>
+                    </div>
+                </div>
+
+                <!-- HOUSES -->
+                <div class="table-card">
+                    <div class="header houses">
+                        <span>HOUSES</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">user_id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key"></span><span class="name">nickname</span><span class="type">VARCHAR(100)</span></div>
+                        <div class="field"><span class="key"></span><span class="name">property_type</span><span class="type">ENUM</span></div>
+                        <div class="field"><span class="key"></span><span class="name">sqft</span><span class="type">INTEGER</span></div>
+                        <div class="field"><span class="key"></span><span class="name">bedrooms, bathrooms</span><span class="type">INT/DEC</span></div>
+                        <div class="field"><span class="key"></span><span class="name">street, city, state, zip</span><span class="type">VARCHAR</span></div>
+                        <div class="field"><span class="key"></span><span class="name">has_pets</span><span class="type">BOOLEAN</span></div>
+                    </div>
+                </div>
+
+                <!-- BOOKINGS -->
+                <div class="table-card">
+                    <div class="header bookings">
+                        <span>BOOKINGS</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key"></span><span class="name">booking_id</span><span class="type">VARCHAR UNIQUE</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">customer_id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">cleaner_id</span><span class="type">UUID NULL</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">house_id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">service_type_id</span><span class="type">VARCHAR</span></div>
+                        <div class="field"><span class="key"></span><span class="name">total_amount</span><span class="type">DECIMAL</span></div>
+                        <div class="field"><span class="key"></span><span class="name">status</span><span class="type">ENUM (12 states)</span></div>
+                    </div>
+                </div>
+
+                <!-- JOBS -->
+                <div class="table-card">
+                    <div class="header jobs">
+                        <span>JOBS</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">booking_id</span><span class="type">UUID UNIQUE</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">cleaner_id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key"></span><span class="name">customer_name</span><span class="type">VARCHAR (snapshot)</span></div>
+                        <div class="field"><span class="key"></span><span class="name">amount</span><span class="type">DECIMAL</span></div>
+                        <div class="field"><span class="key"></span><span class="name">earnings</span><span class="type">DECIMAL (90%)</span></div>
+                        <div class="field"><span class="key"></span><span class="name">tip</span><span class="type">DECIMAL</span></div>
+                        <div class="field"><span class="key"></span><span class="name">status</span><span class="type">ENUM</span></div>
+                    </div>
+                </div>
+
+                <!-- REVIEWS -->
+                <div class="table-card">
+                    <div class="header users">
+                        <span>REVIEWS</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">booking_id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">cleaner_id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">customer_id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key"></span><span class="name">rating</span><span class="type">INT (1-5)</span></div>
+                        <div class="field"><span class="key"></span><span class="name">comment</span><span class="type">TEXT</span></div>
+                        <div class="field"><span class="key"></span><span class="name">tags</span><span class="type">TEXT[]</span></div>
+                    </div>
+                </div>
+
+                <!-- CONVERSATIONS -->
+                <div class="table-card">
+                    <div class="header bookings">
+                        <span>CONVERSATIONS</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">booking_id</span><span class="type">UUID UNIQUE</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">customer_id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">cleaner_id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key"></span><span class="name">status</span><span class="type">ENUM</span></div>
+                        <div class="field"><span class="key"></span><span class="name">last_message</span><span class="type">TEXT</span></div>
+                    </div>
+                </div>
+
+                <!-- MESSAGES -->
+                <div class="table-card">
+                    <div class="header bookings">
+                        <span>MESSAGES</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">conversation_id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">sender_id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key"></span><span class="name">content</span><span class="type">TEXT</span></div>
+                        <div class="field"><span class="key"></span><span class="name">status</span><span class="type">ENUM</span></div>
+                        <div class="field"><span class="key"></span><span class="name">read_at</span><span class="type">TIMESTAMP</span></div>
+                    </div>
+                </div>
+
+                <!-- SERVICE_TYPES -->
+                <div class="table-card">
+                    <div class="header other">
+                        <span>SERVICE_TYPES</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">VARCHAR</span></div>
+                        <div class="field"><span class="key"></span><span class="name">name</span><span class="type">VARCHAR</span></div>
+                        <div class="field"><span class="key"></span><span class="name">price_per_sqft</span><span class="type">DECIMAL</span></div>
+                        <div class="field"><span class="key"></span><span class="name">duration_minutes</span><span class="type">INTEGER</span></div>
+                        <div class="field"><span class="key"></span><span class="name">features</span><span class="type">TEXT[]</span></div>
+                        <div class="field"><span class="key"></span><span class="name">is_active</span><span class="type">BOOLEAN</span></div>
+                    </div>
+                </div>
+
+                <!-- ADD_ONS -->
+                <div class="table-card">
+                    <div class="header other">
+                        <span>ADD_ONS</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">VARCHAR</span></div>
+                        <div class="field"><span class="key"></span><span class="name">name</span><span class="type">VARCHAR</span></div>
+                        <div class="field"><span class="key"></span><span class="name">flat_price</span><span class="type">DECIMAL</span></div>
+                        <div class="field"><span class="key"></span><span class="name">price_per_sqft</span><span class="type">DECIMAL</span></div>
+                        <div class="field"><span class="key"></span><span class="name">duration_minutes</span><span class="type">INTEGER</span></div>
+                    </div>
+                </div>
+
+                <!-- PROMO_CODES -->
+                <div class="table-card">
+                    <div class="header other">
+                        <span>PROMO_CODES</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key"></span><span class="name">code</span><span class="type">VARCHAR UNIQUE</span></div>
+                        <div class="field"><span class="key"></span><span class="name">promo_type</span><span class="type">ENUM</span></div>
+                        <div class="field"><span class="key"></span><span class="name">value</span><span class="type">DECIMAL</span></div>
+                        <div class="field"><span class="key"></span><span class="name">max_uses</span><span class="type">INTEGER</span></div>
+                        <div class="field"><span class="key"></span><span class="name">valid_until</span><span class="type">TIMESTAMP</span></div>
+                    </div>
+                </div>
+
+                <!-- NOTIFICATIONS -->
+                <div class="table-card">
+                    <div class="header houses">
+                        <span>NOTIFICATIONS</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">user_id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key"></span><span class="name">notification_type</span><span class="type">ENUM</span></div>
+                        <div class="field"><span class="key"></span><span class="name">title</span><span class="type">VARCHAR</span></div>
+                        <div class="field"><span class="key"></span><span class="name">message</span><span class="type">TEXT</span></div>
+                        <div class="field"><span class="key"></span><span class="name">is_read</span><span class="type">BOOLEAN</span></div>
+                    </div>
+                </div>
+
+                <!-- PAYMENT_METHODS -->
+                <div class="table-card">
+                    <div class="header cleaners">
+                        <span>PAYMENT_METHODS</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key fk">FK</span><span class="name">user_id</span><span class="type">UUID</span></div>
+                        <div class="field"><span class="key"></span><span class="name">method_type</span><span class="type">ENUM</span></div>
+                        <div class="field"><span class="key"></span><span class="name">card_last_four</span><span class="type">VARCHAR(4)</span></div>
+                        <div class="field"><span class="key"></span><span class="name">is_default</span><span class="type">BOOLEAN</span></div>
+                        <div class="field"><span class="key"></span><span class="name">stripe_id</span><span class="type">VARCHAR</span></div>
+                    </div>
+                </div>
+
+                <!-- SETTINGS -->
+                <div class="table-card">
+                    <div class="header other">
+                        <span>SETTINGS</span>
+                    </div>
+                    <div class="content">
+                        <div class="field"><span class="key pk">PK</span><span class="name">id</span><span class="type">VARCHAR (='app')</span></div>
+                        <div class="field"><span class="key"></span><span class="name">tax_rate</span><span class="type">DECIMAL</span></div>
+                        <div class="field"><span class="key"></span><span class="name">platform_fee</span><span class="type">DECIMAL</span></div>
+                        <div class="field"><span class="key"></span><span class="name">min_booking_amount</span><span class="type">DECIMAL</span></div>
+                        <div class="field"><span class="key"></span><span class="name">features</span><span class="type">JSONB</span></div>
+                        <div class="field"><span class="key"></span><span class="name">metro_multipliers</span><span class="type">JSONB</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>GoSwish Database Schema v1.0 | PostgreSQL Compatible</p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">Generated on February 5, 2026</p>
+        </footer>
+    </div>
+</body>
+</html>

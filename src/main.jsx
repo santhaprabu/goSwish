@@ -1,8 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import './index.css'
 import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
-import './index.css'
 
 // Global error handler for uncaught errors
 window.onerror = (message, source, lineno, colno, error) => {
@@ -14,10 +14,12 @@ window.onunhandledrejection = (event) => {
   console.error('🔴 Unhandled promise rejection:', event.reason);
 };
 
-createRoot(document.getElementById('root')).render(
+// Render app immediately - SplashScreen will show first
+const rootElement = document.getElementById('root');
+createRoot(rootElement).render(
   <StrictMode>
     <ErrorBoundary showDetails={import.meta.env.DEV}>
       <App />
     </ErrorBoundary>
   </StrictMode>,
-)
+);

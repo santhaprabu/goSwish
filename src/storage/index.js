@@ -113,14 +113,21 @@ export {
     markAllNotificationsAsRead,
     deleteNotification,
 
-    // Messages
+    // Messages (Booking-Scoped)
     createConversation,
     getUserConversations,
     getConversation,
+    getConversationForBooking,
+    getOrCreateConversationForBooking,
     getConversationMessages,
     sendMessage,
     markMessageAsRead,
     getUnreadMessageCount,
+    lockConversationForBooking,
+    canMessageForBookingStatus,
+    isConversationLocked,
+    ACTIVE_BOOKING_STATUSES_FOR_MESSAGING,
+    LOCKED_BOOKING_STATUSES,
 
     // Earnings
     createTransaction,
@@ -148,10 +155,10 @@ export {
     rateCustomer,
     checkCleanerConflict,
     calculateMatchScore,
-} from './helpers.js';
+} from './helpers/index.js';
 
 // Aliases for consistency
-export { getPromoCodeByCode as getPromoCode, getCustomerBookings as getUserBookings } from './helpers.js';
+export { getPromoCodeByCode as getPromoCode, getCustomerBookings as getUserBookings } from './helpers/index.js';
 
 // Seed Data (for testing)
 export {

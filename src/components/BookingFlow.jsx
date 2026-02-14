@@ -29,6 +29,7 @@ import {
     Share2, FileText
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { toLocalDateString } from '../utils/formatters';
 
 // Icon mapping for service types
 const serviceIcons = {
@@ -83,9 +84,9 @@ function formatDate(date) {
 
 // Time slots
 const TIME_SLOTS = [
-    { id: 'morning', label: 'Morning', time: '9 AM - 12 PM', icon: '🌅' },
-    { id: 'afternoon', label: 'Afternoon', time: '12 PM - 3 PM', icon: '☀️' },
-    { id: 'evening', label: 'Evening', time: '3 PM - 6 PM', icon: '🌆' },
+    { id: 'morning', label: 'Morning', time: '9 AM - 12 PM', icon: '🌅', startHour: 9 },
+    { id: 'afternoon', label: 'Afternoon', time: '12 PM - 3 PM', icon: '☀️', startHour: 12 },
+    { id: 'evening', label: 'Evening', time: '3 PM - 6 PM', icon: '🌆', startHour: 15 },
 ];
 
 export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
@@ -246,7 +247,7 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
 
     // Date selection
     const toggleDate = (date) => {
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = toLocalDateString(date);
 
         if (selectedDates.includes(dateStr)) {
             setSelectedDates(selectedDates.filter(d => d !== dateStr));
@@ -260,7 +261,7 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
     };
 
     const isDateSelected = (date) => {
-        return selectedDates.includes(date.toISOString().split('T')[0]);
+        return selectedDates.includes(toLocalDateString(date));
     };
 
     const isPastDate = (date) => {
@@ -294,9 +295,9 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
     };
 
     // Apply promo code
-    const handleApplyPromo = () => {
+    const handleApplyPromo = async () => {
         setPromoError('');
-        const result = validatePromoCode(promoCode);
+        const result = await validatePromoCode(promoCode);
 
         if (result.valid) {
             if (result.promo.minOrder > 0 && pricing && pricing.subtotal < result.promo.minOrder) {
@@ -362,6 +363,28 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
         setLoading(true);
         setError('');
 
+        // Security Check: Validate dates
+        const todayStr = toLocalDateString(new Date());
+        for (const dateStr of selectedDates) {
+            if (dateStr < todayStr) {
+                setError('One or more selected dates are in the past.');
+                setLoading(false);
+                return;
+            }
+            if (dateStr === todayStr) {
+                const currentHour = new Date().getHours();
+                const slots = dateSlots[dateStr] || [];
+                for (const slotId of slots) {
+                    const slot = TIME_SLOTS.find(s => s.id === slotId);
+                    if (slot && currentHour >= slot.startHour) {
+                        setError('A selected time slot for today has already passed.');
+                        setLoading(false);
+                        return;
+                    }
+                }
+            }
+        }
+
         // Simulate payment processing
         await new Promise(resolve => setTimeout(resolve, 2500));
 
@@ -381,7 +404,7 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
                 return { id, name: addon.name, price: addon.price };
             });
 
-            const booking = createBooking({
+            const booking = await createBooking({
                 houseId: selectedHouseId,
                 serviceType: selectedServiceType,
                 dateOptions,
@@ -390,6 +413,7 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
                 pricing: {
                     base: pricing.base,
                     addOns: pricing.addOns,
+                    subtotal: pricing.subtotal,
                     taxes: pricing.taxes,
                     promoDiscount: pricing.promoDiscount,
                     total: pricing.total,
@@ -562,7 +586,7 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
                                                 <p className="text-sm text-gray-500 mb-3">{service.description}</p>
 
                                                 <div className="flex flex-wrap gap-1.5">
-                                                    {service.includes.slice(0, 4).map((item, idx) => (
+                                                    {(service.includes || []).slice(0, 4).map((item, idx) => (
                                                         <span
                                                             key={idx}
                                                             className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded"
@@ -570,7 +594,7 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
                                                             {item}
                                                         </span>
                                                     ))}
-                                                    {service.includes.length > 4 && (
+                                                    {(service.includes?.length || 0) > 4 && (
                                                         <span className="text-xs px-2 py-0.5 text-primary-600">
                                                             +{service.includes.length - 4} more
                                                         </span>
@@ -772,18 +796,26 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
                                             <div className="grid grid-cols-3 gap-2">
                                                 {TIME_SLOTS.map((slot) => {
                                                     const isSlotSelected = slots.includes(slot.id);
+                                                    const isToday = dateStr === toLocalDateString(new Date());
+                                                    const currentHour = new Date().getHours();
+                                                    const isPassed = isToday && currentHour >= slot.startHour;
+
                                                     return (
                                                         <button
                                                             key={slot.id}
+                                                            disabled={isPassed}
                                                             onClick={() => toggleSlot(dateStr, slot.id)}
                                                             className={`p-3 rounded-xl text-center transition-all text-sm
-                                ${isSlotSelected
-                                                                    ? 'bg-primary-500 text-white shadow-md'
-                                                                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                 ${isPassed
+                                                                    ? 'opacity-30 grayscale cursor-not-allowed bg-gray-50 text-gray-400'
+                                                                    : isSlotSelected
+                                                                        ? 'bg-primary-500 text-white shadow-md'
+                                                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                                                                 }`}
                                                         >
                                                             <span className="block text-lg mb-1">{slot.icon}</span>
                                                             <span className="font-medium">{slot.label}</span>
+                                                            {isPassed && <span className="block text-[8px] font-black text-red-500 uppercase mt-1">Passed</span>}
                                                         </button>
                                                     );
                                                 })}
@@ -1265,7 +1297,7 @@ export default function BookingFlow({ onBack, onComplete, initialHouseId }) {
                         >
                             <ArrowLeft className="w-6 h-6" />
                         </button>
-                        <h1 className="text-lg font-semibold">New Booking (DEBUG)</h1>
+                        <h1 className="text-lg font-semibold">New Booking</h1>
                         <div className="w-10" />
                     </div>
 

@@ -25,6 +25,9 @@ import {
     Check, X, ChevronRight, AlertCircle, TrendingUp
 } from 'lucide-react';
 
+// Import centralized date utilities
+import { parseLocalDate, formatDisplayDate } from '../utils/dateUtils';
+
 // Job Offers - Available Jobs for Cleaners
 import UpcomingJobs from './UpcomingJobs';
 
@@ -104,7 +107,17 @@ export default function JobOffers({ onViewUpcomingJob }) {
                     }
 
                     // Earnings estimate (90% of subtotal - 10% platform fee)
-                    const baseAmount = booking.pricingBreakdown?.subtotal || booking.totalAmount || 0;
+                    // Priority: subtotal (pre-tax) > (total - taxes) > totalAmount * 0.92 (estimated)
+                    let baseAmount = 0;
+                    if (booking.pricingBreakdown?.subtotal) {
+                        baseAmount = booking.pricingBreakdown.subtotal;
+                    } else if (booking.pricingBreakdown?.total && booking.pricingBreakdown?.taxes) {
+                        // Back-calculate subtotal from total minus taxes
+                        baseAmount = booking.pricingBreakdown.total - booking.pricingBreakdown.taxes;
+                    } else {
+                        // Fallback: estimate subtotal as ~92% of total (assuming ~8% tax)
+                        baseAmount = (booking.totalAmount || 0) / 1.0825;
+                    }
                     const earnings = baseAmount * 0.9;
 
                     // Expiry logic (mock)
@@ -112,7 +125,7 @@ export default function JobOffers({ onViewUpcomingJob }) {
 
                     offersData.push({
                         id: booking.id,
-                        bookingId: booking.id,
+                        bookingId: booking.bookingId || booking.id,
                         booking,
                         house: house || {
                             id: 'unknown',
@@ -224,10 +237,8 @@ export default function JobOffers({ onViewUpcomingJob }) {
             setOffers(prev => prev.filter(o => o.id !== offer.id));
             setSelectedOffer(null);
 
-            // Success feedback
-            alert('Job Accepted! It has been added to your schedule.');
-            // Switch to upcoming view?
-            // setViewMode('upcoming');
+            // Switch to upcoming view to show the new job
+            setViewMode('upcoming');
         } catch (error) {
             console.error('Failed to accept offer:', error);
             // Show alert to user
@@ -246,24 +257,9 @@ export default function JobOffers({ onViewUpcomingJob }) {
         setSelectedOffer(null);
     };
 
-    // Helper to parse date string without timezone issues
-    const parseDateString = (dateStr) => {
-        if (!dateStr) return new Date();
-
-        // If it's a date-only string (YYYY-MM-DD), parse it as local time
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-            const [year, month, day] = dateStr.split('-').map(Number);
-            return new Date(year, month - 1, day);
-        }
-
-        // Otherwise parse normally
-        return new Date(dateStr);
-    };
-
-    // Helper to format date for display
+    // Helper to format date for display using centralized utility
     const formatDateForDisplay = (dateStr) => {
-        const date = parseDateString(dateStr);
-        return date.toLocaleDateString('en-US', {
+        return formatDisplayDate(dateStr, {
             weekday: 'short',
             month: 'short',
             day: 'numeric',
@@ -673,10 +669,10 @@ export default function JobOffers({ onViewUpcomingJob }) {
                                                         handleAcceptOffer(offer, dateOptions[0]);
                                                     } else { handleViewDetails(offer); }
                                                 }}
-                                                className="bg-secondary-600 hover:bg-secondary-700 text-white text-[10px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-colors shadow-lg shadow-secondary-500/30 animate-pulse"
+                                                className="bg-secondary-600 hover:bg-secondary-700 text-white text-[10px] font-bold tracking-wider px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-colors shadow-lg shadow-secondary-500/30 animate-pulse"
                                             >
                                                 <Check className="w-3.5 h-3.5" />
-                                                Accept
+                                                Accept Job
                                             </button>
                                         </div>
 

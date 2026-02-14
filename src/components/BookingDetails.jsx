@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { COLLECTIONS, getDocs, getDoc } from '../storage/db';
+import { formatBookingId } from '../utils/formatters';
 
 export default function BookingDetails({ booking, onBack, onMessage, onTrack }) {
     const { serviceTypes, addOns, settings } = useApp();
@@ -180,7 +181,7 @@ export default function BookingDetails({ booking, onBack, onMessage, onTrack }) 
                             {getStatusText(booking.status)}
                         </span>
                         <span className="text-xs text-gray-400 font-mono">
-                            {booking.bookingId || `#${booking.id?.slice(-8)}`}
+                            {formatBookingId(booking.bookingId)}
                         </span>
                     </div>
                     {isTrackable && (
@@ -283,12 +284,15 @@ export default function BookingDetails({ booking, onBack, onMessage, onTrack }) 
                                     <p className="text-sm text-gray-500">Rating: {cleaner.rating.toFixed(1)} / 5.0</p>
                                 )}
                             </div>
-                            <button
-                                onClick={() => onMessage?.(booking)}
-                                className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
-                            >
-                                <MessageSquare className="w-5 h-5 text-gray-600" />
-                            </button>
+                            {/* Only show message button for active bookings */}
+                            {!['completed', 'approved', 'cancelled', 'declined'].includes(booking.status) && (
+                                <button
+                                    onClick={() => onMessage?.(booking)}
+                                    className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                                >
+                                    <MessageSquare className="w-5 h-5 text-gray-600" />
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}

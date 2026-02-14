@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Book your home cleaning with Mopt. Instant pricing, vetted cleaners, and flexible scheduling. Get a sparkling clean home in just a few clicks.">
+    <title>Book a Cleaning | Mopt</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/img/9.png">
+    <link rel="apple-touch-icon" href="assets/img/9.png">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="book.css?v=4">
+</head>
+
+<body>
+    <!-- Background Container -->
+    <div class="bg-container">
+        <div id="particles-js"></div>
+        <div class="bg-image"></div>
+        <div class="bg-color"></div>
+        <div class="bg-pattern"></div>
+    </div>
+
+    <!-- Language Toggle -->
+    <div class="lang-toggle">
+        <button class="lang-btn" data-lang="en">English</button>
+        <button class="lang-btn" data-lang="es">Español</button>
+    </div>
+
+    <!-- Header -->
+    <header class="book-header">
+        <a href="index.html" class="logo-link">
+            <img src="assets/img/7.png" alt="Mopt Logo" class="header-logo">
+        </a>
+        <div class="header-tagline" data-i18n="bookYourCleaning">Book Your Cleaning</div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="content-wrapper book-content">
+        <main class="main-content booking-main">
+
+            <!-- Page Title -->
+            <div class="book-title-section fade-in">
+                <h1 class="book-title" data-i18n="book.title">Schedule Your Clean</h1>
+                <p class="book-subtitle" data-i18n="book.subtitle">Get an instant quote and book your professional
+                    cleaning in minutes</p>
+            </div>
+
+            <!-- Booking Form -->
+            <form id="booking-form" class="booking-form fade-in delay-1">
+
+                <!-- Section 1: Property Details -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <div class="section-icon">
+                            <i class="fas fa-house-chimney"></i>
+                        </div>
+                        <div class="section-title-group">
+                            <h2 class="section-title" data-i18n="book.propertyTitle">Property Details</h2>
+                            <p class="section-desc" data-i18n="book.propertyDesc">Tell us about your home</p>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <!-- Property Type -->
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="book.propertyType">Property Type</label>
+                            <div class="select-wrapper">
+                                <select id="propertyType" required>
+                                    <option value="" disabled selected data-i18n="book.selectType">Select type</option>
+                                    <option value="house" data-i18n="book.house">House</option>
+                                    <option value="apartment" data-i18n="book.apartment">Apartment</option>
+                                    <option value="condo" data-i18n="book.condo">Condo</option>
+                                    <option value="townhouse" data-i18n="book.townhouse">Townhouse</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Square Footage -->
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="book.sqft">Square Footage</label>
+                            <div class="input-with-icon">
+                                <input type="number" id="sqft" placeholder="e.g., 2000" min="500" max="10000" required>
+                                <span class="input-suffix">sq ft</span>
+                            </div>
+                        </div>
+
+                        <!-- Bedrooms -->
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="book.bedrooms">Bedrooms</label>
+                            <div class="counter-input">
+                                <button type="button" class="counter-btn minus" data-target="bedrooms">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <input type="number" id="bedrooms" value="3" min="1" max="10" readonly>
+                                <button type="button" class="counter-btn plus" data-target="bedrooms">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Bathrooms -->
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="book.bathrooms">Bathrooms</label>
+                            <div class="counter-input">
+                                <button type="button" class="counter-btn minus" data-target="bathrooms">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <input type="number" id="bathrooms" value="2" min="1" max="10" readonly>
+                                <button type="button" class="counter-btn plus" data-target="bathrooms">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Address -->
+                    <div class="form-group full-width">
+                        <label class="form-label" data-i18n="book.address">Address</label>
+                        <input type="text" id="address" data-i18n-placeholder="book.addressPlaceholder"
+                            placeholder="Enter your full address" required>
+                    </div>
+
+                    <div class="form-grid">
+                        <!-- City -->
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="book.city">City</label>
+                            <div class="select-wrapper">
+                                <select id="city" required>
+                                    <option value="" disabled selected data-i18n="book.selectCity">Select city</option>
+                                    <option value="Dallas">Dallas</option>
+                                    <option value="Fort Worth">Fort Worth</option>
+                                    <option value="Plano">Plano</option>
+                                    <option value="Arlington">Arlington</option>
+                                    <option value="Irving">Irving</option>
+                                    <option value="Frisco">Frisco</option>
+                                    <option value="McKinney">McKinney</option>
+                                    <option value="Denton">Denton</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Zip Code -->
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="book.zipCode">Zip Code</label>
+                            <input type="text" id="zipcode" placeholder="75001" pattern="[0-9]{5}" maxlength="5"
+                                required>
+                        </div>
+                    </div>
+
+                    <!-- Pets -->
+                    <div class="form-group pets-group">
+                        <label class="toggle-label">
+                            <span class="toggle-text">
+                                <i class="fas fa-paw"></i>
+                                <span data-i18n="book.hasPets">Do you have pets?</span>
+                            </span>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="hasPets">
+                                <span class="toggle-slider"></span>
+                            </div>
+                        </label>
+                        <div class="pets-details hidden" id="petsDetails">
+                            <input type="text" id="petNotes" data-i18n-placeholder="book.petNotesPlaceholder"
+                                placeholder="e.g., One friendly dog, two cats">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 2: Service Type -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <div class="section-icon">
+                            <i class="fas fa-wand-magic-sparkles"></i>
+                        </div>
+                        <div class="section-title-group">
+                            <h2 class="section-title" data-i18n="book.serviceTitle">Choose Your Service</h2>
+                            <p class="section-desc" data-i18n="book.serviceDesc">What type of cleaning do you need?</p>
+                        </div>
+                    </div>
+
+                    <div class="service-cards">
+                        <!-- Regular Clean -->
+                        <label class="service-card">
+                            <input type="radio" name="serviceType" value="regular" required>
+                            <div class="service-card-content">
+                                <div class="service-icon">
+                                    <i class="fas fa-sparkles"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h3 class="service-name" data-i18n="book.regularClean">Regular Clean</h3>
+                                    <p class="service-desc" data-i18n="book.regularDesc">Dusting, vacuuming, mopping,
+                                        bathroom & kitchen cleaning</p>
+
+                                </div>
+                                <div class="service-price" data-rate="0.10"></div>
+                            </div>
+                        </label>
+
+                        <!-- Deep Clean -->
+                        <label class="service-card">
+                            <input type="radio" name="serviceType" value="deep">
+                            <div class="service-card-content">
+                                <div class="service-icon deep">
+                                    <i class="fas fa-spray-can-sparkles"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h3 class="service-name" data-i18n="book.deepClean">Deep Clean</h3>
+                                    <p class="service-desc" data-i18n="book.deepDesc">Everything in Regular +
+                                        baseboards, inside cabinets, appliances</p>
+
+                                </div>
+                                <div class="service-price" data-rate="0.15"></div>
+                            </div>
+                        </label>
+
+                        <!-- Move In/Out -->
+                        <label class="service-card">
+                            <input type="radio" name="serviceType" value="moveinout">
+                            <div class="service-card-content">
+                                <div class="service-icon move">
+                                    <i class="fas fa-truck-moving"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h3 class="service-name" data-i18n="book.moveInOut">Move In/Out</h3>
+                                    <p class="service-desc" data-i18n="book.moveDesc">Deep clean + inside closets, oven,
+                                        refrigerator, garage</p>
+
+                                </div>
+                                <div class="service-price" data-rate="0.18"></div>
+                            </div>
+                        </label>
+
+                        <!-- Windows Only -->
+                        <label class="service-card">
+                            <input type="radio" name="serviceType" value="windows">
+                            <div class="service-card-content">
+                                <div class="service-icon windows">
+                                    <i class="fas fa-border-all"></i>
+                                </div>
+                                <div class="service-info">
+                                    <h3 class="service-name" data-i18n="book.windowsOnly">Windows Only</h3>
+                                    <p class="service-desc" data-i18n="book.windowsDesc">Interior & exterior windows,
+                                        sills, tracks, screens</p>
+
+                                </div>
+                                <div class="service-price" data-rate="0.08"></div>
+                            </div>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- Section 3: Add-ons -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <div class="section-icon">
+                            <i class="fas fa-plus-circle"></i>
+                        </div>
+                        <div class="section-title-group">
+                            <h2 class="section-title" data-i18n="book.addonsTitle">Add-on Services</h2>
+                            <p class="section-desc" data-i18n="book.addonsDesc">Customize your cleaning (optional)</p>
+                        </div>
+                    </div>
+
+                    <div class="addons-grid">
+                        <!-- Inside Oven -->
+                        <label class="addon-card">
+                            <input type="checkbox" name="addons" value="oven">
+                            <div class="addon-content">
+                                <div class="addon-icon">
+                                    <i class="fas fa-fire-burner"></i>
+                                </div>
+                                <div class="addon-info">
+                                    <span class="addon-name" data-i18n="book.addonOven">Inside Oven Deep Clean</span>
+
+                                </div>
+                            </div>
+                        </label>
+
+                        <!-- Inside Refrigerator -->
+                        <label class="addon-card">
+                            <input type="checkbox" name="addons" value="fridge">
+                            <div class="addon-content">
+                                <div class="addon-icon">
+                                    <i class="fas fa-temperature-low"></i>
+                                </div>
+                                <div class="addon-info">
+                                    <span class="addon-name" data-i18n="book.addonFridge">Inside Refrigerator</span>
+
+                                </div>
+                            </div>
+                        </label>
+
+                        <!-- Interior Windows -->
+                        <label class="addon-card">
+                            <input type="checkbox" name="addons" value="interior-windows">
+                            <div class="addon-content">
+                                <div class="addon-icon">
+                                    <i class="fas fa-window-maximize"></i>
+                                </div>
+                                <div class="addon-info">
+                                    <span class="addon-name" data-i18n="book.addonWindows">Interior Windows</span>
+
+                                </div>
+                            </div>
+                        </label>
+
+                        <!-- Laundry -->
+                        <label class="addon-card">
+                            <input type="checkbox" name="addons" value="laundry">
+                            <div class="addon-content">
+                                <div class="addon-icon">
+                                    <i class="fas fa-shirt"></i>
+                                </div>
+                                <div class="addon-info">
+                                    <span class="addon-name" data-i18n="book.addonLaundry">Laundry Wash & Fold</span>
+
+                                </div>
+                            </div>
+                        </label>
+
+                        <!-- Baseboards -->
+                        <label class="addon-card">
+                            <input type="checkbox" name="addons" value="baseboards">
+                            <div class="addon-content">
+                                <div class="addon-icon">
+                                    <i class="fas fa-brush"></i>
+                                </div>
+                                <div class="addon-info">
+                                    <span class="addon-name" data-i18n="book.addonBaseboards">Baseboards Wiping</span>
+
+                                </div>
+                            </div>
+                        </label>
+
+                        <!-- Organize -->
+                        <label class="addon-card">
+                            <input type="checkbox" name="addons" value="organize">
+                            <div class="addon-content">
+                                <div class="addon-icon">
+                                    <i class="fas fa-boxes-stacked"></i>
+                                </div>
+                                <div class="addon-info">
+                                    <span class="addon-name" data-i18n="book.addonOrganize">Light Organizing</span>
+
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- Section 4: Schedule -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <div class="section-icon">
+                            <i class="fas fa-calendar-days"></i>
+                        </div>
+                        <div class="section-title-group">
+                            <h2 class="section-title" data-i18n="book.scheduleTitle">Pick Your Date & Time</h2>
+                            <p class="section-desc" data-i18n="book.scheduleDesc">When would you like us to come?</p>
+                        </div>
+                    </div>
+
+                    <div class="schedule-container">
+                        <!-- Calendar -->
+                        <div class="calendar-wrapper">
+                            <div class="calendar-header">
+                                <button type="button" class="calendar-nav prev" id="prevMonth">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <span class="calendar-month" id="currentMonth">February 2026</span>
+                                <button type="button" class="calendar-nav next" id="nextMonth">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                            <div class="calendar-weekdays">
+                                <span>Sun</span>
+                                <span>Mon</span>
+                                <span>Tue</span>
+                                <span>Wed</span>
+                                <span>Thu</span>
+                                <span>Fri</span>
+                                <span>Sat</span>
+                            </div>
+                            <div class="calendar-days" id="calendarDays">
+                                <!-- Days populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Time Slots -->
+                        <div class="time-slots-wrapper">
+                            <h3 class="time-slots-title" data-i18n="book.selectTime">Select Time Window</h3>
+                            <div class="time-slots" id="timeSlots">
+                                <label class="time-slot">
+                                    <input type="radio" name="timeSlot" value="morning" required>
+                                    <div class="time-slot-content">
+                                        <i class="fas fa-sun"></i>
+                                        <span class="time-label" data-i18n="book.morning">Morning</span>
+                                        <span class="time-range">9 AM - 12 PM</span>
+                                    </div>
+                                </label>
+                                <label class="time-slot">
+                                    <input type="radio" name="timeSlot" value="afternoon">
+                                    <div class="time-slot-content">
+                                        <i class="fas fa-cloud-sun"></i>
+                                        <span class="time-label" data-i18n="book.afternoon">Afternoon</span>
+                                        <span class="time-range">12 PM - 3 PM</span>
+                                    </div>
+                                </label>
+                                <label class="time-slot">
+                                    <input type="radio" name="timeSlot" value="evening">
+                                    <div class="time-slot-content">
+                                        <i class="fas fa-cloud-moon"></i>
+                                        <span class="time-label" data-i18n="book.evening">Evening</span>
+                                        <span class="time-range">3 PM - 6 PM</span>
+                                    </div>
+                                </label>
+                            </div>
+                            <input type="hidden" id="selectedDate" name="selectedDate" required>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 5: Special Instructions -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <div class="section-icon">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                        <div class="section-title-group">
+                            <h2 class="section-title" data-i18n="book.instructionsTitle">Special Instructions</h2>
+                            <p class="section-desc" data-i18n="book.instructionsDesc">Any specific requests or areas to
+                                focus on?</p>
+                        </div>
+                    </div>
+
+                    <div class="quick-tags">
+                        <button type="button" class="quick-tag" data-text="Please focus on bathrooms">
+                            <i class="fas fa-bath"></i> <span data-i18n="book.tagBathrooms">Focus on bathrooms</span>
+                        </button>
+                        <button type="button" class="quick-tag" data-text="Please use pet-friendly products">
+                            <i class="fas fa-paw"></i> <span data-i18n="book.tagPetFriendly">Pet-friendly
+                                products</span>
+                        </button>
+                        <button type="button" class="quick-tag" data-text="Please use eco-friendly products only">
+                            <i class="fas fa-leaf"></i> <span data-i18n="book.tagEco">Eco-friendly only</span>
+                        </button>
+                        <button type="button" class="quick-tag" data-text="Please do light folding if time permits">
+                            <i class="fas fa-shirt"></i> <span data-i18n="book.tagFolding">Light folding</span>
+                        </button>
+                    </div>
+
+                    <textarea id="specialNotes" data-i18n-placeholder="book.notesPlaceholder"
+                        placeholder="Any additional instructions for our cleaner..." maxlength="1000"></textarea>
+                    <div class="char-count"><span id="charCount">0</span>/1000</div>
+                </section>
+
+                <!-- Section 6: Contact Info -->
+                <section class="form-section">
+                    <div class="section-header">
+                        <div class="section-icon">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="section-title-group">
+                            <h2 class="section-title" data-i18n="book.contactTitle">Your Information</h2>
+                            <p class="section-desc" data-i18n="book.contactDesc">How can we reach you?</p>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="book.firstName">First Name</label>
+                            <input type="text" id="firstName" placeholder="John" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="book.lastName">Last Name</label>
+                            <input type="text" id="lastName" placeholder="Doe" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="book.email">Email</label>
+                            <input type="email" id="email" placeholder="john@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="book.phone">Phone</label>
+                            <input type="tel" id="phone" placeholder="(555) 123-4567" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="book.accessLabel">Access Instructions (Optional)</label>
+                        <input type="text" id="accessInstructions" data-i18n-placeholder="book.accessPlaceholder"
+                            placeholder="e.g., Ring doorbell, key under mat, gate code 1234">
+                    </div>
+                </section>
+
+                <!-- Pricing Summary -->
+                <section class="pricing-summary" id="pricingSummary">
+                    <div class="pricing-header">
+                        <h3><i class="fas fa-receipt"></i> <span data-i18n="book.yourQuote">Your Quote</span></h3>
+                    </div>
+                    <div class="pricing-details">
+                        <div class="price-row">
+                            <span data-i18n="book.baseService">Base Service</span>
+                            <span id="priceBase">$0.00</span>
+                        </div>
+                        <div class="price-row" id="petFeeRow" style="display: none;">
+                            <span data-i18n="book.petFee">Pet Fee</span>
+                            <span id="pricePetFee">$10.00</span>
+                        </div>
+                        <div class="price-row" id="addonsRow" style="display: none;">
+                            <span data-i18n="book.addons">Add-ons</span>
+                            <span id="priceAddons">$0.00</span>
+                        </div>
+                        <div class="price-row subtotal">
+                            <span data-i18n="book.subtotal">Subtotal</span>
+                            <span id="priceSubtotal">$0.00</span>
+                        </div>
+                        <div class="price-row">
+                            <span data-i18n="book.tax">Tax (8.25%)</span>
+                            <span id="priceTax">$0.00</span>
+                        </div>
+                        <div class="price-row total">
+                            <span data-i18n="book.total">Total</span>
+                            <span id="priceTotal">$0.00</span>
+                        </div>
+                    </div>
+                    <div class="pricing-note">
+                        <i class="fas fa-shield-check"></i>
+                        <span data-i18n="book.pricingNote">No payment required now. Pay after your cleaning.</span>
+                    </div>
+                </section>
+
+                <!-- Submit Button -->
+                <button type="submit" class="submit-booking-btn" id="submitBtn">
+                    <span class="btn-text" data-i18n="book.submitBtn">Book My Cleaning</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+
+                <p class="terms-note">
+                    <span data-i18n="book.termsNote">By booking, you agree to our</span> <a href="#"
+                        data-i18n="book.termsOfService">Terms of Service</a> <span data-i18n="book.and">and</span> <a
+                        href="#" data-i18n="book.privacyPolicy">Privacy Policy</a>
+                </p>
+            </form>
+
+            <!-- Success Message -->
+            <div id="success-section" class="success-section hidden">
+                <div class="success-card">
+                    <div class="success-icon">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <h2 data-i18n="book.successTitle">Booking Request Submitted!</h2>
+                    <p data-i18n="book.successMessage">Thank you for choosing Mopt. We'll match you with a trusted
+                        cleaner and send confirmation to your email shortly.</p>
+
+                    <div class="booking-summary">
+                        <h3 data-i18n="book.bookingDetails">Booking Details</h3>
+                        <div class="summary-row">
+                            <span data-i18n="book.service">Service:</span>
+                            <span id="summaryService">-</span>
+                        </div>
+                        <div class="summary-row">
+                            <span data-i18n="book.date">Date:</span>
+                            <span id="summaryDate">-</span>
+                        </div>
+                        <div class="summary-row">
+                            <span data-i18n="book.time">Time:</span>
+                            <span id="summaryTime">-</span>
+                        </div>
+                        <div class="summary-row">
+                            <span data-i18n="book.addressLabel">Address:</span>
+                            <span id="summaryAddress">-</span>
+                        </div>
+                        <div class="summary-row total">
+                            <span data-i18n="book.estimatedTotal">Estimated Total:</span>
+                            <span id="summaryTotal">-</span>
+                        </div>
+                    </div>
+
+                    <div class="next-steps">
+                        <h3><i class="fas fa-route"></i> <span data-i18n="book.whatsNext">What's Next?</span></h3>
+                        <ol>
+                            <li data-i18n="book.step1">We'll confirm your booking via email within 1 hour</li>
+                            <li data-i18n="book.step2">You'll receive your cleaner's profile and arrival ETA</li>
+                            <li data-i18n="book.step3">On cleaning day, your cleaner will arrive at the scheduled time
+                            </li>
+                            <li data-i18n="book.step4">Pay securely after the job is complete</li>
+                        </ol>
+                    </div>
+
+                    <a href="index.html" class="back-home-btn">
+                        <i class="fas fa-home"></i> <span data-i18n="book.backHome">Back to Home</span>
+                    </a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="book-footer">
+        <div class="footer-info fade-in">
+            <span class="footer-texas" data-i18n-html="footer.texas">Born in Texas <img
+                    src="https://flagcdn.com/w20/us-tx.png" alt="Texas flag" class="texas-flag"></span>
+            <span class="footer-divider">|</span>
+            <span class="footer-powered" data-i18n-html="footer.powered">Powered by <a href="https://trivinetech.com"
+                    target="_blank" rel="noopener">Trivine</a></span>
+        </div>
+    </footer>
+
+    <!-- Floating Scroll Indicator -->
+    <div class="floating-scroll-hint" id="floatingScrollHint">
+        <div class="chevron-stack">
+            <i class="fas fa-chevron-down"></i>
+            <i class="fas fa-chevron-down"></i>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <span data-i18n="scroll">Scroll for more</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script src="script.js"></script>
+    <script src="book.js?v=1"></script>
+    <script src="i18n.js"></script>
+
+    <!-- Floating scroll hint controller -->
+    <script>
+        (function () {
+            const floatingHint = document.getElementById('floatingScrollHint');
+            if (!floatingHint) return;
+
+            function checkScroll() {
+                const scrollTop = window.scrollY || document.documentElement.scrollTop;
+                const scrollHeight = document.documentElement.scrollHeight;
+                const clientHeight = document.documentElement.clientHeight;
+                const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+                if (distanceFromBottom < 150) {
+                    floatingHint.classList.add('hidden');
+                } else {
+                    floatingHint.classList.remove('hidden');
+                }
+            }
+
+            window.addEventListener('scroll', checkScroll, { passive: true });
+            checkScroll();
+
+            // Click to scroll down smoothly
+            floatingHint.addEventListener('click', function () {
+                window.scrollBy({ top: window.innerHeight * 0.8, behavior: 'smooth' });
+            });
+        })();
+    </script>
+</body>
+
+</html>

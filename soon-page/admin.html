@@ -338,6 +338,67 @@
             color: var(--primary);
         }
 
+        .badge-pending {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+
+        .badge-confirmed {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+
+        .badge-completed {
+            background: rgba(27, 122, 145, 0.15);
+            color: var(--primary);
+        }
+
+        .badge-cancelled {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+
+        .booking-details {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        .booking-price {
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            margin-right: 4px;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .action-btn.confirm {
+            background: var(--success);
+            color: white;
+        }
+
+        .action-btn.cancel {
+            background: var(--danger);
+            color: white;
+        }
+
+        .action-btn.view {
+            background: var(--primary);
+            color: white;
+        }
+
         /* Empty State */
         .empty-state {
             text-align: center;
@@ -450,10 +511,114 @@
             .header { flex-direction: column; align-items: flex-start; }
             .header-actions { width: 100%; }
         }
+
+        /* Auth Overlay */
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .auth-overlay.hidden {
+            display: none;
+        }
+
+        .auth-modal {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+        }
+
+        .auth-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 28px;
+            color: var(--primary);
+        }
+
+        .auth-modal h2 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .auth-modal p {
+            color: var(--text-dim);
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .auth-modal input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--card-border);
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-white);
+            font-size: 16px;
+            font-family: inherit;
+            margin-bottom: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .auth-modal input:focus {
+            border-color: var(--primary);
+        }
+
+        .auth-error {
+            color: var(--danger);
+            font-size: 13px;
+            margin-top: 12px;
+            min-height: 20px;
+        }
+
+        .main-content-hidden {
+            display: none;
+        }
+
+        .main-content-visible {
+            display: block;
+        }
     </style>
 </head>
 
 <body>
+    <!-- Password Protection Overlay -->
+    <div id="authOverlay" class="auth-overlay">
+        <div class="auth-modal">
+            <div class="auth-icon">
+                <i class="fas fa-lock"></i>
+            </div>
+            <h2>Admin Access</h2>
+            <p>Enter password to continue</p>
+            <form id="authForm" onsubmit="return checkPassword(event)">
+                <input type="password" id="adminPassword" placeholder="Password" autocomplete="off" autofocus>
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+                    <i class="fas fa-unlock"></i> Unlock
+                </button>
+            </form>
+            <p id="authError" class="auth-error"></p>
+        </div>
+    </div>
+
+    <div id="mainContent" class="main-content-hidden">
     <div class="header">
         <h1><i class="fas fa-chart-line"></i> Mopt Analytics</h1>
         <div class="header-actions">
@@ -477,7 +642,8 @@
     <!-- Tabs -->
     <div class="tabs">
         <button class="tab active" data-tab="overview">Overview</button>
-        <button class="tab" data-tab="submissions">Submissions</button>
+        <button class="tab" data-tab="bookings">Bookings</button>
+        <button class="tab" data-tab="submissions">Waitlist</button>
         <button class="tab" data-tab="visits">Visits</button>
         <button class="tab" data-tab="activity">Activity</button>
     </div>
@@ -510,6 +676,16 @@
                 <div class="value" id="conversionRate">0%</div>
                 <div class="label">Conversion Rate</div>
             </div>
+            <div class="stat-card">
+                <div class="icon green"><i class="fas fa-calendar-check"></i></div>
+                <div class="value" id="totalBookings">0</div>
+                <div class="label">Total Bookings</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon orange"><i class="fas fa-clock"></i></div>
+                <div class="value" id="pendingBookings">0</div>
+                <div class="label">Pending Bookings</div>
+            </div>
         </div>
 
         <div class="charts-grid">
@@ -532,6 +708,28 @@
                 <h3><i class="fas fa-calendar"></i> Daily Visits (Last 7 Days)</h3>
                 <div class="bar-chart" id="dailyChart"></div>
             </div>
+        </div>
+    </div>
+
+    <!-- Bookings Tab -->
+    <div class="tab-content" id="tab-bookings">
+        <div class="table-card">
+            <h3><i class="fas fa-calendar-check"></i> Booking Requests</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Booking ID</th>
+                        <th>Date/Time</th>
+                        <th>Customer</th>
+                        <th>Service</th>
+                        <th>Address</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="bookingsTable"></tbody>
+            </table>
         </div>
     </div>
 
@@ -584,6 +782,19 @@
     <script>
         const ANALYTICS_KEY = 'mopt_analytics';
         const WAITLIST_KEY = 'mopt_waitlist';
+        const BOOKINGS_KEY = 'mopt_bookings';
+
+        function getBookings() {
+            try {
+                return JSON.parse(localStorage.getItem(BOOKINGS_KEY)) || [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveBookings(bookings) {
+            localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings));
+        }
 
         function getAnalytics() {
             try {
@@ -618,10 +829,17 @@
         function refreshData() {
             const analytics = getAnalytics();
             const waitlist = getWaitlist();
+            const bookings = getBookings();
             const summary = analytics.summary || {};
 
             document.getElementById('lastUpdated').textContent =
                 'Last updated: ' + new Date().toLocaleString();
+
+            // Update bookings stats
+            const totalBookings = bookings.length;
+            const pendingBookings = bookings.filter(b => b.status === 'pending').length;
+            document.getElementById('totalBookings').textContent = totalBookings;
+            document.getElementById('pendingBookings').textContent = pendingBookings;
 
             // Merge waitlist into submissions if not already
             const allSubmissions = [...(analytics.submissions || [])];
@@ -661,7 +879,8 @@
             renderDailyChart('dailyChart', summary.dailyVisits || {});
             renderSubmissionsTable(allSubmissions);
             renderVisitsTable(analytics.visits || []);
-            renderActivityTimeline(analytics, waitlist);
+            renderActivityTimeline(analytics, waitlist, bookings);
+            renderBookingsTable(bookings);
         }
 
         function renderBarChart(containerId, data) {
@@ -782,7 +1001,124 @@
             `).join('');
         }
 
-        function renderActivityTimeline(analytics, waitlist) {
+        function renderBookingsTable(bookings) {
+            const tbody = document.getElementById('bookingsTable');
+            if (!tbody) return;
+
+            if (bookings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-calendar-xmark"></i><p>No bookings yet</p></td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = bookings.slice().reverse().map(booking => {
+                const customerName = `${booking.contact?.firstName || ''} ${booking.contact?.lastName || ''}`.trim() || 'N/A';
+                const customerEmail = booking.contact?.email || '';
+                const serviceName = booking.service?.name || 'N/A';
+                const address = `${booking.property?.city || ''}`;
+                const fullAddress = `${booking.property?.address || ''}, ${booking.property?.city || ''} ${booking.property?.zipcode || ''}`;
+                const total = booking.pricing?.total || '$0.00';
+                const status = booking.status || 'pending';
+                const scheduleDate = booking.schedule?.date ? new Date(booking.schedule.date + 'T00:00:00').toLocaleDateString() : 'N/A';
+                const scheduleTime = booking.schedule?.timeRange || '';
+                const sqft = booking.property?.sqft || '';
+
+                return `
+                    <tr>
+                        <td>
+                            <strong>${booking.bookingId || 'N/A'}</strong>
+                            <div class="booking-details">${new Date(booking.createdAt).toLocaleString()}</div>
+                        </td>
+                        <td>
+                            <strong>${scheduleDate}</strong>
+                            <div class="booking-details">${scheduleTime}</div>
+                        </td>
+                        <td>
+                            <strong>${customerName}</strong>
+                            <div class="booking-details">${customerEmail}</div>
+                        </td>
+                        <td>
+                            <strong>${serviceName}</strong>
+                            <div class="booking-details">${sqft} sq ft</div>
+                        </td>
+                        <td>
+                            <span title="${fullAddress}">${address}</span>
+                        </td>
+                        <td class="booking-price">${total}</td>
+                        <td><span class="badge badge-${status}">${status}</span></td>
+                        <td>
+                            ${status === 'pending' ? `
+                                <button class="action-btn confirm" onclick="updateBookingStatus('${booking.bookingId}', 'confirmed')">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="action-btn cancel" onclick="updateBookingStatus('${booking.bookingId}', 'cancelled')">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            ` : ''}
+                            <button class="action-btn view" onclick="viewBookingDetails('${booking.bookingId}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateBookingStatus(bookingId, newStatus) {
+            const bookings = getBookings();
+            const bookingIndex = bookings.findIndex(b => b.bookingId === bookingId);
+            if (bookingIndex !== -1) {
+                bookings[bookingIndex].status = newStatus;
+                bookings[bookingIndex].updatedAt = new Date().toISOString();
+                saveBookings(bookings);
+                refreshData();
+            }
+        }
+
+        function viewBookingDetails(bookingId) {
+            const bookings = getBookings();
+            const booking = bookings.find(b => b.bookingId === bookingId);
+            if (booking) {
+                const details = `
+Booking ID: ${booking.bookingId}
+Status: ${booking.status}
+Created: ${new Date(booking.createdAt).toLocaleString()}
+
+CUSTOMER:
+Name: ${booking.contact?.firstName} ${booking.contact?.lastName}
+Email: ${booking.contact?.email}
+Phone: ${booking.contact?.phone}
+
+PROPERTY:
+Address: ${booking.property?.address}
+City: ${booking.property?.city}, ${booking.property?.zipcode}
+Type: ${booking.property?.type}
+Size: ${booking.property?.sqft} sq ft
+Bedrooms: ${booking.property?.bedrooms}
+Bathrooms: ${booking.property?.bathrooms}
+Pets: ${booking.property?.hasPets ? 'Yes - ' + (booking.property?.petNotes || '') : 'No'}
+
+SERVICE:
+Type: ${booking.service?.name}
+Add-ons: ${booking.service?.addons?.length ? booking.service.addons.join(', ') : 'None'}
+
+SCHEDULE:
+Date: ${booking.schedule?.date}
+Time: ${booking.schedule?.timeRange}
+
+PRICING:
+Total: ${booking.pricing?.total}
+
+NOTES:
+${booking.notes || 'None'}
+
+ACCESS INSTRUCTIONS:
+${booking.contact?.accessInstructions || 'None'}
+                `.trim();
+                alert(details);
+            }
+        }
+
+        function renderActivityTimeline(analytics, waitlist, bookings = []) {
             const container = document.getElementById('activityTimeline');
             if (!container) return;
 
@@ -815,6 +1151,15 @@
                 });
             });
 
+            (bookings || []).forEach(b => {
+                activities.push({
+                    type: 'booking',
+                    timestamp: b.createdAt,
+                    title: `New Booking: ${b.service?.name || 'Service'}`,
+                    meta: `${b.contact?.firstName || ''} ${b.contact?.lastName || ''} • ${b.property?.city || ''} • ${b.pricing?.total || ''}`
+                });
+            });
+
             activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
             if (activities.length === 0) {
@@ -825,7 +1170,8 @@
             const icons = {
                 visit: { icon: 'eye', bg: 'var(--primary-light)', color: 'var(--primary)' },
                 submission: { icon: 'envelope', bg: 'rgba(34, 197, 94, 0.15)', color: 'var(--success)' },
-                click: { icon: 'mouse-pointer', bg: 'rgba(245, 158, 11, 0.15)', color: 'var(--warning)' }
+                click: { icon: 'mouse-pointer', bg: 'rgba(245, 158, 11, 0.15)', color: 'var(--warning)' },
+                booking: { icon: 'calendar-check', bg: 'rgba(168, 85, 247, 0.15)', color: '#a855f7' }
             };
 
             container.innerHTML = activities.slice(0, 50).map(act => {
@@ -848,6 +1194,7 @@
             const data = {
                 analytics: getAnalytics(),
                 waitlist: getWaitlist(),
+                bookings: getBookings(),
                 exportedAt: new Date().toISOString()
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -888,9 +1235,10 @@
         }
 
         function clearData() {
-            if (confirm('Are you sure you want to clear ALL analytics and waitlist data? This cannot be undone.')) {
+            if (confirm('Are you sure you want to clear ALL analytics, waitlist, and bookings data? This cannot be undone.')) {
                 localStorage.removeItem(ANALYTICS_KEY);
                 localStorage.removeItem(WAITLIST_KEY);
+                localStorage.removeItem(BOOKINGS_KEY);
                 refreshData();
             }
         }
@@ -908,6 +1256,54 @@
         // Initial load
         refreshData();
         setInterval(refreshData, 30000);
+    </script>
+    </div>
+
+    <script>
+        // Password protection - change this password
+        const ADMIN_PASSWORD = 'mopt2026';
+        const AUTH_KEY = 'mopt_admin_auth';
+        const AUTH_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
+
+        function checkAuth() {
+            const authData = localStorage.getItem(AUTH_KEY);
+            if (authData) {
+                try {
+                    const { timestamp } = JSON.parse(authData);
+                    if (Date.now() - timestamp < AUTH_EXPIRY) {
+                        unlockDashboard();
+                        return;
+                    }
+                } catch (e) {}
+            }
+            // Show auth overlay
+            document.getElementById('authOverlay').classList.remove('hidden');
+        }
+
+        function checkPassword(event) {
+            event.preventDefault();
+            const password = document.getElementById('adminPassword').value;
+            const errorEl = document.getElementById('authError');
+
+            if (password === ADMIN_PASSWORD) {
+                localStorage.setItem(AUTH_KEY, JSON.stringify({ timestamp: Date.now() }));
+                unlockDashboard();
+            } else {
+                errorEl.textContent = 'Incorrect password. Try again.';
+                document.getElementById('adminPassword').value = '';
+                document.getElementById('adminPassword').focus();
+            }
+            return false;
+        }
+
+        function unlockDashboard() {
+            document.getElementById('authOverlay').classList.add('hidden');
+            document.getElementById('mainContent').classList.remove('main-content-hidden');
+            document.getElementById('mainContent').classList.add('main-content-visible');
+        }
+
+        // Check auth on load
+        checkAuth();
     </script>
 </body>
 

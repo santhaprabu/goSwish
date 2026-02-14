@@ -24,6 +24,7 @@ import {
 } from '../storage';
 import LiveTracking from './LiveTracking';
 import OTPInput from './OTPInput';
+import { formatBookingId } from '../utils/formatters';
 
 export default function CustomerActiveJob({ booking, onBack, onComplete }) {
     const [job, setJob] = useState(booking);
@@ -125,7 +126,7 @@ export default function CustomerActiveJob({ booking, onBack, onComplete }) {
                 <div className="p-6 flex-1">
                     <div className="text-center mb-8">
                         {job.bookingId && (
-                            <p className="text-xs text-gray-500 mb-2">Booking: <span className="font-mono font-semibold">{job.bookingId}</span></p>
+                            <p className="text-xs text-gray-500 mb-2">Booking: <span className="font-mono font-semibold">{formatBookingId(job.bookingId)}</span></p>
                         )}
                         <ShieldCheck className="w-16 h-16 text-blue-600 mx-auto mb-4" />
                         <h2 className="text-xl font-bold text-gray-900">Verify Your Cleaner</h2>
@@ -140,29 +141,32 @@ export default function CustomerActiveJob({ booking, onBack, onComplete }) {
                     </div>
 
                     <div className="card p-6 mb-6">
-                        <p className="text-sm font-bold text-gray-700 uppercase mb-2">Enter Cleaner's Code</p>
-                        <div className="flex justify-center">
+                        <p className="text-xs font-bold text-gray-700 uppercase mb-3">Enter {cleaner?.name ? `${cleaner.name}'s` : "Cleaner's"} Code</p>
+                        <div className="flex flex-col gap-3">
                             <OTPInput
                                 length={6}
                                 value={inputCode}
                                 onChange={setInputCode}
+                                disabled={verifying}
                             />
+                            {!job.verificationCodes?.customerVerified ? (
+                                <button
+                                    onClick={handleVerify}
+                                    disabled={inputCode.length !== 6 || verifying}
+                                    className={`w-full py-3 rounded-xl text-xs font-bold transition-all ${inputCode.length !== 6 || verifying
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        : 'bg-teal-600 text-white hover:bg-teal-700 active:scale-95 shadow-md'
+                                        }`}
+                                >
+                                    {verifying ? 'Verifying...' : 'Verify Cleaner'}
+                                </button>
+                            ) : (
+                                <div className="text-center text-green-600 font-bold animate-pulse py-3">
+                                    Waiting for cleaner to verify...
+                                </div>
+                            )}
                         </div>
                     </div>
-
-                    {!job.verificationCodes?.customerVerified ? (
-                        <button
-                            onClick={handleVerify}
-                            disabled={inputCode.length !== 6 || verifying}
-                            className="btn bg-blue-600 text-white w-full py-4 text-lg"
-                        >
-                            {verifying ? 'Verifying...' : 'Verify Cleaner'}
-                        </button>
-                    ) : (
-                        <div className="text-center text-green-600 font-bold animate-pulse">
-                            Waiting for cleaner to verify...
-                        </div>
-                    )}
                 </div>
             </div>
         );
@@ -181,7 +185,7 @@ export default function CustomerActiveJob({ booking, onBack, onComplete }) {
                 <div className="p-6 flex-1">
                     <div className="text-center mb-8">
                         {job.bookingId && (
-                            <p className="text-xs text-gray-500 mb-2">Booking: <span className="font-mono font-semibold">{job.bookingId}</span></p>
+                            <p className="text-xs text-gray-500 mb-2">Booking: <span className="font-mono font-semibold">{formatBookingId(job.bookingId)}</span></p>
                         )}
                         <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Clock className="w-8 h-8 text-blue-600 animate-spin-slow" />
@@ -234,7 +238,7 @@ export default function CustomerActiveJob({ booking, onBack, onComplete }) {
 
                 <div className="p-6 flex-1 flex flex-col items-center">
                     {job.bookingId && (
-                        <p className="text-xs text-gray-500 mb-4">Booking: <span className="font-mono font-semibold">{job.bookingId}</span></p>
+                        <p className="text-xs text-gray-500 mb-4">Booking: <span className="font-mono font-semibold">{formatBookingId(job.bookingId)}</span></p>
                     )}
                     <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
                         <Check className="w-10 h-10 text-green-600" />

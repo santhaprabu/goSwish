@@ -1,0 +1,619 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1000" font-family="Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#666"/>
+    </marker>
+    <marker id="arrow-many" markerWidth="12" markerHeight="12" refX="0" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,6 L12,0 L12,12 z" fill="#666"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.2"/>
+    </filter>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3730A3;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="headerGradGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#047857;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="headerGradOrange" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#EA580C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#C2410C;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="headerGradPurple" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7C3AED;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6D28D9;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="headerGradTeal" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0D9488;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F766E;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="headerGradGray" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4B5563;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#374151;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="1000" fill="#f8fafc"/>
+
+  <!-- Title -->
+  <text x="700" y="40" text-anchor="middle" font-size="28" font-weight="bold" fill="#1e293b">GoSwish Database ERD</text>
+  <text x="700" y="65" text-anchor="middle" font-size="14" fill="#64748b">Entity Relationship Diagram - PostgreSQL</text>
+
+  <!-- Legend -->
+  <g transform="translate(1150, 80)">
+    <rect x="0" y="0" width="220" height="100" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1" filter="url(#shadow)"/>
+    <text x="110" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="#475569">Legend</text>
+    <line x1="15" y1="40" x2="55" y2="40" stroke="#666" stroke-width="2"/>
+    <text x="65" y="44" font-size="11" fill="#475569">1:1 Relationship</text>
+    <line x1="15" y1="60" x2="55" y2="60" stroke="#666" stroke-width="2" stroke-dasharray="5,3"/>
+    <text x="65" y="64" font-size="11" fill="#475569">1:N Relationship</text>
+    <circle cx="20" cy="80" r="6" fill="#fbbf24"/>
+    <text x="35" y="84" font-size="11" fill="#475569">PK = Primary Key</text>
+    <circle cx="120" cy="80" r="6" fill="#60a5fa"/>
+    <text x="135" y="84" font-size="11" fill="#475569">FK = Foreign Key</text>
+  </g>
+
+  <!-- ==================== USERS TABLE ==================== -->
+  <g transform="translate(50, 120)" filter="url(#shadow)">
+    <rect width="200" height="220" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="200" height="32" rx="8" fill="url(#headerGrad)"/>
+    <rect y="24" width="200" height="8" fill="url(#headerGrad)"/>
+    <text x="100" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="white">USERS</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <text x="16">email</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <text x="16">password_hash</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <text x="16">role</text><text x="140" fill="#94a3b8">ENUM</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <text x="16">status</text><text x="140" fill="#94a3b8">ENUM</text>
+      </g>
+      <g transform="translate(12, 140)">
+        <text x="16">first_name</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 158)">
+        <text x="16">last_name</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 176)">
+        <text x="16">phone</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 194)">
+        <text x="16">email_verified</text><text x="140" fill="#94a3b8">BOOLEAN</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== CLEANERS TABLE ==================== -->
+  <g transform="translate(50, 380)" filter="url(#shadow)">
+    <rect width="200" height="240" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="200" height="32" rx="8" fill="url(#headerGradGreen)"/>
+    <rect y="24" width="200" height="8" fill="url(#headerGradGreen)"/>
+    <text x="100" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="white">CLEANERS</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">user_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <text x="16">headline</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <text x="16">years_experience</text><text x="140" fill="#94a3b8">INT</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <text x="16">service_types</text><text x="140" fill="#94a3b8">TEXT[]</text>
+      </g>
+      <g transform="translate(12, 140)">
+        <text x="16">hourly_rate</text><text x="140" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 158)">
+        <text x="16">rating</text><text x="140" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 176)">
+        <text x="16">total_reviews</text><text x="140" fill="#94a3b8">INT</text>
+      </g>
+      <g transform="translate(12, 194)">
+        <text x="16">completed_jobs</text><text x="140" fill="#94a3b8">INT</text>
+      </g>
+      <g transform="translate(12, 212)">
+        <text x="16">verification_status</text><text x="140" fill="#94a3b8">ENUM</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== HOUSES TABLE ==================== -->
+  <g transform="translate(300, 120)" filter="url(#shadow)">
+    <rect width="200" height="220" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="200" height="32" rx="8" fill="url(#headerGradOrange)"/>
+    <rect y="24" width="200" height="8" fill="url(#headerGradOrange)"/>
+    <text x="100" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="white">HOUSES</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">user_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <text x="16">nickname</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <text x="16">property_type</text><text x="140" fill="#94a3b8">ENUM</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <text x="16">sqft</text><text x="140" fill="#94a3b8">INT</text>
+      </g>
+      <g transform="translate(12, 140)">
+        <text x="16">bedrooms</text><text x="140" fill="#94a3b8">INT</text>
+      </g>
+      <g transform="translate(12, 158)">
+        <text x="16">bathrooms</text><text x="140" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 176)">
+        <text x="16">street, city, state</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 194)">
+        <text x="16">has_pets</text><text x="140" fill="#94a3b8">BOOLEAN</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== BOOKINGS TABLE ==================== -->
+  <g transform="translate(550, 200)" filter="url(#shadow)">
+    <rect width="240" height="340" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="240" height="32" rx="8" fill="url(#headerGradPurple)"/>
+    <rect y="24" width="240" height="8" fill="url(#headerGradPurple)"/>
+    <text x="120" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="white">BOOKINGS</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="175" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <text x="16">booking_id</text><text x="175" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">customer_id</text><text x="175" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">cleaner_id</text><text x="175" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">house_id</text><text x="175" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 140)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">service_type_id</text><text x="175" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 158)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">promo_code_id</text><text x="175" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 176)">
+        <text x="16">scheduled_date</text><text x="175" fill="#94a3b8">DATE</text>
+      </g>
+      <g transform="translate(12, 194)">
+        <text x="16">time_slot</text><text x="175" fill="#94a3b8">ENUM</text>
+      </g>
+      <g transform="translate(12, 212)">
+        <text x="16">total_amount</text><text x="175" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 230)">
+        <text x="16">status</text><text x="175" fill="#94a3b8">ENUM</text>
+      </g>
+      <g transform="translate(12, 248)">
+        <text x="16">payment_status</text><text x="175" fill="#94a3b8">ENUM</text>
+      </g>
+      <g transform="translate(12, 266)">
+        <text x="16">customer_rating</text><text x="175" fill="#94a3b8">INT</text>
+      </g>
+      <g transform="translate(12, 284)">
+        <text x="16">completed_at</text><text x="175" fill="#94a3b8">TIMESTAMP</text>
+      </g>
+      <g transform="translate(12, 302)">
+        <text x="16">special_notes</text><text x="175" fill="#94a3b8">TEXT</text>
+      </g>
+      <g transform="translate(12, 320)">
+        <text x="16">version</text><text x="175" fill="#94a3b8">INT</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== JOBS TABLE ==================== -->
+  <g transform="translate(840, 200)" filter="url(#shadow)">
+    <rect width="200" height="260" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="200" height="32" rx="8" fill="url(#headerGradTeal)"/>
+    <rect y="24" width="200" height="8" fill="url(#headerGradTeal)"/>
+    <text x="100" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="white">JOBS</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">booking_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">cleaner_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <text x="16">customer_name</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <text x="16">address</text><text x="140" fill="#94a3b8">TEXT</text>
+      </g>
+      <g transform="translate(12, 140)">
+        <text x="16">scheduled_date</text><text x="140" fill="#94a3b8">DATE</text>
+      </g>
+      <g transform="translate(12, 158)">
+        <text x="16">amount</text><text x="140" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 176)">
+        <text x="16">earnings</text><text x="140" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 194)">
+        <text x="16">tip</text><text x="140" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 212)">
+        <text x="16">status</text><text x="140" fill="#94a3b8">ENUM</text>
+      </g>
+      <g transform="translate(12, 230)">
+        <text x="16">completed_at</text><text x="140" fill="#94a3b8">TIMESTAMP</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== SERVICE_TYPES TABLE ==================== -->
+  <g transform="translate(300, 380)" filter="url(#shadow)">
+    <rect width="200" height="160" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="200" height="32" rx="8" fill="url(#headerGradGray)"/>
+    <rect y="24" width="200" height="8" fill="url(#headerGradGray)"/>
+    <text x="100" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="white">SERVICE_TYPES</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <text x="16">name</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <text x="16">price_per_sqft</text><text x="140" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <text x="16">duration_minutes</text><text x="140" fill="#94a3b8">INT</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <text x="16">features</text><text x="140" fill="#94a3b8">TEXT[]</text>
+      </g>
+      <g transform="translate(12, 140)">
+        <text x="16">is_active</text><text x="140" fill="#94a3b8">BOOLEAN</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== ADD_ONS TABLE ==================== -->
+  <g transform="translate(300, 580)" filter="url(#shadow)">
+    <rect width="200" height="160" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="200" height="32" rx="8" fill="url(#headerGradGray)"/>
+    <rect y="24" width="200" height="8" fill="url(#headerGradGray)"/>
+    <text x="100" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="white">ADD_ONS</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <text x="16">name</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <text x="16">flat_price</text><text x="140" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <text x="16">price_per_sqft</text><text x="140" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <text x="16">duration_minutes</text><text x="140" fill="#94a3b8">INT</text>
+      </g>
+      <g transform="translate(12, 140)">
+        <text x="16">is_active</text><text x="140" fill="#94a3b8">BOOLEAN</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== BOOKING_ADD_ONS TABLE ==================== -->
+  <g transform="translate(550, 580)" filter="url(#shadow)">
+    <rect width="180" height="120" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="180" height="32" rx="8" fill="url(#headerGradGray)"/>
+    <rect y="24" width="180" height="8" fill="url(#headerGradGray)"/>
+    <text x="90" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="white">BOOKING_ADD_ONS</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="120" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">booking_id</text><text x="120" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">add_on_id</text><text x="120" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <text x="16">price</text><text x="120" fill="#94a3b8">DECIMAL</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== PROMO_CODES TABLE ==================== -->
+  <g transform="translate(550, 720)" filter="url(#shadow)">
+    <rect width="180" height="140" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="180" height="32" rx="8" fill="url(#headerGradGray)"/>
+    <rect y="24" width="180" height="8" fill="url(#headerGradGray)"/>
+    <text x="90" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="white">PROMO_CODES</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="120" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <text x="16">code</text><text x="120" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <text x="16">promo_type</text><text x="120" fill="#94a3b8">ENUM</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <text x="16">value</text><text x="120" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <text x="16">max_uses</text><text x="120" fill="#94a3b8">INT</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== REVIEWS TABLE ==================== -->
+  <g transform="translate(840, 500)" filter="url(#shadow)">
+    <rect width="200" height="180" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="200" height="32" rx="8" fill="url(#headerGrad)"/>
+    <rect y="24" width="200" height="8" fill="url(#headerGrad)"/>
+    <text x="100" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="white">REVIEWS</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">booking_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">cleaner_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">customer_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <text x="16">rating</text><text x="140" fill="#94a3b8">INT</text>
+      </g>
+      <g transform="translate(12, 140)">
+        <text x="16">comment</text><text x="140" fill="#94a3b8">TEXT</text>
+      </g>
+      <g transform="translate(12, 158)">
+        <text x="16">tags</text><text x="140" fill="#94a3b8">TEXT[]</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== CONVERSATIONS TABLE ==================== -->
+  <g transform="translate(1090, 200)" filter="url(#shadow)">
+    <rect width="200" height="200" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="200" height="32" rx="8" fill="url(#headerGradPurple)"/>
+    <rect y="24" width="200" height="8" fill="url(#headerGradPurple)"/>
+    <text x="100" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="white">CONVERSATIONS</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">booking_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">customer_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">cleaner_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <text x="16">status</text><text x="140" fill="#94a3b8">ENUM</text>
+      </g>
+      <g transform="translate(12, 140)">
+        <text x="16">last_message</text><text x="140" fill="#94a3b8">TEXT</text>
+      </g>
+      <g transform="translate(12, 158)">
+        <text x="16">last_message_time</text><text x="140" fill="#94a3b8">TIMESTAMP</text>
+      </g>
+      <g transform="translate(12, 176)">
+        <text x="16">unread_count</text><text x="140" fill="#94a3b8">INT</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== MESSAGES TABLE ==================== -->
+  <g transform="translate(1090, 440)" filter="url(#shadow)">
+    <rect width="200" height="160" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="200" height="32" rx="8" fill="url(#headerGradPurple)"/>
+    <rect y="24" width="200" height="8" fill="url(#headerGradPurple)"/>
+    <text x="100" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="white">MESSAGES</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">conversation_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">sender_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <text x="16">content</text><text x="140" fill="#94a3b8">TEXT</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <text x="16">status</text><text x="140" fill="#94a3b8">ENUM</text>
+      </g>
+      <g transform="translate(12, 140)">
+        <text x="16">read_at</text><text x="140" fill="#94a3b8">TIMESTAMP</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== NOTIFICATIONS TABLE ==================== -->
+  <g transform="translate(1090, 640)" filter="url(#shadow)">
+    <rect width="200" height="160" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="200" height="32" rx="8" fill="url(#headerGradOrange)"/>
+    <rect y="24" width="200" height="8" fill="url(#headerGradOrange)"/>
+    <text x="100" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="white">NOTIFICATIONS</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">user_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <text x="16">notification_type</text><text x="140" fill="#94a3b8">ENUM</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <text x="16">title</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <text x="16">message</text><text x="140" fill="#94a3b8">TEXT</text>
+      </g>
+      <g transform="translate(12, 140)">
+        <text x="16">is_read</text><text x="140" fill="#94a3b8">BOOLEAN</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== PAYMENT_METHODS TABLE ==================== -->
+  <g transform="translate(50, 660)" filter="url(#shadow)">
+    <rect width="200" height="160" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="200" height="32" rx="8" fill="url(#headerGradGreen)"/>
+    <rect y="24" width="200" height="8" fill="url(#headerGradGreen)"/>
+    <text x="100" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="white">PAYMENT_METHODS</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <circle cx="6" cy="-4" r="5" fill="#60a5fa"/><text x="16">user_id</text><text x="140" fill="#94a3b8">UUID</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <text x="16">method_type</text><text x="140" fill="#94a3b8">ENUM</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <text x="16">card_last_four</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <text x="16">is_default</text><text x="140" fill="#94a3b8">BOOLEAN</text>
+      </g>
+      <g transform="translate(12, 140)">
+        <text x="16">stripe_id</text><text x="140" fill="#94a3b8">VARCHAR</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== SETTINGS TABLE ==================== -->
+  <g transform="translate(780, 720)" filter="url(#shadow)">
+    <rect width="180" height="140" rx="8" fill="white" stroke="#e2e8f0" stroke-width="1"/>
+    <rect width="180" height="32" rx="8" fill="url(#headerGradGray)"/>
+    <rect y="24" width="180" height="8" fill="url(#headerGradGray)"/>
+    <text x="90" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="white">SETTINGS</text>
+    <g font-size="11" fill="#334155">
+      <g transform="translate(12, 50)">
+        <circle cx="6" cy="-4" r="5" fill="#fbbf24"/><text x="16">id</text><text x="120" fill="#94a3b8">VARCHAR</text>
+      </g>
+      <g transform="translate(12, 68)">
+        <text x="16">tax_rate</text><text x="120" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 86)">
+        <text x="16">platform_fee</text><text x="120" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 104)">
+        <text x="16">min_booking</text><text x="120" fill="#94a3b8">DECIMAL</text>
+      </g>
+      <g transform="translate(12, 122)">
+        <text x="16">features</text><text x="120" fill="#94a3b8">JSONB</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== RELATIONSHIP LINES ==================== -->
+
+  <!-- Users → Cleaners (1:1) -->
+  <path d="M 150 340 L 150 380" stroke="#059669" stroke-width="2" fill="none"/>
+  <text x="160" y="365" font-size="10" fill="#059669">1:1</text>
+
+  <!-- Users → Houses (1:N) -->
+  <path d="M 250 230 L 300 230" stroke="#EA580C" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+  <text x="270" y="220" font-size="10" fill="#EA580C">1:N</text>
+
+  <!-- Users → Payment Methods (1:N) -->
+  <path d="M 150 340 L 150 660" stroke="#059669" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+  <text x="160" y="630" font-size="10" fill="#059669">1:N</text>
+
+  <!-- Houses → Bookings (1:N) -->
+  <path d="M 500 230 L 550 280" stroke="#7C3AED" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+  <text x="510" y="250" font-size="10" fill="#7C3AED">1:N</text>
+
+  <!-- Users → Bookings (customer) (1:N) -->
+  <path d="M 250 200 C 350 200 450 250 550 290" stroke="#4F46E5" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+  <text x="380" y="210" font-size="10" fill="#4F46E5">1:N (customer)</text>
+
+  <!-- Cleaners → Bookings (1:N) -->
+  <path d="M 250 450 C 400 450 500 380 550 330" stroke="#059669" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+  <text x="380" y="420" font-size="10" fill="#059669">1:N</text>
+
+  <!-- Service Types → Bookings (1:N) -->
+  <path d="M 500 440 L 550 400" stroke="#4B5563" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+  <text x="510" y="425" font-size="10" fill="#4B5563">1:N</text>
+
+  <!-- Bookings → Jobs (1:1) -->
+  <path d="M 790 350 L 840 350" stroke="#0D9488" stroke-width="2" fill="none"/>
+  <text x="805" y="340" font-size="10" fill="#0D9488">1:1</text>
+
+  <!-- Cleaners → Jobs (1:N) -->
+  <path d="M 250 500 C 500 500 700 400 840 330" stroke="#059669" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+  <text x="600" y="470" font-size="10" fill="#059669">1:N</text>
+
+  <!-- Bookings → Reviews (1:N) -->
+  <path d="M 790 450 L 840 500" stroke="#4F46E5" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+  <text x="800" y="480" font-size="10" fill="#4F46E5">1:N</text>
+
+  <!-- Bookings → Conversations (1:1) -->
+  <path d="M 790 300 L 1090 300" stroke="#7C3AED" stroke-width="2" fill="none"/>
+  <text x="920" y="290" font-size="10" fill="#7C3AED">1:1</text>
+
+  <!-- Conversations → Messages (1:N) -->
+  <path d="M 1190 400 L 1190 440" stroke="#7C3AED" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+  <text x="1200" y="420" font-size="10" fill="#7C3AED">1:N</text>
+
+  <!-- Users → Notifications (1:N) -->
+  <path d="M 250 280 C 800 280 1000 500 1090 700" stroke="#EA580C" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+  <text x="900" y="580" font-size="10" fill="#EA580C">1:N</text>
+
+  <!-- Bookings → Booking_Add_Ons (1:N) -->
+  <path d="M 640 540 L 640 580" stroke="#4B5563" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+  <text x="650" y="565" font-size="10" fill="#4B5563">1:N</text>
+
+  <!-- Add_Ons → Booking_Add_Ons (1:N) -->
+  <path d="M 500 640 L 550 640" stroke="#4B5563" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+  <text x="515" y="630" font-size="10" fill="#4B5563">1:N</text>
+
+  <!-- Promo Codes → Bookings (1:N) -->
+  <path d="M 640 720 L 640 540" stroke="#4B5563" stroke-width="2" fill="none" stroke-dasharray="5,3"/>
+  <text x="650" y="700" font-size="10" fill="#4B5563">1:N</text>
+
+  <!-- Footer -->
+  <text x="700" y="970" text-anchor="middle" font-size="12" fill="#94a3b8">GoSwish Database Schema v1.0 | PostgreSQL Compatible | 14 Tables | 23 Foreign Keys</text>
+</svg>

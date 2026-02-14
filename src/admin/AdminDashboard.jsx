@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
     LayoutDashboard, Users, UserCog, Settings, Tag,
-    Briefcase, LogOut, Menu, X, DollarSign, Layers
+    Briefcase, LogOut, Menu, X, DollarSign, Layers, CalendarCheck
 } from 'lucide-react';
 
 // Sub-components (Will be fleshed out in separate files, imported here)
@@ -11,6 +11,7 @@ import ServiceConfig from './ServiceConfig';
 import UserManagement from './UserManagement';
 import PromoConfig from './PromoConfig';
 import SettingsConfig from './SettingsConfig';
+import BookingManagement from './BookingManagement';
 
 export default function AdminDashboard() {
     const { logout } = useApp();
@@ -20,6 +21,7 @@ export default function AdminDashboard() {
     const renderContent = () => {
         switch (activeTab) {
             case 'overview': return <AdminOverview />;
+            case 'bookings': return <BookingManagement />;
             case 'services': return <ServiceConfig />;
             case 'users': return <UserManagement />;
             case 'promos': return <PromoConfig />;
@@ -61,6 +63,7 @@ export default function AdminDashboard() {
                     <NavItem id="overview" icon={LayoutDashboard} label="Dashboard" />
 
                     <p className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 mt-6">Management</p>
+                    <NavItem id="bookings" icon={CalendarCheck} label="Bookings" />
                     <NavItem id="users" icon={Users} label="Users & Cleaners" />
                     <NavItem id="services" icon={Layers} label="Services & Pricing" />
                     <NavItem id="promos" icon={Tag} label="Promo Codes" />
@@ -95,9 +98,11 @@ export default function AdminDashboard() {
 
                     <nav className="flex-1 space-y-1">
                         <NavItem id="overview" icon={LayoutDashboard} label="Dashboard" />
+                        <NavItem id="bookings" icon={CalendarCheck} label="Bookings" />
                         <NavItem id="users" icon={Users} label="Users & Cleaners" />
                         <NavItem id="services" icon={Layers} label="Services & Pricing" />
                         <NavItem id="promos" icon={Tag} label="Promo Codes" />
+                        <NavItem id="settings" icon={Settings} label="Settings" />
                     </nav>
 
                     <button onClick={logout} className="flex items-center gap-3 px-4 py-3 text-red-600 mt-auto">

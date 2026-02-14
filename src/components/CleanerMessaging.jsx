@@ -1,31 +1,37 @@
 import { useState, useRef, useEffect } from 'react';
 /*
  * ============================================================================
- * CLEANER MESSAGING SYSTEM
+ * CLEANER MESSAGING SYSTEM (Booking-Scoped)
  * ============================================================================
  * 
  * Purpose:
  * Enables communication between Cleaners and Homeowners.
  * 
- * Features:
- * - Real-time polling for new messages.
- * - Quick Replies ("I'm on my way").
- * - Filtering (Unread, Active, Archived).
+ * IMPORTANT - Booking-Scoped Conversations:
+ * - Each conversation is tied to a specific booking
+ * - Messaging is ONLY allowed for active bookings
+ * - Once a booking is completed, cancelled, or approved, the conversation is LOCKED
+ * - New bookings between the same parties create NEW conversation threads
  * 
- * Security:
- * Chats are scoped to `bookingId`. Once a booking is archived, chat locks.
+ * Features:
+ * - Real-time polling for new messages
+ * - Quick Replies ("I'm on my way")
+ * - Filtering (Unread, Active)
+ * - Visual indicator for locked conversations
  */
 import { useApp } from '../context/AppContext';
 import {
     getUserConversations,
     getConversationMessages,
     sendMessage as dbSendMessage,
+    isConversationLocked,
 } from '../storage';
 import {
     Send, ChevronRight, Phone, Check, CheckCheck, Clock, User, Search,
-    MessageSquare, Loader, Lock, Zap
+    MessageSquare, Loader, Lock, Zap, Calendar, MapPin
 } from 'lucide-react';
 import { getDoc, COLLECTIONS } from '../storage/db';
+import { formatBookingId } from '../utils/formatters';
 
 const quickReplies = [
     "I'm on my way!",
@@ -52,7 +58,7 @@ const formatTime = (timestamp) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-export default function CleanerMessaging({ onBack }) {
+export default function CleanerMessaging({ onBack, initialBookingId }) {
     const { user } = useApp();
     const [conversations, setConversations] = useState([]);
     const [selectedConvo, setSelectedConvo] = useState(null);
@@ -63,6 +69,7 @@ export default function CleanerMessaging({ onBack }) {
     const [activeFilter, setActiveFilter] = useState('all');
     const [loading, setLoading] = useState(true);
     const [sendingMessage, setSendingMessage] = useState(false);
+    const [autoSelectAttempted, setAutoSelectAttempted] = useState(false);
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
 
@@ -78,20 +85,43 @@ export default function CleanerMessaging({ onBack }) {
                 const convosWithStatus = await Promise.all(convos.map(async (conv) => {
                     let status = 'active';
                     let bookingStatus = 'unknown';
+                    let address = '';
+                    let formattedBookingId = conv.bookingId || 'N/A';
+                    let rawBookingId = conv.bookingId; // Keep the raw ID for matching
 
                     if (conv.bookingId && conv.bookingId !== 'N/A') {
                         try {
                             const bookingDoc = await getDoc(COLLECTIONS.BOOKINGS, conv.bookingId);
                             if (bookingDoc) {
                                 bookingStatus = bookingDoc.status;
+                                formattedBookingId = bookingDoc.bookingId || conv.bookingId;
                                 if (['completed', 'cancelled', 'declined', 'approved'].includes(bookingStatus)) {
                                     status = 'closed';
+                                }
+                                // Fetch house/address info
+                                if (bookingDoc.houseId) {
+                                    try {
+                                        const house = await getDoc(COLLECTIONS.HOUSES, bookingDoc.houseId);
+                                        if (house) {
+                                            address = house.address?.street || house.name || '';
+                                        }
+                                    } catch (e) {
+                                        // Ignore house fetch errors
+                                    }
                                 }
                             }
                         } catch (e) {
                             console.warn('Could not fetch booking details for chat', conv.id);
                         }
                     }
+
+                    // Format service type to Title Case (e.g., "deep_cleaning" -> "Deep Cleaning")
+                    const formatServiceType = (type) => {
+                        if (!type) return 'Cleaning';
+                        return type
+                            .replace(/_/g, ' ')
+                            .replace(/\b\w/g, c => c.toUpperCase());
+                    };
 
                     return {
                         id: conv.id,
@@ -100,8 +130,10 @@ export default function CleanerMessaging({ onBack }) {
                         lastMessage: conv.lastMessage || 'No messages yet',
                         lastMessageTime: conv.lastMessageTime || conv.createdAt,
                         unreadCount: 0,
-                        bookingId: conv.bookingId || 'N/A',
-                        serviceType: conv.serviceType || 'Cleaning',
+                        bookingId: formattedBookingId,
+                        rawBookingId: rawBookingId,
+                        serviceType: formatServiceType(conv.serviceType),
+                        address: address,
                         status: status,
                         bookingStatus: bookingStatus
                     };
@@ -117,6 +149,19 @@ export default function CleanerMessaging({ onBack }) {
 
         loadConversations();
     }, [user?.uid]);
+
+    // Auto-select conversation if initialBookingId is provided
+    useEffect(() => {
+        if (initialBookingId && conversations.length > 0 && !autoSelectAttempted) {
+            setAutoSelectAttempted(true);
+            const matchingConvo = conversations.find(
+                conv => conv.rawBookingId === initialBookingId || conv.bookingId === initialBookingId
+            );
+            if (matchingConvo) {
+                setSelectedConvo(matchingConvo);
+            }
+        }
+    }, [initialBookingId, conversations, autoSelectAttempted]);
 
     // Load messages when a conversation is selected
     useEffect(() => {
@@ -212,17 +257,23 @@ export default function CleanerMessaging({ onBack }) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col">
                 {/* Chat Header */}
-                <div className="app-bar">
-                    <button onClick={() => setSelectedConvo(null)} className="p-2">
+                <div className="app-bar flex items-center px-4 py-3">
+                    <button onClick={() => setSelectedConvo(null)} className="p-2 -ml-2 hover:bg-gray-100 rounded-full">
                         <ChevronRight className="w-6 h-6 rotate-180" />
                     </button>
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-9 h-9 bg-secondary-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 bg-secondary-100 rounded-full flex items-center justify-center flex-shrink-0">
                             <User className="w-5 h-5 text-secondary-600" />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                             <h1 className="text-base font-semibold truncate">{selectedConvo.customerName}</h1>
-                            <p className="text-xs text-gray-500">{selectedConvo.serviceType}</p>
+                            <p className="text-xs text-gray-500">{selectedConvo.serviceType} • {formatBookingId(selectedConvo.bookingId)}</p>
+                            {selectedConvo.address && (
+                                <p className="text-xs text-gray-400 truncate flex items-center gap-1">
+                                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                                    {selectedConvo.address}
+                                </p>
+                            )}
                         </div>
                     </div>
                     <button className="p-2 hover:bg-gray-100 rounded-full">
@@ -231,7 +282,7 @@ export default function CleanerMessaging({ onBack }) {
                 </div>
 
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto px-4 py-4">
+                <div className="flex-1 overflow-y-auto px-6 py-4">
                     {/* Date Divider */}
                     <div className="flex items-center justify-center mb-4">
                         <span className="px-3 py-1 bg-gray-200 text-gray-600 text-xs rounded-full">
@@ -239,7 +290,7 @@ export default function CleanerMessaging({ onBack }) {
                         </span>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 mx-1">
                         {messages.map((message) => {
                             const isOwn = message.senderId === 'cleaner';
 
@@ -249,7 +300,7 @@ export default function CleanerMessaging({ onBack }) {
                                     className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                                 >
                                     <div
-                                        className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${isOwn
+                                        className={`max-w-[70%] px-4 py-2.5 rounded-2xl ${isOwn
                                             ? 'bg-secondary-500 text-white rounded-br-md'
                                             : 'bg-white text-gray-900 rounded-bl-md shadow-sm border border-gray-100'
                                             }`}
@@ -348,8 +399,8 @@ export default function CleanerMessaging({ onBack }) {
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
             {/* Header */}
-            <div className="app-bar">
-                <button onClick={onBack} className="p-2">
+            <div className="app-bar flex items-center justify-between px-4 py-3">
+                <button onClick={onBack} className="p-2 -ml-2 hover:bg-gray-100 rounded-full">
                     <ChevronRight className="w-6 h-6 rotate-180" />
                 </button>
                 <h1 className="text-lg font-semibold">Messages</h1>
@@ -457,7 +508,7 @@ export default function CleanerMessaging({ onBack }) {
                                         )}
                                     </div>
                                     <p className="text-xs text-gray-400 mt-1">
-                                        {conv.serviceType} • {conv.bookingId}
+                                        {conv.serviceType} • {formatBookingId(conv.bookingId)}
                                     </p>
                                 </div>
                             </div>

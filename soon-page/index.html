@@ -4,8 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Mopt - The new era of home cleaning. Join the waitlist today.">
-    <title>Mopt | Coming Soon</title>
+    <meta name="description"
+        content="Mopt - Book trusted, vetted cleaners in 60 seconds. Instant pricing, flexible scheduling, 100% satisfaction guaranteed. Join 2,800+ on the waitlist and get $50 off!">
+    <title>Mopt | Home Cleaning Reimagined - Join the Waitlist</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/img/9.png">
+    <link rel="apple-touch-icon" href="assets/img/9.png">
 
     <!-- Google Fonts - Using reliable Outfit font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,7 +21,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=12">
 </head>
 
 <body>
@@ -28,19 +33,54 @@
         <div class="bg-pattern"></div>
     </div>
 
+    <!-- Language Toggle -->
+    <div class="lang-toggle">
+        <button class="lang-btn" data-lang="en">English</button>
+        <button class="lang-btn" data-lang="es">Español</button>
+    </div>
+
+    <!-- Book Now Button -->
+    <a href="book.html" class="book-now-btn">
+        <i class="fas fa-calendar-check"></i>
+        <span data-i18n="bookNow">Book Cleaning Now</span>
+    </a>
+
     <!-- Main Content -->
     <div class="content-wrapper">
         <main class="main-content">
             <!-- Logo -->
             <div class="logo-container fade-in">
-                <img src="assets/img/mopt-logo.png" alt="Mopt Logo" class="main-logo">
+                <img src="assets/img/7.png" alt="Mopt Logo" class="main-logo">
             </div>
 
             <!-- Title & Subtitle -->
             <div class="text-content fade-in delay-1">
-                <h1 class="title">Coming Soon</h1>
-                <p class="subtitle">Bringing the sparkle to your doorstep. Join the waitlist for the new era of home
-                    cleaning.</p>
+                <h1 class="title" data-i18n="title">Home Cleaning, Reimagined<span class="teal-dot">.</span></h1>
+                <p class="subtitle" data-i18n="subtitle">No more phone tag. No more no-shows. No more mystery pricing.
+                    Just reliable, professional cleaning at your fingertips.</p>
+            </div>
+
+            <!-- Mobile App Coming Soon -->
+            <div class="app-coming-soon fade-in delay-1">
+                <div class="app-badge">
+                    <div class="app-icon">
+                        <i class="fas fa-mobile-screen-button"></i>
+                    </div>
+                    <div class="app-text">
+                        <span class="app-label">Mopt Mobile App</span>
+                        <span class="app-status">Coming Soon</span>
+                    </div>
+                    <div class="app-stores">
+                        <div class="store-badge">
+                            <i class="fab fa-apple"></i>
+                            <span>App Store</span>
+                        </div>
+                        <div class="store-badge">
+                            <i class="fab fa-google-play"></i>
+                            <span>Google Play</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Audience Cards - Side by Side -->
@@ -50,94 +90,145 @@
                     <div class="card-icon-header">
                         <i class="fas fa-house-chimney"></i>
                     </div>
-                    <p class="eyebrow">For Homeowners</p>
-                    <h2 class="section-title">Get your weekends back.</h2>
-                    <p class="section-subtitle">
-                        Book trusted cleaners in under 60 seconds - no calls, no quotes, no waiting.
+                    <p class="eyebrow" data-i18n="homeowner.eyebrow">For Homeowners</p>
+                    <h2 class="section-title" data-i18n="homeowner.title">Stop wasting weekends on chores.</h2>
+                    <p class="section-subtitle" data-i18n="homeowner.subtitle">
+                        Tired of unreliable cleaners and surprise bills? Book vetted professionals in 60 seconds flat.
                     </p>
 
                     <ul class="feature-list">
-                        <li>See pricing before you book.</li>
-                        <li>Schedule for today or later.</li>
-                        <li>Vetted cleaners and in-app support.</li>
-                        <li>Manage everything from your phone.</li>
+                        <li data-i18n-html="homeowner.feature1"><strong>Instant pricing</strong> - know the cost before
+                            you book, always.</li>
+                        <li data-i18n-html="homeowner.feature2"><strong>Flexible scheduling</strong> - book days or
+                            weeks ahead, on your timeline.</li>
+                        <li data-i18n-html="homeowner.feature3"><strong>Vetted cleaners</strong> - verified identity,
+                            real reviews, full coverage.</li>
+                        <li data-i18n-html="homeowner.feature4"><strong>Safe & connected</strong> - dual code
+                            verification and in-app messaging for peace of mind.</li>
                     </ul>
 
                     <div class="cta-row">
-                        <button class="btn btn-primary" id="ctaHomeowner" type="button">
-                            Get $50 Off — Join Waitlist
+                        <button class="btn btn-primary btn-glow" id="ctaHomeowner" type="button"
+                            data-i18n-html="homeowner.cta">
+                            <i class="fas fa-gift"></i> Claim $50 Off - First 500 Only
                         </button>
-                        <p class="cta-note">Launching July 2026 in the Dallas-Fort Worth area, Texas</p>
+                        <p class="cta-note" data-i18n-html="homeowner.note"><i class="fas fa-map-marker-alt"></i>
+                            Launching July 2026 in Dallas-Fort Worth, TX</p>
                     </div>
                 </div>
 
                 <!-- For Cleaners Card -->
                 <div class="audience-card-compact" id="cleaners">
                     <div class="card-icon-header">
-                        <i class="fas fa-broom"></i>
+                        <i class="fas fa-wand-magic-sparkles"></i>
                     </div>
-                    <p class="eyebrow">For Cleaners</p>
-                    <h2 class="section-title">Work when you want. Get paid fairly.</h2>
-                    <p class="section-subtitle">
-                        Steady jobs, respectful clients, and simple payouts - right in the app.
+                    <p class="eyebrow" data-i18n="cleaner.eyebrow">For Cleaning Professionals</p>
+                    <h2 class="section-title" data-i18n="cleaner.title">Your skills deserve better pay.</h2>
+                    <p class="section-subtitle" data-i18n="cleaner.subtitle">
+                        Potential to earn $50 - $100/hr on your terms. No more chasing payments, negotiating rates, or
+                        dealing with unreliable clients.
                     </p>
 
                     <ul class="feature-list">
-                        <li>Choose your own schedule.</li>
-                        <li>Weekly direct deposit.</li>
-                        <li>No more chasing payments.</li>
-                        <li>See job details before you accept.</li>
+                        <li data-i18n-html="cleaner.feature1"><strong>You're the boss</strong> - set your hours, pick
+                            your jobs, work your way.</li>
+                        <li data-i18n-html="cleaner.feature2"><strong>Flexible payouts</strong> - get paid daily,
+                            weekly, or monthly - your choice.</li>
+                        <li data-i18n-html="cleaner.feature3"><strong>Zero payment hassle</strong> - we handle billing,
+                            you focus on cleaning.</li>
+                        <li data-i18n-html="cleaner.feature4"><strong>Respect built-in</strong> - ratings protect you
+                            too, not just clients.</li>
                     </ul>
 
                     <div class="cta-row">
-                        <button class="btn btn-primary" id="ctaCleaner" type="button">
-                            Apply to Clean with Mopt
+                        <button class="btn btn-primary btn-cleaner" id="ctaCleaner" type="button"
+                            data-i18n-html="cleaner.cta">
+                            <i class="fas fa-rocket"></i> Apply Now - Limited Spots
                         </button>
-                        <p class="cta-note">Now registering cleaners in the Dallas-Fort Worth area, Texas</p>
+                        <p class="cta-note" data-i18n-html="cleaner.note"><i class="fas fa-clock"></i> Hiring now in
+                            Dallas-Fort Worth - Early pros get priority jobs</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trust Badges -->
+            <div class="trust-section fade-in delay-2">
+                <div class="trust-badges">
+                    <div class="trust-badge">
+                        <i class="fas fa-shield-halved"></i>
+                        <span data-i18n="trust.insured">Fully Insured</span>
+                    </div>
+                    <div class="trust-badge">
+                        <i class="fas fa-user-check"></i>
+                        <span data-i18n="trust.background">Verified Pros</span>
+                    </div>
+                    <div class="trust-badge">
+                        <i class="fas fa-star"></i>
+                        <span data-i18n="trust.satisfaction">Satisfaction Guaranteed</span>
                     </div>
                 </div>
             </div>
 
             <!-- Form -->
             <div class="form-container fade-in delay-3">
+                <div class="form-header">
+                    <h3 class="form-title" data-i18n="form.title">Reserve Your Spot</h3>
+                    <p class="form-subtitle" data-i18n-html="form.subtitle">Join <span class="counter">2,847</span>
+                        others already on the waitlist</p>
+                </div>
+
                 <form id="waitlist-form">
-                    <p class="form-label">I want to join as a:</p>
+                    <p class="form-label" data-i18n="form.label">I want to join as a:</p>
 
                     <div class="role-selector">
                         <label class="role-option">
                             <input type="radio" name="role" value="homeowner">
                             <div class="role-box">
                                 <i class="fas fa-house-chimney"></i>
-                                <span>Homeowner</span>
+                                <span data-i18n="form.homeowner">Homeowner</span>
+                                <small data-i18n="form.homeownerBonus">Get $50 off first clean</small>
                             </div>
                         </label>
                         <label class="role-option">
                             <input type="radio" name="role" value="cleaner">
                             <div class="role-box">
-                                <i class="fas fa-broom"></i>
-                                <span>Cleaner</span>
+                                <i class="fas fa-wand-magic-sparkles"></i>
+                                <span data-i18n="form.cleaner">Cleaning Pro</span>
+                                <small data-i18n="form.cleanerBonus">Priority job access</small>
                             </div>
                         </label>
                     </div>
 
                     <div class="input-row">
                         <select id="state" required>
-                            <option value="" disabled selected>Select State</option>
+                            <option value="" disabled selected data-i18n="form.statePlaceholder">Your State</option>
                             <option value="TX">Texas</option>
                             <option value="UT">Utah</option>
                             <option value="GA">Georgia</option>
-                            <option value="CO">Denver</option>
-                            <option value="OTHER">Other</option>
+                            <option value="CO">Colorado</option>
+                            <option value="OTHER" data-i18n="form.stateOther">Other (Notify me when you expand)</option>
                         </select>
-                        <input type="email" id="email" placeholder="Email Address" required>
+                        <input type="email" id="email" data-i18n-placeholder="form.emailPlaceholder"
+                            placeholder="Your best email" required>
                     </div>
 
+                    <label class="consent-checkbox">
+                        <input type="checkbox" id="email-consent">
+                        <span class="checkmark"></span>
+                        <span class="consent-text" data-i18n="form.consent">I agree to receive updates about Mopt via
+                            email. You can unsubscribe anytime.</span>
+                    </label>
+
                     <button type="submit" class="submit-btn" id="submit-btn">
-                        <span class="btn-text">Notify Me</span>
+                        <span class="btn-text" data-i18n="form.submit">Join the Waitlist</span>
                         <i class="fas fa-arrow-right"></i>
                     </button>
 
-                    <p id="error-message" class="error-text hidden">Please select a role to continue.</p>
+                    <p class="privacy-note" data-i18n-html="form.privacy"><i class="fas fa-lock"></i> Your information
+                        is secure and never shared.</p>
+
+                    <p id="error-message" class="error-text hidden" data-i18n="form.error">Please select a role to
+                        continue.</p>
                 </form>
 
                 <!-- Success Message -->
@@ -145,9 +236,20 @@
                     <div class="success-circle">
                         <i class="fas fa-check"></i>
                     </div>
-                    <h3>You're on the list!</h3>
-                    <p>We'll notify you as soon as Mopt launches in your area.</p>
-                    <button class="reset-btn" id="reset-btn">Add Another Email</button>
+                    <h3 data-i18n="success.title">You're in!</h3>
+                    <p data-i18n="success.message">Welcome to the Mopt family. We'll email you the moment we launch in
+                        your area.</p>
+                    <div class="share-section">
+                        <p class="share-prompt" data-i18n="success.share">Share with friends and move up the waitlist:
+                        </p>
+                        <div class="share-buttons">
+                            <button class="share-btn" onclick="shareTwitter()"><i class="fab fa-twitter"></i></button>
+                            <button class="share-btn" onclick="shareFacebook()"><i
+                                    class="fab fa-facebook-f"></i></button>
+                            <button class="share-btn" onclick="copyLink()"><i class="fas fa-link"></i></button>
+                        </div>
+                    </div>
+                    <button class="reset-btn" id="reset-btn" data-i18n="success.addAnother">Add Another Email</button>
                 </div>
             </div>
         </main>
@@ -162,18 +264,30 @@
             <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
             <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
         </div>
+        <div class="footer-info fade-in delay-3">
+            <span class="footer-texas" data-i18n-html="footer.texas">Born in Texas <img
+                    src="https://flagcdn.com/w20/us-tx.png" alt="Texas flag" class="texas-flag"></span>
+            <span class="footer-divider">|</span>
+            <span class="footer-powered" data-i18n-html="footer.powered">Powered by <a href="https://trivinetech.com"
+                    target="_blank" rel="noopener">Trivine</a></span>
+        </div>
     </footer>
 
     <!-- Floating Scroll Indicator -->
     <div class="floating-scroll-hint" id="floatingScrollHint">
-        <i class="fas fa-chevron-down"></i>
-        <span>Scroll for more</span>
+        <div class="chevron-stack">
+            <i class="fas fa-chevron-down"></i>
+            <i class="fas fa-chevron-down"></i>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <span data-i18n="scroll">Scroll for more</span>
     </div>
 
     <!-- Particles.js -->
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script src="script.js"></script>
     <script src="analytics.js"></script>
+    <script src="i18n.js"></script>
 
     <!-- Interaction Script -->
     <script>
@@ -216,7 +330,7 @@
         })();
 
         // Floating scroll hint - hide when near bottom
-        (function() {
+        (function () {
             const floatingHint = document.getElementById('floatingScrollHint');
             if (!floatingHint) return;
 
@@ -237,9 +351,47 @@
             checkScroll();
 
             // Click to scroll down smoothly
-            floatingHint.addEventListener('click', function() {
+            floatingHint.addEventListener('click', function () {
                 window.scrollBy({ top: window.innerHeight * 0.8, behavior: 'smooth' });
             });
+        })();
+
+        // Share functions
+        function shareTwitter() {
+            const text = encodeURIComponent("I just joined the waitlist for Mopt - the new era of home cleaning! Get $50 off your first clean:");
+            const url = encodeURIComponent(window.location.href);
+            window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+        }
+
+        function shareFacebook() {
+            const url = encodeURIComponent(window.location.href);
+            window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+        }
+
+        function copyLink() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                const btn = event.target.closest('.share-btn');
+                const originalIcon = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => { btn.innerHTML = originalIcon; }, 2000);
+            });
+        }
+
+        // Animated counter effect
+        (function () {
+            const counter = document.querySelector('.counter');
+            if (!counter) return;
+            const target = parseInt(counter.textContent.replace(/,/g, ''));
+            let current = Math.floor(target * 0.7);
+            const increment = Math.ceil((target - current) / 50);
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(timer);
+                }
+                counter.textContent = current.toLocaleString();
+            }, 30);
         })();
     </script>
 </body>

@@ -13,6 +13,7 @@ import {
     clamp,
     logMatchingEvent,
 } from './utils.js';
+import { toLocalDateString } from '../utils/dateUtils.js';
 
 /**
  * Score and rank all eligible cleaners
@@ -298,14 +299,10 @@ export const calculateSchedulingScore = async (cleaner, booking, house) => {
         if (!job.startTime) return false;
 
         return booking.dateOptions.some(option => {
-            const jobDate = new Date(job.startTime);
-            const optionDate = new Date(option.date);
-
-            return (
-                jobDate.getFullYear() === optionDate.getFullYear() &&
-                jobDate.getMonth() === optionDate.getMonth() &&
-                jobDate.getDate() === optionDate.getDate()
-            );
+            // Use toLocalDateString for timezone-safe date comparison
+            const jobDateStr = toLocalDateString(job.startTime);
+            const optionDateStr = toLocalDateString(option.date);
+            return jobDateStr === optionDateStr;
         });
     });
 

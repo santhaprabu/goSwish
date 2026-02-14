@@ -53,6 +53,7 @@ import {
 } from '../storage';
 
 import OTPInput from './OTPInput';
+import { toLocalDateString } from '../utils/formatters';
 
 // Job Execution - Complete workflow for cleaners
 export default function JobExecution({ job, onComplete, onBack }) {
@@ -134,8 +135,8 @@ export default function JobExecution({ job, onComplete, onBack }) {
     }, []);
 
     const handleStartTrip = async () => {
-        // Validate that today's date matches the scheduled date
-        const today = new Date().toISOString().split('T')[0];
+        // Validate that today's date matches the scheduled date (using LOCAL timezone)
+        const today = toLocalDateString(new Date());
         const scheduledDate = job.selectedDate?.date || job.scheduledDate;
 
         if (!scheduledDate) {
@@ -143,8 +144,8 @@ export default function JobExecution({ job, onComplete, onBack }) {
             return;
         }
 
-        // Parse and compare dates
-        const scheduledDateStr = new Date(scheduledDate).toISOString().split('T')[0];
+        // Parse and compare dates using LOCAL timezone
+        const scheduledDateStr = toLocalDateString(new Date(scheduledDate));
 
         if (today !== scheduledDateStr) {
             const formattedScheduledDate = new Date(scheduledDate).toLocaleDateString('en-US', {

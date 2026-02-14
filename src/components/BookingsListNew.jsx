@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, Home, Sparkles, MapPin, Phone, Loader2, RefreshCw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { formatBookingId } from '../utils/formatters';
+import { formatDisplayDate } from '../utils/dateUtils';
 
 export default function BookingsListNew() {
     const { getUserBookings, serviceTypes, getUserHouses, addOns } = useApp();
@@ -58,19 +60,15 @@ export default function BookingsListNew() {
         }).filter(name => name !== 'Unknown');
     };
 
+    // Use centralized date utility for timezone-safe formatting
     const formatDate = (dateStr) => {
         if (!dateStr) return 'No date';
-        try {
-            const date = new Date(dateStr + 'T12:00:00');
-            return date.toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-            });
-        } catch {
-            return dateStr;
-        }
+        return formatDisplayDate(dateStr, {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
     };
 
     const formatTimeSlot = (slotId) => {
@@ -184,7 +182,7 @@ export default function BookingsListNew() {
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="text-xs font-mono text-gray-500">
-                                                {booking.id || 'BKG-' + index}
+                                                {formatBookingId(booking.bookingId)}
                                             </span>
                                             <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(booking.status)}`}>
                                                 {getStatusText(booking.status)}

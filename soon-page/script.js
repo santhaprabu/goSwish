@@ -62,10 +62,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedRole = document.querySelector('input[name="role"]:checked');
         const email = emailInput.value;
         const state = document.getElementById('state').value;
+        const consentCheckbox = document.getElementById('email-consent');
+        const errorMessage = document.getElementById('error-message');
 
-        // Validation (though 'required' attribute handles most of it)
+        // Validation
         if (!selectedRole) {
-            document.getElementById('error-message').classList.remove('hidden');
+            errorMessage.textContent = 'Please select a role to continue.';
+            errorMessage.classList.remove('hidden');
+            return;
+        }
+
+        if (!consentCheckbox.checked) {
+            errorMessage.textContent = 'Please agree to receive email updates to continue.';
+            errorMessage.classList.remove('hidden');
             return;
         }
 
@@ -123,5 +132,11 @@ document.addEventListener('DOMContentLoaded', () => {
         radio.addEventListener('change', () => {
             document.getElementById('error-message').classList.add('hidden');
         });
+    });
+
+    // Clear error on checkbox change
+    const consentCheck = document.getElementById('email-consent');
+    consentCheck.addEventListener('change', () => {
+        document.getElementById('error-message').classList.add('hidden');
     });
 });

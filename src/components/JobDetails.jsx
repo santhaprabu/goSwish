@@ -17,6 +17,8 @@ import React from 'react';
  */
 import { ChevronLeft, Check, Play, Clock, User, MessageSquare, MapPin } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { formatBookingId } from '../utils/formatters';
+import { parseLocalDate, formatDisplayDate } from '../utils/dateUtils';
 
 export default function JobDetails({ job, onBack, onStartJob, onMessaging }) {
     const { startChat } = useApp();
@@ -34,31 +36,39 @@ export default function JobDetails({ job, onBack, onStartJob, onMessaging }) {
 
     const handleMessageCustomer = async () => {
         if (!job.customerId) return;
+
+        // Get the booking ID - jobs have bookingId that references the booking
+        const bookingId = job.bookingId;
+        if (!bookingId) {
+            console.error('Cannot message: No booking ID associated with this job');
+            return;
+        }
+
         try {
-            await startChat(job.customerId);
+            await startChat(job.customerId, bookingId, {
+                serviceType: job.serviceType || 'Cleaning'
+            });
             onMessaging?.();
         } catch (error) {
             console.error('Error starting chat:', error);
+            alert(error.message || 'Unable to start chat. The booking may be locked.');
         }
-    };
-
-    // Helper to parse date string without timezone issues
-    const parseDateString = (dateStr) => {
-        if (!dateStr) return new Date();
-
-        // If it's a date-only string (YYYY-MM-DD), parse it as local time
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-            const [year, month, day] = dateStr.split('-').map(Number);
-            return new Date(year, month - 1, day);
-        }
-
-        // Otherwise parse normally
-        return new Date(dateStr);
     };
 
     // Helper to insure we have displayable values
-    const earningsDisplay = job.displayEarnings || (typeof job.earnings === 'number' ? job.earnings.toFixed(2) : job.earnings);
-    const dateDisplay = job.formattedDate || parseDateString(job.date || job.scheduledDate).toLocaleDateString();
+    const earningsDisplay = job.displayEarnings || (() => {
+        // Use job.earnings directly - this is the 90% of subtotal calculated at job creation
+        const earnings = Number(job.earnings || 0);
+        if (earnings > 0) {
+            return earnings.toFixed(2);
+        }
+        // Fallback: estimate from amount (total including tax)
+        const amount = Number(job.amount || 0);
+        const estimatedSubtotal = amount / 1.0825;
+        const estimatedEarnings = estimatedSubtotal * 0.9;
+        return estimatedEarnings > 0 ? estimatedEarnings.toFixed(2) : '50.00';
+    })();
+    const dateDisplay = job.formattedDate || formatDisplayDate(job.date || job.scheduledDate, { month: 'short', day: 'numeric', year: 'numeric' });
     const timeDisplay = job.timeRange || `${job.startTime} - ${job.endTime}`;
     const serviceTypeDisplay = (job.serviceType || 'Cleaning').replace('-', ' ');
 
@@ -81,7 +91,7 @@ export default function JobDetails({ job, onBack, onStartJob, onMessaging }) {
                 {job.bookingId && (
                     <div className="text-center">
                         <p className="text-xs text-gray-500 mb-1">Booking ID</p>
-                        <p className="text-sm font-mono font-semibold text-gray-900">{job.bookingId}</p>
+                        <p className="text-sm font-mono font-semibold text-gray-900">{formatBookingId(job.bookingId)}</p>
                     </div>
                 )}
 
@@ -140,12 +150,15 @@ export default function JobDetails({ job, onBack, onStartJob, onMessaging }) {
                                 </div>
                             </div>
                         </div>
-                        <button
-                            onClick={handleMessageCustomer}
-                            className="p-2 bg-secondary-50 text-secondary-600 rounded-full hover:bg-secondary-100 transition-colors"
-                        >
-                            <MessageSquare className="w-5 h-5" />
-                        </button>
+                        {/* Only show message button for active jobs */}
+                        {!['completed', 'cancelled'].includes(job.status) && (
+                            <button
+                                onClick={handleMessageCustomer}
+                                className="p-2 bg-secondary-50 text-secondary-600 rounded-full hover:bg-secondary-100 transition-colors"
+                            >
+                                <MessageSquare className="w-5 h-5" />
+                            </button>
+                        )}
                     </div>
                 </div>
 

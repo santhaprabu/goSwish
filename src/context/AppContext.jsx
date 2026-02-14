@@ -108,6 +108,9 @@ const ActionTypes = {
     SET_LOADING: 'SET_LOADING',
     SET_ERROR: 'SET_ERROR',
     SET_SETTINGS: 'SET_SETTINGS',
+    SET_SERVICE_TYPES: 'SET_SERVICE_TYPES',
+    SET_ADDONS: 'SET_ADDONS',
+    SET_METRO_MULTIPLIERS: 'SET_METRO_MULTIPLIERS',
 };
 
 // Reducer
@@ -161,6 +164,24 @@ function appReducer(state, action) {
                 settings: { ...state.settings, ...action.payload },
             };
 
+        case ActionTypes.SET_SERVICE_TYPES:
+            return {
+                ...state,
+                serviceTypes: action.payload,
+            };
+
+        case ActionTypes.SET_ADDONS:
+            return {
+                ...state,
+                addOns: action.payload,
+            };
+
+        case ActionTypes.SET_METRO_MULTIPLIERS:
+            return {
+                ...state,
+                metroMultipliers: action.payload,
+            };
+
         default:
             return state;
     }
@@ -185,11 +206,36 @@ export function AppProvider({ children }) {
                     dispatch({ type: ActionTypes.SET_USER, payload: currentUser });
                 }
 
-                // Load Settings
+                // Load Settings, Service Types, Add-ons from database
                 const { getAppSettings } = await import('../storage/index.js');
+                const { getDocs, COLLECTIONS } = await import('../storage/db.js');
+
+                // Load app settings
                 const settingsData = await getAppSettings();
                 if (settingsData) {
                     dispatch({ type: ActionTypes.SET_SETTINGS, payload: settingsData });
+
+                    // Load metro multipliers from settings if available
+                    if (settingsData.metroMultipliers) {
+                        dispatch({ type: ActionTypes.SET_METRO_MULTIPLIERS, payload: settingsData.metroMultipliers });
+                    }
+                }
+
+                // Load service types from database
+                const serviceTypesData = await getDocs(COLLECTIONS.SERVICE_TYPES);
+                if (serviceTypesData && serviceTypesData.length > 0) {
+                    // Map pricePerSqft to rate for compatibility
+                    const mappedServiceTypes = serviceTypesData.map(s => ({
+                        ...s,
+                        rate: s.pricePerSqft || s.rate || 0
+                    }));
+                    dispatch({ type: ActionTypes.SET_SERVICE_TYPES, payload: mappedServiceTypes });
+                }
+
+                // Load add-ons from database
+                const addOnsData = await getDocs(COLLECTIONS.ADD_ONS);
+                if (addOnsData && addOnsData.length > 0) {
+                    dispatch({ type: ActionTypes.SET_ADDONS, payload: addOnsData });
                 }
 
                 // SECURITY: Dangerous admin functions removed
@@ -335,34 +381,87 @@ export function AppProvider({ children }) {
         }
     }, [state.user]);
 
-    const startChat = useCallback(async (targetUserId, metadata = {}) => {
+    const startChat = useCallback(async (targetId, bookingId, metadata = {}) => {
         if (!state.user?.uid) return null;
+
+        // Booking ID is now required
+        if (!bookingId) {
+            console.error('startChat requires a bookingId - messaging is only allowed for active bookings');
+            return null;
+        }
+
         try {
-            const { getConversation, createConversation, getUserById } = await import('../storage/index.js');
+            const { getOrCreateConversationForBooking, getUserById, getDoc, COLLECTIONS } = await import('../storage/index.js');
 
-            // Check if exists
-            let conversation = await getConversation(state.user.uid, targetUserId);
+            const myName = state.user.name || `${state.user.firstName || ''} ${state.user.lastName || ''}`.trim() || 'User';
+            const isCustomer = state.selectedRole === 'homeowner' || state.user.role === 'homeowner';
 
-            if (!conversation) {
-                // Get names
-                let targetName = 'User';
+            let cleanerUserId = null;
+            let cleanerName = 'Cleaner';
+            let customerUserId = null;
+            let customerName = 'Customer';
+
+            if (isCustomer) {
+                // Customer is messaging cleaner
+                // targetId is the cleaner PROFILE ID (from cleaners collection), need to get the user ID
+                customerUserId = state.user.uid;
+                customerName = myName;
+
                 try {
-                    const targetUser = await getUserById(targetUserId);
-                    if (targetUser) targetName = `${targetUser.firstName} ${targetUser.lastName}`;
+                    // Get cleaner profile to find the user ID
+                    const cleanerProfile = await getDoc(COLLECTIONS.CLEANERS, targetId);
+                    if (cleanerProfile && cleanerProfile.userId) {
+                        cleanerUserId = cleanerProfile.userId;
+                        // Get cleaner's user record for their name
+                        const cleanerUser = await getUserById(cleanerProfile.userId);
+                        if (cleanerUser) {
+                            cleanerName = `${cleanerUser.firstName || ''} ${cleanerUser.lastName || ''}`.trim() || cleanerProfile.name || 'Cleaner';
+                        } else {
+                            cleanerName = cleanerProfile.name || 'Cleaner';
+                        }
+                    } else {
+                        // Fallback: maybe targetId is already a user ID
+                        cleanerUserId = targetId;
+                        const cleanerUser = await getUserById(targetId);
+                        if (cleanerUser) {
+                            cleanerName = `${cleanerUser.firstName || ''} ${cleanerUser.lastName || ''}`.trim() || 'Cleaner';
+                        }
+                    }
                 } catch (e) {
-                    console.warn('Failed to fetch target user name', e);
+                    console.warn('Failed to fetch cleaner details, using targetId as userId:', e);
+                    cleanerUserId = targetId;
                 }
+            } else {
+                // Cleaner is messaging customer
+                // targetId is the customer's user ID
+                cleanerUserId = state.user.uid;
+                cleanerName = myName;
+                customerUserId = targetId;
 
-                const myName = state.user.name || 'User';
-                const isCustomer = state.selectedRole === 'homeowner' || state.user.role === 'homeowner';
-
-                conversation = await createConversation([state.user.uid, targetUserId], {
-                    ...metadata,
-                    customerName: isCustomer ? myName : targetName,
-                    cleanerName: isCustomer ? targetName : myName,
-                    startedBy: state.user.uid
-                });
+                try {
+                    const customerUser = await getUserById(targetId);
+                    if (customerUser) {
+                        customerName = `${customerUser.firstName || ''} ${customerUser.lastName || ''}`.trim() || 'Customer';
+                    }
+                } catch (e) {
+                    console.warn('Failed to fetch customer name', e);
+                }
             }
+
+            if (!cleanerUserId || !customerUserId) {
+                throw new Error('Could not determine participant IDs for conversation');
+            }
+
+            const conversation = await getOrCreateConversationForBooking(
+                bookingId,
+                customerUserId,
+                cleanerUserId,
+                {
+                    ...metadata,
+                    customerName,
+                    cleanerName,
+                }
+            );
 
             return conversation;
         } catch (error) {
@@ -554,9 +653,10 @@ export function AppProvider({ children }) {
             // Apply rounding rule: Round UP to nearest 10 for sqft-based base price
             basePrice = Math.ceil(basePrice / 10) * 10;
 
-            // Pet surcharge
+            // Pet surcharge (configurable from settings)
+            const petSurcharge = state.settings?.petSurcharge || 10;
             if (house.petInfo && house.petInfo !== 'No pets') {
-                basePrice += 10; // Flat pet fee
+                basePrice += petSurcharge;
             }
 
             console.log(`💵 Base Price (rounded to nearest 10): ${basePrice}`);

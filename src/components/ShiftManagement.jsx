@@ -25,6 +25,7 @@ import {
     bulkUpdateCleanerAvailability,
     getCleanerJobs
 } from '../storage';
+import { toLocalDateString, extractHours } from '../utils/dateUtils';
 
 // Date utility functions
 function startOfWeek(date) {
@@ -121,9 +122,12 @@ export default function ShiftManagement({ onBack }) {
             const bookedMap = {};
             jobs.forEach(job => {
                 if (job.status === 'scheduled' || job.status === 'in_progress' || job.status === 'confirmed') {
-                    const jobDate = new Date(job.scheduledDate || job.startTime);
-                    const dateStr = formatDate(jobDate, 'yyyy-MM-dd');
-                    const hour = jobDate.getHours();
+                    // Get the date from scheduledDate (YYYY-MM-DD format)
+                    const dateStr = toLocalDateString(job.scheduledDate || job.startTime);
+
+                    // Get the hour from startTime (e.g., "3:00 PM" or "15:00")
+                    // Use extractHours which handles various time formats
+                    const hour = extractHours(job.startTime);
 
                     let shift = 'morning';
                     if (hour >= 12 && hour < 15) shift = 'afternoon';

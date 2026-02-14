@@ -50,6 +50,8 @@ import {
     Star, Info, MapPin, Shield, Zap, Coffee, SprayCan, Grid3X3
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { formatBookingId, toLocalDateString } from '../utils/formatters';
+import { calculateMatchScore, getAllCleaners, getHouseById } from '../storage';
 
 // Stripe Key
 const STRIPE_KEY = 'pk_test_51QhLFoLAEV3Gm6SGlZotiAKqIC5G4nzcETJxRMf10G7zHAT3DKuLSvaiSn8ODOEAqPjUHYWLib23L7LW8MP95UdX00P19pkU7A';
@@ -58,9 +60,9 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TIME_SLOTS = [
-    { id: 'morning', label: 'Morning', time: '9 AM - 12 PM', icon: '🌅' },
-    { id: 'afternoon', label: 'Afternoon', time: '12 PM - 3 PM', icon: '☀️' },
-    { id: 'evening', label: 'Evening', time: '3 PM - 6 PM', icon: '🌆' },
+    { id: 'morning', label: 'Morning', time: '9 AM - 12 PM', icon: '🌅', startHour: 9 },
+    { id: 'afternoon', label: 'Afternoon', time: '12 PM - 3 PM', icon: '☀️', startHour: 12 },
+    { id: 'evening', label: 'Evening', time: '3 PM - 6 PM', icon: '🌆', startHour: 15 },
 ];
 
 const serviceIcons = {
@@ -73,7 +75,7 @@ const serviceIcons = {
 export default function BookingFlowNew({ onBack, onComplete, initialHouseId }) {
     const {
         user, updateUser, getUserHouses, serviceTypes, addOns,
-        createBooking, findEligibleCleaners, metroMultipliers,
+        createBooking, metroMultipliers,
         calculatePrice, validatePromoCode
     } = useApp();
 
@@ -236,8 +238,26 @@ export default function BookingFlowNew({ onBack, onComplete, initialHouseId }) {
     const handleSubmit = async () => {
         if (selectedPaymentOption === 'new' && (!stripeObj || !cardElement)) return;
 
+
         setLoading(true);
         setCardError(null);
+
+        // Security Check: Ensure Selected Date/Time is still valid
+        const todayStr = toLocalDateString(new Date());
+        if (selectedDate < todayStr) {
+            setCardError("The selected date is in the past. Please choose a future date.");
+            setLoading(false);
+            return;
+        }
+        if (selectedDate === todayStr) {
+            const currentHour = new Date().getHours();
+            const slot = TIME_SLOTS.find(s => s.id === selectedTimeSlot);
+            if (slot && currentHour >= slot.startHour) {
+                setCardError("The selected time slot has passed. Please choose a later time.");
+                setLoading(false);
+                return;
+            }
+        }
 
         try {
             let paymentMethodId = selectedPaymentOption;
@@ -282,10 +302,34 @@ export default function BookingFlowNew({ onBack, onComplete, initialHouseId }) {
 
             setCreatedBooking(booking);
 
+            // Find eligible cleaners using the SAME logic as JobOffers (calculateMatchScore)
+            // This ensures the confirmation screen shows cleaners who will actually see the job
             try {
-                const eligible = await findEligibleCleaners(selectedHouseId, selectedServiceId);
-                setNotifiedCleaners(eligible || []);
-            } catch (err) { console.warn(err); }
+                const [house, cleaners] = await Promise.all([
+                    getHouseById(selectedHouseId),
+                    getAllCleaners()
+                ]);
+
+                if (house && cleaners?.length) {
+                    const eligibleMatches = [];
+
+                    for (const cleaner of cleaners) {
+                        const match = await calculateMatchScore(booking, cleaner, house);
+                        if (match.isEligible) {
+                            eligibleMatches.push({
+                                ...cleaner,
+                                distance: match.distance ? Math.round(match.distance * 10) / 10 : 0,
+                                matchScore: match.score || 0,
+                                matchDescription: match.matchDescription || 'Compatible'
+                            });
+                        }
+                    }
+
+                    // Sort by score descending, take top matches
+                    eligibleMatches.sort((a, b) => b.matchScore - a.matchScore);
+                    setNotifiedCleaners(eligibleMatches.slice(0, 15));
+                }
+            } catch (err) { console.warn('Error finding eligible cleaners:', err); }
 
             setStep(7);
         } catch (error) {
@@ -414,10 +458,10 @@ export default function BookingFlowNew({ onBack, onComplete, initialHouseId }) {
                                             </div>
                                             <p className="text-xs text-gray-500 leading-relaxed mb-3">{service.description}</p>
                                             <div className="flex flex-wrap gap-1.5">
-                                                {service.includes.slice(0, 3).map((item, i) => (
+                                                {(service.includes || []).slice(0, 3).map((item, i) => (
                                                     <span key={i} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">{item}</span>
                                                 ))}
-                                                {service.includes.length > 3 && (
+                                                {(service.includes?.length || 0) > 3 && (
                                                     <span className="text-[10px] text-secondary-600 font-medium">+{service.includes.length - 3} more</span>
                                                 )}
                                             </div>
@@ -513,14 +557,26 @@ export default function BookingFlowNew({ onBack, onComplete, initialHouseId }) {
                             <div className="grid grid-cols-7 gap-2">
                                 {calendarDays.map((date, idx) => {
                                     if (!date) return <div key={idx} />;
-                                    const dateStr = date.toISOString().split('T')[0];
+                                    const dateStr = toLocalDateString(date);  // Use LOCAL timezone
                                     const isPast = isPastDate(date);
                                     const isSelected = selectedDate === dateStr;
 
                                     return (
                                         <button
                                             key={idx}
-                                            onClick={() => !isPast && setSelectedDate(dateStr)}
+                                            onClick={() => {
+                                                if (!isPast) {
+                                                    setSelectedDate(dateStr);
+                                                    // If selecting today, check if current time slot is still valid
+                                                    if (dateStr === toLocalDateString(new Date()) && selectedTimeSlot) {
+                                                        const slot = TIME_SLOTS.find(s => s.id === selectedTimeSlot);
+                                                        const currentHour = new Date().getHours();
+                                                        if (slot && currentHour >= slot.startHour) {
+                                                            setSelectedTimeSlot('');
+                                                        }
+                                                    }
+                                                }
+                                            }}
                                             disabled={isPast}
                                             className={`h-11 flex items-center justify-center rounded-2xl text-sm font-bold transition-all ${isPast ? 'text-gray-200 cursor-not-allowed' :
                                                 isSelected ? 'bg-secondary-500 text-white shadow-lg scale-110' : 'hover:bg-gray-50 text-gray-700'
@@ -539,18 +595,27 @@ export default function BookingFlowNew({ onBack, onComplete, initialHouseId }) {
                                     <Clock className="w-4 h-4 text-secondary-500" /> Preferred Arrival Window
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
-                                    {TIME_SLOTS.map(slot => (
-                                        <button
-                                            key={slot.id}
-                                            onClick={() => setSelectedTimeSlot(slot.id)}
-                                            className={`p-3 rounded-2xl text-center border-2 transition-all ${selectedTimeSlot === slot.id ? 'border-secondary-500 bg-secondary-50/50 shadow-md' : 'border-gray-100 bg-white'
-                                                }`}
-                                        >
-                                            <div className="text-2xl mb-1">{slot.icon}</div>
-                                            <div className="text-xs font-black text-gray-900 mb-0.5">{slot.label}</div>
-                                            <div className="text-[9px] text-gray-500 font-medium whitespace-nowrap">{slot.time}</div>
-                                        </button>
-                                    ))}
+                                    {TIME_SLOTS.map(slot => {
+                                        const isToday = selectedDate === toLocalDateString(new Date());
+                                        const currentHour = new Date().getHours();
+                                        const isPassed = isToday && currentHour >= slot.startHour;
+
+                                        return (
+                                            <button
+                                                key={slot.id}
+                                                disabled={isPassed}
+                                                onClick={() => setSelectedTimeSlot(slot.id)}
+                                                className={`p-3 rounded-2xl text-center border-2 transition-all ${isPassed ? 'opacity-30 grayscale cursor-not-allowed border-gray-100' :
+                                                    selectedTimeSlot === slot.id ? 'border-secondary-500 bg-secondary-50/50 shadow-md' : 'border-gray-100 bg-white'
+                                                    }`}
+                                            >
+                                                <div className="text-2xl mb-1">{slot.icon}</div>
+                                                <div className="text-xs font-black text-gray-900 mb-0.5">{slot.label}</div>
+                                                <div className="text-[9px] text-gray-500 font-medium whitespace-nowrap">{slot.time}</div>
+                                                {isPassed && <div className="text-[8px] font-black text-red-500 uppercase mt-1">Passed</div>}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -617,7 +682,10 @@ export default function BookingFlowNew({ onBack, onComplete, initialHouseId }) {
                                     <MapPin className="w-3 h-3" /> {selectedHouse?.address.street} • {selectedHouse?.sqft || selectedHouse?.size} sqft
                                 </div>
                                 <div className="text-xs text-gray-500 flex items-center gap-1.5 mt-1 font-medium">
-                                    <Calendar className="w-3 h-3" /> {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'Date'} • {TIME_SLOTS.find(s => s.id === selectedTimeSlot)?.time}
+                                    <Calendar className="w-3 h-3" /> {selectedDate ? (() => {
+                                        const [y, m, d] = selectedDate.split('-').map(Number);
+                                        return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+                                    })() : 'Date'} • {TIME_SLOTS.find(s => s.id === selectedTimeSlot)?.time}
                                 </div>
                             </div>
 
@@ -736,13 +804,17 @@ export default function BookingFlowNew({ onBack, onComplete, initialHouseId }) {
                         <div className="bg-gray-900 rounded-3xl p-8 text-white text-left relative overflow-hidden shadow-2xl mb-12">
                             <div className="relative z-10">
                                 <div className="text-[10px] font-black text-secondary-400 uppercase tracking-widest mb-4">Confirmation ID</div>
-                                <div className="text-3xl font-black mb-6 tracking-tighter">{createdBooking?.bookingId || 'SW-9283-X'}</div>
+                                <div className="text-3xl font-black mb-6 tracking-tighter">{formatBookingId(createdBooking?.bookingId)}</div>
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-secondary-400">
                                             <Calendar className="w-4 h-4" />
                                         </div>
-                                        <div className="text-xs font-bold">{new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
+                                        <div className="text-xs font-bold">{(() => {
+                                            if (!selectedDate) return 'Date not set';
+                                            const [y, m, d] = selectedDate.split('-').map(Number);
+                                            return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+                                        })()}</div>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-secondary-400">
@@ -766,7 +838,12 @@ export default function BookingFlowNew({ onBack, onComplete, initialHouseId }) {
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border-2 border-white group-hover:border-secondary-500 transition-colors">
                                                     {cleaner.photoURL ? (
-                                                        <img src={cleaner.photoURL} alt={cleaner.name} className="w-full h-full object-cover" />
+                                                        <img
+                                                            src={cleaner.photoURL}
+                                                            alt=""
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => { e.target.parentElement.innerHTML = '<svg class="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>'; }}
+                                                        />
                                                     ) : (
                                                         <Star className="w-5 h-5 text-amber-400" />
                                                     )}

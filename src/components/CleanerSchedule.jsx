@@ -18,6 +18,14 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { getCleanerJobs, getCleanerByUserId } from '../storage';
 import {
+    parseLocalDate,
+    toLocalDateString,
+    getTodayString,
+    formatHourTo12,
+    ensureAmPmFormat,
+    extractHours
+} from '../utils/dateUtils';
+import {
     Calendar, ChevronLeft, ChevronRight, Clock, MapPin,
     DollarSign, User, Home, Check, AlertCircle, Play,
     Plus, Filter, Loader, MessageSquare
@@ -56,27 +64,49 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                 // 2. Fetch Jobs
                 const allJobs = await getCleanerJobs(cleanerProfile.id);
 
-                // Format jobs for display
+                // Format jobs for display using centralized date utilities
                 const formattedJobs = allJobs.map(job => {
-                    const scheduledDate = new Date(job.scheduledDate || job.startTime || job.createdAt);
-                    const startHour = scheduledDate.getHours();
+                    // Use centralized parseLocalDate - handles timezone issues correctly
+                    const scheduledDate = parseLocalDate(job.scheduledDate || job.startTime || job.createdAt);
                     const duration = job.duration || 2;
 
-                    const formatTime = (h) => {
-                        const period = h >= 12 ? 'PM' : 'AM';
-                        const hour12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
-                        return `${hour12}:00 ${period}`;
-                    };
+                    // Get local date string using centralized utility
+                    const localDateStr = toLocalDateString(job.scheduledDate || job.startTime || job.createdAt);
+
+                    // Determine display times
+                    let displayStartTime = job.startTime;
+                    let displayEndTime = job.endTime;
+
+                    // If startTime is an ISO string or not a formatted time, calculate from date
+                    if (!displayStartTime || displayStartTime.includes('T') || displayStartTime.includes('-')) {
+                        const startHour = extractHours(job.startTime) || scheduledDate.getHours() || 9;
+                        displayStartTime = formatHourTo12(startHour);
+                        displayEndTime = formatHourTo12(startHour + duration);
+                    } else {
+                        // Convert existing times to 12-hour format using centralized utility
+                        displayStartTime = ensureAmPmFormat(displayStartTime);
+                        displayEndTime = ensureAmPmFormat(displayEndTime);
+                    }
 
                     return {
                         id: job.id,
                         customerId: job.customerId,
-                        date: scheduledDate.toISOString().split('T')[0],
-                        startTime: formatTime(startHour),
-                        endTime: formatTime(startHour + duration),
+                        date: localDateStr,  // Use local date from centralized utility
+                        startTime: displayStartTime,
+                        endTime: displayEndTime || formatHourTo12(scheduledDate.getHours() + duration),
                         duration: duration,
                         serviceType: (job.serviceType || 'Cleaning').replace('-', ' '),
-                        earnings: Number(job.amount || job.earnings || 0),
+                        earnings: (() => {
+                            // Use job.earnings directly - this is the 90% of subtotal calculated at job creation
+                            const earnings = Number(job.earnings || 0);
+                            if (earnings > 0) {
+                                return earnings;
+                            }
+                            // Fallback: estimate from amount (total including tax)
+                            const amount = Number(job.amount || 0);
+                            const estimatedSubtotal = amount / 1.0825;
+                            return estimatedSubtotal * 0.9;
+                        })(),
                         status: job.status || 'scheduled',
                         customer: {
                             name: job.customerName || 'Home Owner',
@@ -143,7 +173,7 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
         return result;
     };
 
-    // Get month dates (calendar grid)
+    // Get month dates (calendar grid) - dynamic sizing
     const getMonthDates = (date) => {
         const result = [];
         const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
@@ -153,11 +183,20 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
         const start = new Date(firstDay);
         start.setDate(start.getDate() - start.getDay());
 
-        // Generate 6 weeks
-        for (let i = 0; i < 42; i++) {
-            const d = new Date(start);
-            d.setDate(d.getDate() + i);
-            result.push(d);
+        // End on Saturday of the week containing the last day
+        const end = new Date(lastDay);
+        if (end.getDay() < 6) {
+            end.setDate(end.getDate() + (6 - end.getDay()));
+        }
+
+        const curr = new Date(start);
+        // Ensure we show at least 5 weeks for visual consistency, or 6 if needed
+        while (curr <= end || result.length < 35) {
+            result.push(new Date(curr));
+            curr.setDate(curr.getDate() + 1);
+
+            // If we've passed the 'end' date and finished a row (7 days), stop
+            if (curr > end && result.length % 7 === 0) break;
         }
         return result;
     };
@@ -177,9 +216,8 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
         setCurrentDate(newDate);
     };
 
-    const formatDateKey = (date) => {
-        return date.toISOString().split('T')[0];
-    };
+    // Use centralized date utility for consistent timezone-safe handling
+    const formatDateKey = (date) => toLocalDateString(date);
 
     const getJobsForDate = (date) => {
         const dateKey = formatDateKey(date);
@@ -201,7 +239,7 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
     };
 
     const selectedDateJobs = getJobsForDate(selectedDate);
-    const isToday = (date) => formatDateKey(date) === formatDateKey(new Date());
+    const isTodayDate = (date) => formatDateKey(date) === getTodayString();
     const isSelected = (date) => formatDateKey(date) === formatDateKey(selectedDate);
     const isCurrentMonth = (date) => date.getMonth() === currentDate.getMonth();
 
@@ -213,7 +251,8 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
             const currentYear = currentDate.getFullYear();
 
             const monthJobs = jobs.filter(job => {
-                const jobDate = new Date(job.date);
+                // Use parseLocalDate for timezone-safe parsing
+                const jobDate = parseLocalDate(job.date);
                 return jobDate.getMonth() === currentMonth && jobDate.getFullYear() === currentYear;
             }).map(j => ({ ...j, type: 'job' }));
 
@@ -302,11 +341,22 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
 
     const handleMessageCustomer = async () => {
         if (!selectedJob?.customerId) return;
+
+        // Get the booking ID - jobs have bookingId that references the booking
+        const bookingId = selectedJob.bookingId;
+        if (!bookingId) {
+            console.error('Cannot message: No booking ID associated with this job');
+            return;
+        }
+
         try {
-            await startChat(selectedJob.customerId);
+            await startChat(selectedJob.customerId, bookingId, {
+                serviceType: selectedJob.serviceType || 'Cleaning'
+            });
             onMessaging?.();
         } catch (error) {
             console.error('Error starting chat:', error);
+            alert(error.message || 'Unable to start chat. The booking may be locked.');
         }
     };
 
@@ -380,12 +430,15 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                                     </div>
                                 </div>
                             </div>
-                            <button
-                                onClick={handleMessageCustomer}
-                                className="p-2 bg-secondary-50 text-secondary-600 rounded-full hover:bg-secondary-100 transition-colors"
-                            >
-                                <MessageSquare className="w-5 h-5" />
-                            </button>
+                            {/* Only show message button for active jobs */}
+                            {!['completed', 'cancelled'].includes(selectedJob.status) && (
+                                <button
+                                    onClick={handleMessageCustomer}
+                                    className="p-2 bg-secondary-50 text-secondary-600 rounded-full hover:bg-secondary-100 transition-colors"
+                                >
+                                    <MessageSquare className="w-5 h-5" />
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -554,7 +607,7 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                                     onClick={() => setSelectedDate(date)}
                                     className={`flex-1 py-2 px-1 rounded-xl text-center transition-all relative
                                         ${isSelected(date) ? 'bg-secondary-500 text-white' :
-                                            isToday(date) ? 'bg-secondary-100 text-secondary-700' :
+                                            isTodayDate(date) ? 'bg-secondary-100 text-secondary-700' :
                                                 'hover:bg-gray-100'}
                                         ${isFullyBlocked && !isSelected(date) ? 'bg-gray-100 text-gray-400' : ''}`}
                                 >
@@ -611,7 +664,7 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                                     onClick={() => setSelectedDate(date)}
                                     className={`aspect-square p-1 rounded-lg text-center transition-all relative
                                         ${isSelected(date) ? 'bg-secondary-500 text-white' :
-                                            isToday(date) ? 'bg-secondary-100 text-secondary-700' :
+                                            isTodayDate(date) ? 'bg-secondary-100 text-secondary-700' :
                                                 isCurrentMonth(date) ? 'hover:bg-gray-100' : 'text-gray-300'}
                                         ${!isCurrentMonth(date) ? 'opacity-50' : ''}
                                         ${isFullyBlocked && isCurrentMonth(date) && !isSelected(date) ? 'bg-gray-50 text-gray-400' : ''}`}
@@ -635,7 +688,7 @@ export default function CleanerSchedule({ onViewJob, onStartJob, onManageAvailab
                 <h3 className="font-semibold text-gray-900 mb-3">
                     {view === 'month'
                         ? `All Jobs in ${MONTHS[currentDate.getMonth()]}`
-                        : (isToday(selectedDate) ? 'Today' : selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }))
+                        : (isTodayDate(selectedDate) ? 'Today' : selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }))
                     }
                 </h3>
 

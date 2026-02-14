@@ -28,6 +28,15 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import OTPInput from './OTPInput';
+import { formatBookingId } from '../utils/formatters';
+import {
+    parseLocalDate,
+    toLocalDateString,
+    getTodayString,
+    formatHourTo12,
+    formatDisplayDate,
+    extractHours
+} from '../utils/dateUtils';
 
 export function BottomNavigation({ activeTab, onTabChange, role }) {
     const isCustomer = role === 'homeowner';
@@ -103,7 +112,7 @@ export function BottomNavigation({ activeTab, onTabChange, role }) {
  * @param {Function} onViewHouses - Nav to House Management
  * @param {Function} onViewBookings - Nav to Booking History
  */
-export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNotifications, navigateTo }) {
+export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onViewBooking, onNotifications, navigateTo }) {
     const { user, getUserHouses, getUserBookings, serviceTypes } = useApp();
 
     const [houses, setHouses] = useState([]);
@@ -113,20 +122,6 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNot
     const [todayBookings, setTodayBookings] = useState([]);
     const [inputCodes, setInputCodes] = useState({});
     const [verifyingIds, setVerifyingIds] = useState({});
-
-    // Helper to parse date string without timezone issues
-    const parseDateString = (dateStr) => {
-        if (!dateStr) return new Date();
-
-        // If it's a date-only string (YYYY-MM-DD), parse it as local time
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-            const [year, month, day] = dateStr.split('-').map(Number);
-            return new Date(year, month - 1, day);
-        }
-
-        // Otherwise parse normally
-        return new Date(dateStr);
-    };
 
     // Load data on mount
     useEffect(() => {
@@ -156,75 +151,48 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNot
                         setNotificationCount(notifications.filter(n => !n.read).length);
                     }
 
-                    // Find all of today's bookings
-                    const today = new Date().toISOString().split('T')[0];
-                    console.log('[DEBUG CustomerHome] Today:', today);
-                    console.log('[DEBUG CustomerHome] All bookings count:', (bookingsData || []).length);
-                    console.log('[DEBUG CustomerHome] All bookings:', bookingsData);
+                    // Find all of today's bookings using centralized date utilities
+                    const today = getTodayString();
 
                     const todaysBookingsList = (bookingsData || []).filter(b => {
-                        // Helper to extract YYYY-MM-DD from various formats
-                        const extractDate = (val) => {
-                            if (!val) return null;
-                            // If it's a Date object
-                            if (val instanceof Date) return val.toISOString().split('T')[0];
-                            // If it's a timestamp number
-                            if (typeof val === 'number') return new Date(val).toISOString().split('T')[0];
-                            // If it's a string
-                            if (typeof val === 'string') {
-                                // Already YYYY-MM-DD
-                                if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-                                // ISO string
-                                if (val.includes('T')) return val.split('T')[0];
-                                // Try parsing as date
-                                const d = new Date(val);
-                                if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-                            }
-                            // If it's an object with date property
-                            if (typeof val === 'object' && val.date) return extractDate(val.date);
-                            return null;
-                        };
+                        // Use centralized toLocalDateString for consistent timezone-safe handling
+                        let cleaningDate = null;
 
-                        let hasToday = false;
-
-                        // Check dates array
-                        if (b.dates && b.dates.length > 0) {
-                            hasToday = b.dates.some(date => {
-                                const dateStr = extractDate(date);
-                                return dateStr === today;
-                            });
+                        if (b.scheduledDate) {
+                            cleaningDate = toLocalDateString(b.scheduledDate);
+                        } else if (b.selectedDate) {
+                            cleaningDate = toLocalDateString(b.selectedDate);
+                        } else if (b.dates && b.dates.length > 0) {
+                            cleaningDate = b.dates.map(d => toLocalDateString(d)).find(d => d === today);
+                        } else if (b.date) {
+                            cleaningDate = toLocalDateString(b.date);
                         }
 
-                        // Also check selectedDate field
-                        if (!hasToday && b.selectedDate) {
-                            hasToday = extractDate(b.selectedDate) === today;
-                        }
-
-                        // Also check scheduledDate field
-                        if (!hasToday && b.scheduledDate) {
-                            hasToday = extractDate(b.scheduledDate) === today;
-                        }
-
-                        // Also check date field
-                        if (!hasToday && b.date) {
-                            hasToday = extractDate(b.date) === today;
-                        }
-
-                        // Also check createdAt as fallback (booking created today)
-                        if (!hasToday && b.createdAt) {
-                            hasToday = extractDate(b.createdAt) === today;
-                        }
+                        const isTodayBooking = cleaningDate === today;
 
                         // Show all today's active bookings (not cancelled/completed)
                         const activeStatuses = ['booking-placed', 'confirmed', 'matched', 'scheduled', 'assigned', 'accepted', 'on_the_way', 'arrived', 'pending_verification', 'in_progress', 'cleaning_complete'];
                         const statusMatch = activeStatuses.includes(b.status);
 
-                        console.log(`[DEBUG Booking] id=${b.id}, status=${b.status}, dates=${JSON.stringify(b.dates)}, selectedDate=${b.selectedDate}, date=${b.date}, createdAt=${b.createdAt}, hasToday=${hasToday}, statusMatch=${statusMatch}`);
-
-                        return hasToday && statusMatch;
+                        return isTodayBooking && statusMatch;
                     });
-                    console.log('[DEBUG CustomerHome] Result - today bookings:', todaysBookingsList.length);
-                    setTodayBookings(todaysBookingsList);
+
+                    // Enrich with cleaner names
+                    const { getDoc, COLLECTIONS } = await import('../storage');
+                    const enrichedBookings = await Promise.all(
+                        todaysBookingsList.map(async (booking) => {
+                            if (booking.cleanerId) {
+                                try {
+                                    const cleaner = await getDoc(COLLECTIONS.CLEANERS, booking.cleanerId);
+                                    return { ...booking, cleanerName: cleaner?.name || null };
+                                } catch (e) {
+                                    return booking;
+                                }
+                            }
+                            return booking;
+                        })
+                    );
+                    setTodayBookings(enrichedBookings);
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
@@ -257,7 +225,8 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNot
                     setTodayBookings(prev =>
                         prev.map(booking => {
                             const updated = validUpdates.find(u => u.id === booking.id);
-                            return updated || booking;
+                            // Preserve cleanerName from previous state when merging updates
+                            return updated ? { ...updated, cleanerName: booking.cleanerName } : booking;
                         })
                     );
                 }
@@ -286,7 +255,7 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNot
                     const updated = await getBookingWithTracking(bookingId);
                     if (updated) {
                         setTodayBookings(prev =>
-                            prev.map(b => b.id === bookingId ? updated : b)
+                            prev.map(b => b.id === bookingId ? { ...updated, cleanerName: b.cleanerName } : b)
                         );
                     }
                 }
@@ -313,10 +282,9 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNot
             const updated = await getBookingWithTracking(bookingId);
             if (updated) {
                 setTodayBookings(prev =>
-                    prev.map(b => b.id === bookingId ? updated : b)
+                    prev.map(b => b.id === bookingId ? { ...updated, cleanerName: b.cleanerName } : b)
                 );
             }
-            alert("Job completed and approved!");
         } catch (error) {
             console.error('Error completing booking:', error);
             alert("Failed to complete booking. Please try again.");
@@ -522,62 +490,76 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNot
                                                         </div>
                                                     )}
                                                 </div>
-
-                                                {/* Verification Input - Shows when codes are available and not yet verified */}
-                                                {todayBooking.verificationCodes?.customerCode && !todayBooking.verificationCodes?.customerVerified && (
-                                                    <div className="mt-4 pt-4 border-t border-gray-100">
-                                                        <p className="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-wider">Enter cleaner's code</p>
-                                                        <div className="flex gap-2">
-                                                            <div className="flex-1">
-                                                                <OTPInput
-                                                                    length={6}
-                                                                    value={inputCodes[todayBooking.id] || ''}
-                                                                    onChange={(val) => setInputCodes(prev => ({ ...prev, [todayBooking.id]: val }))}
-                                                                />
-                                                            </div>
-                                                            <button
-                                                                onClick={() => handleVerifyCode(todayBooking.id)}
-                                                                disabled={(inputCodes[todayBooking.id] || '').length !== 6 || verifyingIds[todayBooking.id]}
-                                                                className="px-4 bg-primary-600 text-white font-black rounded-xl text-xs uppercase tracking-wider disabled:opacity-50 hover:bg-primary-700 active:scale-95 transition-all shadow-md"
-                                                            >
-                                                                {verifyingIds[todayBooking.id] ? '...' : 'Verify'}
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Verified Status */}
-                                                {todayBooking.verificationCodes?.customerVerified && (
-                                                    <div className="mt-4 pt-4 border-t border-gray-100">
-                                                        <div className="bg-green-50 text-green-700 p-3 rounded-xl flex items-center justify-between border border-green-100">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                                                                    <Check className="w-3 h-3 text-white" />
-                                                                </div>
-                                                                <span className="font-bold text-xs uppercase tracking-wider">
-                                                                    {['approved', 'completed'].includes(todayBooking.status)
-                                                                        ? 'Cleaning Successfully Completed'
-                                                                        : todayBooking.verificationCodes?.cleanerVerified
-                                                                            ? 'Verified! Cleaning Started'
-                                                                            : 'Verified. Waiting for Cleaner...'}
-                                                                </span>
-                                                            </div>
-                                                            {todayBooking.verificationCodes?.cleanerVerified && todayBooking.status !== 'approved' && todayBooking.status !== 'completed' && (
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleCompleteBooking(todayBooking.id);
-                                                                    }}
-                                                                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-sm"
-                                                                >
-                                                                    Mark Job as Done
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
                                             </div>
                                         </div>
+
+                                        {/* Verification Input - Shows when codes are available and not yet verified */}
+                                        {todayBooking.verificationCodes?.customerCode && !todayBooking.verificationCodes?.customerVerified && (
+                                            <div className="pt-4 border-t border-gray-100">
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigateTo('customer-messaging', { bookingId: todayBooking.id });
+                                                        }}
+                                                        className="w-11 h-11 bg-teal-50 hover:bg-teal-100 rounded-xl flex items-center justify-center transition-colors border border-teal-100 flex-shrink-0 self-end"
+                                                        title="Message Cleaner"
+                                                    >
+                                                        <MessageSquare className="w-5 h-5 text-teal-600" />
+                                                    </button>
+                                                    <div className="flex-1 flex flex-col gap-2">
+                                                        <p className="text-xs font-bold text-gray-700 uppercase">Enter {todayBooking.cleanerName ? `${todayBooking.cleanerName}'s` : "Cleaner's"} Code</p>
+                                                        <OTPInput
+                                                            length={6}
+                                                            value={inputCodes[todayBooking.id] || ''}
+                                                            onChange={(val) => setInputCodes(prev => ({ ...prev, [todayBooking.id]: val }))}
+                                                            disabled={verifyingIds[todayBooking.id]}
+                                                        />
+                                                        <button
+                                                            onClick={() => handleVerifyCode(todayBooking.id)}
+                                                            disabled={(inputCodes[todayBooking.id] || '').length !== 6 || verifyingIds[todayBooking.id]}
+                                                            className={`w-full py-3 rounded-xl text-xs font-bold transition-all ${(inputCodes[todayBooking.id] || '').length !== 6 || verifyingIds[todayBooking.id]
+                                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                                : 'bg-teal-600 text-white hover:bg-teal-700 active:scale-95 shadow-md'
+                                                                }`}
+                                                        >
+                                                            {verifyingIds[todayBooking.id] ? 'Verifying...' : 'Verify Cleaner'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Verified Status */}
+                                        {todayBooking.verificationCodes?.customerVerified && (
+                                            <div className="pt-4 border-t border-gray-100">
+                                                <div className="bg-green-50 text-green-700 p-3 rounded-xl flex items-center justify-between border border-green-100">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                                                            <Check className="w-3 h-3 text-white" />
+                                                        </div>
+                                                        <span className="font-bold text-xs uppercase tracking-wider">
+                                                            {['approved', 'completed'].includes(todayBooking.status)
+                                                                ? 'Cleaning Successfully Completed'
+                                                                : todayBooking.verificationCodes?.cleanerVerified
+                                                                    ? 'Verified! Cleaning Started'
+                                                                    : 'Verified. Waiting for Cleaner...'}
+                                                        </span>
+                                                    </div>
+                                                    {todayBooking.verificationCodes?.cleanerVerified && todayBooking.status !== 'approved' && todayBooking.status !== 'completed' && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleCompleteBooking(todayBooking.id);
+                                                            }}
+                                                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+                                                        >
+                                                            Mark Job as Done
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -652,31 +634,44 @@ export function CustomerHome({ onNewBooking, onViewHouses, onViewBookings, onNot
                     {recentBookings.length > 0 ? (
                         <div className="space-y-3">
                             {recentBookings.map((booking) => {
-                                const service = serviceTypes.find(s => s.id === booking.serviceType);
+                                // Look up service type - check both serviceTypeId and serviceType fields
+                                const service = serviceTypes.find(s => s.id === (booking.serviceTypeId || booking.serviceType));
+                                // Look up house for address
+                                const house = houses.find(h => h.id === booking.houseId);
+                                const address = house?.address?.street || house?.name || 'Address not set';
+
                                 return (
-                                    <div
+                                    <button
                                         key={booking.id}
-                                        className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between"
+                                        onClick={() => onViewBooking?.(booking)}
+                                        className="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between hover:shadow-md hover:border-primary-200 transition-all text-left"
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center flex-shrink-0">
                                                 <Calendar className="w-6 h-6 text-gray-400" />
                                             </div>
-                                            <div>
+                                            <div className="min-w-0 flex-1">
                                                 <h3 className="text-sm font-bold text-gray-900">{service?.name || 'Cleaning'}</h3>
-                                                <p className="text-[10px] text-gray-500 font-mono">{booking.bookingNumber || booking.id}</p>
-                                                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase mt-1 ${booking.status === 'confirmed' ? 'bg-green-50 text-green-600' :
-                                                    booking.status === 'completed' ? 'bg-gray-100 text-gray-600' :
-                                                        'bg-blue-50 text-blue-600'
-                                                    }`}>
-                                                    {booking.status}
-                                                </span>
+                                                <p className="text-xs text-gray-500 truncate flex items-center gap-1">
+                                                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                                                    {address}
+                                                </p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-[10px] text-gray-400 font-mono">{formatBookingId(booking.bookingId)}</span>
+                                                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${booking.status === 'confirmed' ? 'bg-green-50 text-green-600' :
+                                                        booking.status === 'completed' ? 'bg-gray-100 text-gray-600' :
+                                                            'bg-blue-50 text-blue-600'
+                                                        }`}>
+                                                        {booking.status?.replace(/-/g, ' ') || 'pending'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="text-right">
+                                        <div className="text-right flex items-center gap-2 flex-shrink-0">
                                             <p className="font-bold text-gray-900">${(booking.pricing?.total || booking.totalAmount || 0).toFixed(2)}</p>
+                                            <ChevronRight className="w-4 h-4 text-gray-400" />
                                         </div>
-                                    </div>
+                                    </button>
                                 );
                             })}
                         </div>
@@ -783,7 +778,7 @@ export function BookingsList() {
                         <div key={booking.id} className="card">
                             <div className="flex items-start justify-between mb-3">
                                 <div>
-                                    <span className="font-mono text-sm text-gray-400">{booking.id}</span>
+                                    <span className="font-mono text-sm text-gray-400">{formatBookingId(booking.bookingId)}</span>
                                     <h3 className="font-bold text-gray-900">{service?.name}</h3>
                                 </div>
                                 <span className={`badge ${booking.status === 'confirmed' ? 'badge-success' :
@@ -843,7 +838,7 @@ export function BookingsList() {
  * @param {Function} onViewEarnings - Nav to detailed earnings
  * @param {Function} onViewJobs - Nav to available job offers
  */
-export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJobs, onViewHistory, onViewEarnings, onViewUpcoming }) {
+export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJobs, onViewHistory, onViewEarnings, onViewUpcoming, onViewJob }) {
     const { user } = useApp();
     const [loading, setLoading] = useState(true);
     const [dashboardData, setDashboardData] = useState({
@@ -859,12 +854,7 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
         availableJobsCount: 0
     });
 
-    const getLocalDateString = (date) => {
-        const d = new Date(date);
-        return d.getFullYear() + '-' +
-            String(d.getMonth() + 1).padStart(2, '0') + '-' +
-            String(d.getDate()).padStart(2, '0');
-    };
+    // Note: Using centralized getTodayString and toLocalDateString from dateUtils
 
     // Load dashboard data from database
     useEffect(() => {
@@ -904,17 +894,26 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                     storage.getAvailableBookings()
                 ]);
 
-                // Calculate stats
-                const now = new Date();
-                const today = getLocalDateString(new Date()); // YYYY-MM-DD local
+                // Calculate stats using centralized date utilities
+                const today = getTodayString(); // YYYY-MM-DD local
 
                 const todayJobs = allJobs.filter(job => {
                     const dateVal = job.scheduledDate || job.createdAt;
                     if (!dateVal) return false;
 
-                    // Extract date string directly (handle both YYYY-MM-DD and full ISO strings)
-                    const jobDateStr = dateVal.split('T')[0];
-                    return jobDateStr === today;
+                    // Use centralized toLocalDateString for consistent timezone handling
+                    const jobDateStr = toLocalDateString(dateVal);
+
+                    // Show if it's today
+                    if (jobDateStr === today) return true;
+
+                    // Show if it's IN THE PAST but still active (Overdue)
+                    // This handles cases where a cleaner forgot to start/complete a job yesterday
+                    if (jobDateStr < today && (job.status === 'scheduled' || job.status === 'confirmed' || job.status === 'in_progress' || job.status === 'arrived')) {
+                        return true;
+                    }
+
+                    return false;
                 });
 
                 const pendingJobs = allJobs.filter(job =>
@@ -946,61 +945,34 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                     console.error('Error parsing dismissed jobs in Home', e);
                 }
 
-                // Apply eligibility filter (same as JobOffers)
-                let eligibleCount = 0;
-                for (const booking of validAvailableBookings) {
-                    try {
-                        const match = await storage.calculateMatchScore(booking, cleanerProfile);
-                        if (match.isEligible) {
-                            eligibleCount++;
-                        }
-                    } catch (e) {
-                        // Skip bookings that can't be matched
-                    }
-                }
-                const availableJobsCount = eligibleCount;
+                // Apply eligibility filter (same as JobOffers) - Optimized with Promise.all
+                const matchScores = await Promise.all(
+                    validAvailableBookings.map(booking =>
+                        storage.calculateMatchScore(booking, cleanerProfile).catch(() => ({ isEligible: false }))
+                    )
+                );
+                const availableJobsCount = matchScores.filter(m => m.isEligible).length;
 
                 const upcomingJobs = allJobs.filter(job => {
                     const dateVal = job.scheduledDate || job.startTime;
                     if (!dateVal) return false;
 
-                    // Extract date string directly
-                    const jobDateStr = dateVal.split('T')[0];
+                    // Use centralized toLocalDateString for consistent timezone handling
+                    const jobDateStr = toLocalDateString(dateVal);
                     return jobDateStr > today && (job.status === 'scheduled' || job.status === 'confirmed');
                 }).sort((a, b) => {
-                    const dateA = (a.scheduledDate || a.startTime || '').split('T')[0];
-                    const dateB = (b.scheduledDate || b.startTime || '').split('T')[0];
+                    const dateA = toLocalDateString(a.scheduledDate || a.startTime) || '';
+                    const dateB = toLocalDateString(b.scheduledDate || b.startTime) || '';
                     return dateA.localeCompare(dateB);
                 });
 
-                // Helper to parse date string without timezone issues
-                const parseDateString = (dateStr) => {
-                    if (!dateStr) return new Date();
-
-                    // If it's a date-only string (YYYY-MM-DD), parse it as local time
-                    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-                        const [year, month, day] = dateStr.split('-').map(Number);
-                        return new Date(year, month - 1, day);
-                    }
-
-                    // Otherwise parse normally
-                    return new Date(dateStr);
-                };
-
-                // Format job for display
+                // Format job for display using centralized date utilities
                 const formatJobForSchedule = (job) => {
                     const dateVal = job.scheduledDate || job.startTime || job.createdAt || new Date().toISOString();
-                    const validDate = parseDateString(dateVal);
+                    const validDate = parseLocalDate(dateVal);
 
-                    // Get hours from startTime or the date object
-                    let hours = 9; // Default morning time
-
-                    if (job.startTime && typeof job.startTime === 'string' && job.startTime.includes(':')) {
-                        const [h] = job.startTime.split(':').map(Number);
-                        if (!isNaN(h)) hours = h;
-                    } else if (validDate && !isNaN(validDate.getTime())) {
-                        hours = validDate.getHours();
-                    }
+                    // Get hours from startTime or the date object using centralized utility
+                    let hours = extractHours(job.startTime) || validDate.getHours() || 9;
 
                     // If we still have NaN, fallback to 9
                     if (isNaN(hours)) hours = 9;
@@ -1008,31 +980,33 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                     const duration = Number(job.duration) || 3;
                     const endHours = hours + duration;
 
-                    // Format date for upcoming jobs
-                    const dateStr = (validDate && !isNaN(validDate.getTime()))
-                        ? validDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                        : 'TBA';
-
-                    const formatTime = (h) => {
-                        if (isNaN(h)) return '--:--';
-                        const hInt = Math.floor(h) % 24;
-                        const period = hInt >= 12 ? 'PM' : 'AM';
-                        const hour12 = hInt > 12 ? hInt - 12 : hInt === 0 ? 12 : hInt;
-                        return `${hour12}:00 ${period}`;
-                    };
+                    // Format date for upcoming jobs using centralized utility
+                    const dateStr = formatDisplayDate(dateVal);
 
                     return {
                         id: job.id,
                         bookingId: job.bookingId,
                         customerId: job.customerId,
                         date: dateStr,
-                        timeRange: `${formatTime(hours)} - ${formatTime(endHours)}`,
+                        timeRange: `${formatHourTo12(hours)} - ${formatHourTo12(endHours)}`,
                         serviceType: job.serviceType || 'Cleaning',
                         address: job.address || 'Address pending',
-                        earnings: (job.amount || job.earnings || 50).toFixed(2), // Format to 2 decimal places
+                        earnings: (() => {
+                            // Use job.earnings directly - this is the 90% of subtotal calculated at job creation
+                            const earnings = Number(job.earnings || 0);
+                            if (earnings > 0) {
+                                return earnings.toFixed(2);
+                            }
+                            // Fallback: estimate from amount (total including tax)
+                            const amount = Number(job.amount || 0);
+                            // Remove ~8.25% tax then take 90%
+                            const estimatedSubtotal = amount / 1.0825;
+                            const estimatedEarnings = estimatedSubtotal * 0.9;
+                            return estimatedEarnings > 0 ? estimatedEarnings.toFixed(2) : '50.00';
+                        })(),
                         status: job.status,
                         verificationCodes: job.verificationCodes || null,
-                        rawDate: dateVal.split('T')[0]
+                        rawDate: toLocalDateString(dateVal)  // Use centralized utility for local timezone
                     };
                 };
 
@@ -1042,6 +1016,14 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                         const booking = await storage.getBookingById(job.bookingId);
                         const houseId = job.houseId || booking?.houseId;
                         const house = houseId ? await storage.getHouseById(houseId) : null;
+
+                        // Fetch customer name
+                        const customerId = job.customerId || booking?.customerId;
+                        let customerName = null;
+                        if (customerId) {
+                            const customer = await storage.getUserById(customerId);
+                            customerName = customer?.name || customer?.firstName || null;
+                        }
 
                         let fullAddress = formatted.address;
                         if (house?.address) {
@@ -1053,14 +1035,14 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                             fullAddress = addrStr;
                         }
 
-                        // Calculate cleaner earnings as 90% of subtotal (10% platform fee)
-                        const subtotal = booking?.pricingBreakdown?.subtotal || booking?.pricing?.subtotal || booking?.totalAmount || job.amount || 0;
-                        const cleanerEarnings = (subtotal * 0.9).toFixed(2);
+                        // Use the earnings stored in the job record (set at acceptance time)
+                        // This is the single source of truth for cleaner's net earnings
 
                         return {
                             ...formatted,
                             address: fullAddress,
-                            earnings: cleanerEarnings,
+                            customerName,
+                            // Keep the earnings from formatJobForSchedule - already correctly calculated
                             cleanerReconfirmed: booking?.cleanerReconfirmed || false,
                             trackingStatus: booking?.tracking?.status || 'idle',
                             verificationCodes: booking?.verificationCodes || null
@@ -1086,9 +1068,8 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                             formatted.address = addrStr;
                         }
 
-                        // Calculate cleaner earnings as 90% of subtotal (10% platform fee)
-                        const subtotal = booking?.pricingBreakdown?.subtotal || booking?.pricing?.subtotal || booking?.totalAmount || job.amount || 0;
-                        formatted.earnings = (subtotal * 0.9).toFixed(2);
+                        // Earnings already calculated in formatJobForSchedule from job.earnings
+                        // No need to override - job.earnings is the source of truth
                     } catch (e) { }
                     return formatted;
                 })); // Show next 5 upcoming jobs
@@ -1126,41 +1107,65 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
         };
     }, [user?.uid]); // Dependency array for useEffect
 
-    // Poll for today's jobs updates (every 3 seconds)
+    // Poll for dashboard updates (Available Jobs & Today's Schedule)
     useEffect(() => {
-        if (!user?.uid || dashboardData.todaySchedule.length === 0) return;
+        if (!user?.uid) return;
 
         const interval = setInterval(async () => {
             try {
                 const storage = await import('../storage');
-                const updatedSchedule = await Promise.all(
-                    dashboardData.todaySchedule.map(async (job) => {
-                        try {
-                            const updatedBooking = await storage.getBookingWithTracking(job.bookingId);
-                            if (updatedBooking) {
-                                return {
-                                    ...job,
-                                    verificationCodes: updatedBooking.verificationCodes,
-                                    cleanerReconfirmed: updatedBooking.cleanerReconfirmed,
-                                    trackingStatus: updatedBooking.tracking?.status || job.trackingStatus,
-                                    status: updatedBooking.status
-                                };
-                            }
-                            return job;
-                        } catch (err) {
-                            console.error('Error fetching updated job:', err);
-                            return job;
-                        }
-                    })
-                );
-                setDashboardData(prev => ({ ...prev, todaySchedule: updatedSchedule }));
+
+                // 1. Fetch available jobs count
+                const cleanerProfile = await storage.getCleanerByUserId(user.uid);
+                if (cleanerProfile) {
+                    const availableBookings = await storage.getAvailableBookings();
+                    const dismissed = JSON.parse(localStorage.getItem(`dismissed_jobs_${user.uid}`) || '[]');
+                    const validAvailable = availableBookings.filter(b => !dismissed.includes(b.id));
+
+                    const matchScores = await Promise.all(
+                        validAvailable.map(booking =>
+                            storage.calculateMatchScore(booking, cleanerProfile).catch(() => ({ isEligible: false }))
+                        )
+                    );
+                    const newCount = matchScores.filter(m => m.isEligible).length;
+
+                    // 2. Poll today's schedule if needed
+                    let updatedSchedule = dashboardData.todaySchedule;
+                    if (dashboardData.todaySchedule.length > 0) {
+                        updatedSchedule = await Promise.all(
+                            dashboardData.todaySchedule.map(async (job) => {
+                                try {
+                                    const updatedBooking = await storage.getBookingWithTracking(job.bookingId);
+                                    if (updatedBooking) {
+                                        return {
+                                            ...job,
+                                            verificationCodes: updatedBooking.verificationCodes,
+                                            cleanerReconfirmed: updatedBooking.cleanerReconfirmed,
+                                            trackingStatus: updatedBooking.tracking?.status || job.trackingStatus,
+                                            status: updatedBooking.status
+                                        };
+                                    }
+                                    return job;
+                                } catch (err) {
+                                    return job;
+                                }
+                            })
+                        );
+                    }
+
+                    setDashboardData(prev => ({
+                        ...prev,
+                        availableJobsCount: newCount,
+                        todaySchedule: updatedSchedule
+                    }));
+                }
             } catch (error) {
-                console.error('Error polling today schedule:', error);
+                console.error('Error polling dashboard data:', error);
             }
         }, 3000);
 
         return () => clearInterval(interval);
-    }, [user?.uid, dashboardData.todaySchedule.length]);
+    }, [user?.uid, dashboardData.todaySchedule.length, dashboardData.availableJobsCount]);
 
     const [confirming, setConfirming] = useState({}); // {jobId: boolean}
     const [startingTrip, setStartingTrip] = useState({}); // {jobId: boolean}
@@ -1312,7 +1317,14 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                             {todaySchedule.map((job, index) => (
                                 <div
                                     key={job.id || index}
-                                    className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between"
+                                    onClick={() => onViewJob?.({
+                                        ...job,
+                                        displayEarnings: job.earnings,
+                                        formattedDate: job.date,
+                                        startTime: job.timeRange?.split(' - ')[0],
+                                        endTime: job.timeRange?.split(' - ')[1]
+                                    })}
+                                    className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow"
                                 >
                                     <div className="flex flex-col gap-3 w-full">
                                         <div className="flex gap-4 w-full">
@@ -1360,14 +1372,14 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                                                     {!['approved', 'completed'].includes(job.status) && (
                                                         <>
                                                             <button
-                                                                disabled={job.rawDate !== getLocalDateString(new Date()) || confirming[job.id] === 'done' || job.cleanerReconfirmed || job.status === 'in_progress'}
+                                                                disabled={job.rawDate !== getTodayString() || confirming[job.id] || job.cleanerReconfirmed || job.status === 'in_progress'}
                                                                 onClick={async (e) => {
                                                                     e.stopPropagation();
                                                                     setConfirming(prev => ({ ...prev, [job.id]: true }));
                                                                     try {
                                                                         const storage = await import('../storage');
                                                                         await storage.generateVerificationCodes(job.bookingId);
-                                                                        await storage.updateDoc('bookings', job.bookingId, { cleanerReconfirmed: true });
+                                                                        await storage.updateBooking(job.bookingId, { cleanerReconfirmed: true });
                                                                         await storage.createNotification(job.customerId, {
                                                                             type: 'cleaner_reconfirmed',
                                                                             title: 'Cleaner Confirmed',
@@ -1393,12 +1405,12 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                                                                         setConfirming(prev => ({ ...prev, [job.id]: false }));
                                                                     }
                                                                 }}
-                                                                className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[10px] font-black transition-all whitespace-nowrap uppercase tracking-tighter shadow-md translate-y-0 active:translate-y-0.5 ${job.rawDate !== getLocalDateString(new Date()) || confirming[job.id] === 'done' || job.cleanerReconfirmed || job.status === 'in_progress'
+                                                                className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[10px] font-black transition-all whitespace-nowrap uppercase tracking-tighter shadow-md translate-y-0 active:translate-y-0.5 ${job.rawDate !== getTodayString() || confirming[job.id] || job.cleanerReconfirmed || job.status === 'in_progress'
                                                                     ? 'bg-gray-50 text-gray-400 border border-gray-100 shadow-none opacity-50'
-                                                                    : `bg-teal-600 text-white hover:bg-teal-700 active:scale-95 ${!(confirming[job.id] === 'done' || job.cleanerReconfirmed) ? 'animate-pulse' : ''}`
+                                                                    : `bg-teal-600 text-white hover:bg-teal-700 active:scale-95 ${!job.cleanerReconfirmed ? 'animate-pulse' : ''}`
                                                                     }`}
                                                             >
-                                                                {(confirming[job.id] === 'done' || job.cleanerReconfirmed) ? <><CheckCircle2 className="w-3.5 h-3.5" /> Confirmed</> : 'Confirm & Get Code'}
+                                                                {(confirming[job.id] === 'done' || job.cleanerReconfirmed) ? <><CheckCircle2 className="w-3.5 h-3.5" /> Confirmed</> : confirming[job.id] === true ? 'Confirming...' : 'Confirm & Get Code'}
                                                             </button>
 
                                                             {/* Hidden Start Trip button for now */}
@@ -1414,85 +1426,97 @@ export function CleanerHome({ onNotifications, onMessaging, onRatings, onViewJob
                                                         </span>
                                                     </div>
                                                 </div>
-
-                                                {/* Verification Input Section */}
-                                                {job.verificationCodes && !job.verificationCodes?.cleanerVerified && (
-                                                    <div className="mt-4 pt-4 border-t border-gray-100">
-                                                        <p className="text-xs font-bold text-gray-700 uppercase mb-3">Enter Homeowner's Code</p>
-                                                        <div className="flex flex-col gap-3">
-                                                            <OTPInput
-                                                                length={6}
-                                                                value={cleanerVerificationInput[job.id] || ''}
-                                                                onChange={(code) => setCleanerVerificationInput(prev => ({ ...prev, [job.id]: code }))}
-                                                                disabled={verifyingCleaner[job.id]}
-                                                            />
-                                                            <button
-                                                                onClick={async (e) => {
-                                                                    e.stopPropagation();
-                                                                    const inputCode = cleanerVerificationInput[job.id];
-                                                                    if (inputCode?.length !== 6) return;
-
-                                                                    setVerifyingCleaner(prev => ({ ...prev, [job.id]: true }));
-                                                                    try {
-                                                                        const storage = await import('../storage');
-                                                                        const success = await storage.verifyJobCode(job.bookingId, 'cleaner', inputCode);
-                                                                        if (success) {
-                                                                            const started = await storage.checkVerificationAndStart(job.bookingId);
-                                                                            if (started) {
-                                                                                // Fetch updated booking from database
-                                                                                const updatedBooking = await storage.getBookingWithTracking(job.bookingId);
-                                                                                if (updatedBooking) {
-                                                                                    // Update todaySchedule with fresh data from database
-                                                                                    setDashboardData(prev => ({
-                                                                                        ...prev,
-                                                                                        todaySchedule: prev.todaySchedule.map(j =>
-                                                                                            j.bookingId === job.bookingId ? {
-                                                                                                ...j,
-                                                                                                verificationCodes: updatedBooking.verificationCodes,
-                                                                                                status: updatedBooking.status,
-                                                                                                trackingStatus: updatedBooking.tracking?.status || j.trackingStatus
-                                                                                            } : j
-                                                                                        )
-                                                                                    }));
-                                                                                }
-                                                                            }
-                                                                        } else {
-                                                                            alert("Incorrect code. Please try again.");
-                                                                        }
-                                                                    } catch (err) {
-                                                                        console.error('Verification error:', err);
-                                                                        alert("Verification failed. Please try again.");
-                                                                    } finally {
-                                                                        setVerifyingCleaner(prev => ({ ...prev, [job.id]: false }));
-                                                                    }
-                                                                }}
-                                                                disabled={!cleanerVerificationInput[job.id] || cleanerVerificationInput[job.id].length !== 6 || verifyingCleaner[job.id]}
-                                                                className={`w-full py-3 rounded-xl text-xs font-bold transition-all ${!cleanerVerificationInput[job.id] || cleanerVerificationInput[job.id].length !== 6 || verifyingCleaner[job.id]
-                                                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                                    : 'bg-teal-600 text-white hover:bg-teal-700 active:scale-95 shadow-md'
-                                                                    }`}
-                                                            >
-                                                                {verifyingCleaner[job.id] ? 'Verifying...' : 'Verify Homeowner'}
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Verified Success Message */}
-                                                {job.verificationCodes?.cleanerVerified && (
-                                                    <div className="mt-4 pt-4 border-t border-gray-100">
-                                                        <div className="flex items-center justify-center gap-2 py-3 bg-green-50 text-green-700 rounded-xl border border-green-200">
-                                                            <CheckCircle2 className="w-5 h-5" />
-                                                            <span className="font-bold text-sm">
-                                                                {['approved', 'completed'].includes(job.status)
-                                                                    ? 'Work Finished & Approved'
-                                                                    : 'Verified! Job Started'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                )}
                                             </div>
                                         </div>
+
+                                        {/* Verification Input Section */}
+                                        {job.verificationCodes && !job.verificationCodes?.cleanerVerified && (
+                                            <div className="pt-4 border-t border-gray-100">
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onMessaging({ bookingId: job.bookingId });
+                                                        }}
+                                                        className="w-11 h-11 bg-teal-50 hover:bg-teal-100 rounded-xl flex items-center justify-center transition-colors border border-teal-100 flex-shrink-0 self-end"
+                                                        title="Message Homeowner"
+                                                    >
+                                                        <MessageSquare className="w-5 h-5 text-teal-600" />
+                                                    </button>
+                                                    <div className="flex-1 flex flex-col gap-2">
+                                                        <p className="text-xs font-bold text-gray-700 uppercase">Enter {job.customerName ? `${job.customerName}'s` : "Homeowner's"} Code</p>
+                                                        <OTPInput
+                                                            length={6}
+                                                            value={cleanerVerificationInput[job.id] || ''}
+                                                            onChange={(code) => setCleanerVerificationInput(prev => ({ ...prev, [job.id]: code }))}
+                                                            disabled={verifyingCleaner[job.id]}
+                                                        />
+                                                        <button
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                const inputCode = cleanerVerificationInput[job.id];
+                                                                if (inputCode?.length !== 6) return;
+
+                                                                setVerifyingCleaner(prev => ({ ...prev, [job.id]: true }));
+                                                                try {
+                                                                    const storage = await import('../storage');
+                                                                    const success = await storage.verifyJobCode(job.bookingId, 'cleaner', inputCode);
+                                                                    if (success) {
+                                                                        const started = await storage.checkVerificationAndStart(job.bookingId);
+                                                                        if (started) {
+                                                                            // Fetch updated booking from database
+                                                                            const updatedBooking = await storage.getBookingWithTracking(job.bookingId);
+                                                                            if (updatedBooking) {
+                                                                                // Update todaySchedule with fresh data from database
+                                                                                setDashboardData(prev => ({
+                                                                                    ...prev,
+                                                                                    todaySchedule: prev.todaySchedule.map(j =>
+                                                                                        j.bookingId === job.bookingId ? {
+                                                                                            ...j,
+                                                                                            verificationCodes: updatedBooking.verificationCodes,
+                                                                                            status: updatedBooking.status,
+                                                                                            trackingStatus: updatedBooking.tracking?.status || j.trackingStatus
+                                                                                        } : j
+                                                                                    )
+                                                                                }));
+                                                                            }
+                                                                        }
+                                                                    } else {
+                                                                        alert("Incorrect code. Please try again.");
+                                                                    }
+                                                                } catch (err) {
+                                                                    console.error('Verification error:', err);
+                                                                    alert("Verification failed. Please try again.");
+                                                                } finally {
+                                                                    setVerifyingCleaner(prev => ({ ...prev, [job.id]: false }));
+                                                                }
+                                                            }}
+                                                            disabled={!cleanerVerificationInput[job.id] || cleanerVerificationInput[job.id].length !== 6 || verifyingCleaner[job.id]}
+                                                            className={`w-full py-3 rounded-xl text-xs font-bold transition-all ${!cleanerVerificationInput[job.id] || cleanerVerificationInput[job.id].length !== 6 || verifyingCleaner[job.id]
+                                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                                : 'bg-teal-600 text-white hover:bg-teal-700 active:scale-95 shadow-md'
+                                                                }`}
+                                                        >
+                                                            {verifyingCleaner[job.id] ? 'Verifying...' : 'Verify Homeowner'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Verified Success Message */}
+                                        {job.verificationCodes?.cleanerVerified && (
+                                            <div className="pt-4 border-t border-gray-100">
+                                                <div className="flex items-center justify-center gap-2 py-3 bg-green-50 text-green-700 rounded-xl border border-green-200">
+                                                    <CheckCircle2 className="w-5 h-5" />
+                                                    <span className="font-bold text-sm">
+                                                        {['approved', 'completed'].includes(job.status)
+                                                            ? 'Work Finished & Approved'
+                                                            : 'Verified! Job Started'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}

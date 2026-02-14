@@ -17,8 +17,9 @@ import {
     User, Car, Home, ChevronRight, Loader2
 } from 'lucide-react';
 import { getBookingWithTracking } from '../storage';
+import { formatBookingId } from '../utils/formatters';
 
-// Live Tracking - Customer view of cleaner en route
+// Live Tracking - Customer view of cleaner en route (real-time)
 export default function LiveTracking({ booking, cleaner, onBack }) {
     const [cleanerLocation, setCleanerLocation] = useState({
         lat: 32.7767,
@@ -83,7 +84,7 @@ export default function LiveTracking({ booking, cleaner, onBack }) {
             {booking?.bookingId && (
                 <div className="px-4 py-2 bg-white border-b border-gray-100">
                     <p className="text-xs text-center text-gray-500">
-                        Booking: <span className="font-mono font-semibold text-gray-700">{booking.bookingId}</span>
+                        Booking: <span className="font-mono font-semibold text-gray-700">{formatBookingId(booking.bookingId)}</span>
                     </p>
                 </div>
             )}

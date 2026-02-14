@@ -16,6 +16,8 @@ import { Calendar, Clock, Home, Sparkles, MapPin, RefreshCw, Loader2, AlertCircl
 import { useApp } from '../context/AppContext';
 import { COLLECTIONS, getDocs } from '../storage/db';
 import { createReview } from '../storage';
+import { formatBookingId } from '../utils/formatters';
+import { formatDisplayDate } from '../utils/dateUtils';
 
 export default function MyBookings({ onMessaging, onTrackJob, onViewTopCleaners, onViewBooking }) {
     const { user, serviceTypes, addOns, startChat } = useApp();
@@ -161,19 +163,15 @@ export default function MyBookings({ onMessaging, onTrackJob, onViewTopCleaners,
             .filter(Boolean); // Remove undefined/null
     };
 
+    // Use centralized date utility for timezone-safe formatting
     const formatDate = (dateStr) => {
         if (!dateStr) return 'Date not set';
-        try {
-            const date = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
-            return date.toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-            });
-        } catch {
-            return dateStr;
-        }
+        return formatDisplayDate(dateStr, {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
     };
 
     const formatTimeSlot = (slotId) => {
@@ -428,11 +426,22 @@ export default function MyBookings({ onMessaging, onTrackJob, onViewTopCleaners,
 
                     const handleMessageCleaner = async () => {
                         if (!booking.cleanerId) return;
+
+                        // Use booking.id (the internal ID) for conversation scoping
+                        const bookingDocId = booking.id;
+                        if (!bookingDocId) {
+                            console.error('Cannot message: No booking ID');
+                            return;
+                        }
+
                         try {
-                            await startChat(booking.cleanerId);
+                            await startChat(booking.cleanerId, bookingDocId, {
+                                serviceType: getServiceName(booking.serviceTypeId)
+                            });
                             onMessaging?.();
                         } catch (error) {
                             console.error('Error starting chat:', error);
+                            alert(error.message || 'Unable to start chat. The booking may be locked.');
                         }
                     };
 
@@ -448,7 +457,7 @@ export default function MyBookings({ onMessaging, onTrackJob, onViewTopCleaners,
                                     {getStatusText(booking.status)}
                                 </span>
                                 <span className="text-[10px] font-bold text-gray-300 uppercase tracking-tighter">
-                                    #{booking.bookingId || booking.id?.slice(-6) || 'N/A'}
+                                    {formatBookingId(booking.bookingId)}
                                 </span>
                             </div>
 
@@ -495,7 +504,8 @@ export default function MyBookings({ onMessaging, onTrackJob, onViewTopCleaners,
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    {booking.cleanerId && (
+                                    {/* Only show message button for active bookings (not completed/approved/cancelled) */}
+                                    {booking.cleanerId && !['completed', 'approved', 'cancelled', 'declined'].includes(booking.status) && (
                                         <button
                                             onClick={(e) => { e.stopPropagation(); handleMessageCleaner(); }}
                                             className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-full transition-all"

@@ -15,6 +15,7 @@ import {
     Download, Mail, Share2, ChevronLeft, Check,
     Calendar, MapPin, User, CreditCard
 } from 'lucide-react';
+import { formatBookingId } from '../utils/formatters';
 
 // Receipt Viewer - View and download booking receipts
 export default function ReceiptViewer({ booking, onBack }) {
@@ -32,7 +33,7 @@ export default function ReceiptViewer({ booking, onBack }) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `GoSwish_Receipt_${booking.bookingId}.html`;
+            a.download = `GoSwish_Receipt_${formatBookingId(booking.bookingId)}.html`;
             a.click();
             URL.revokeObjectURL(url);
             setDownloading(false);
@@ -48,7 +49,7 @@ export default function ReceiptViewer({ booking, onBack }) {
     const handleShare = () => {
         if (navigator.share) {
             navigator.share({
-                title: `GoSwish Receipt - ${booking.bookingId}`,
+                title: `GoSwish Receipt - ${formatBookingId(booking.bookingId)}`,
                 text: `Receipt for ${booking.serviceType} cleaning service`,
                 url: window.location.href
             });
@@ -61,7 +62,7 @@ export default function ReceiptViewer({ booking, onBack }) {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>GoSwish Receipt - ${booking.bookingId}</title>
+  <title>GoSwish Receipt - ${formatBookingId(booking.bookingId)}</title>
   <style>
     body { font-family: 'Inter', Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
     .header { text-align: center; margin-bottom: 40px; }
@@ -85,7 +86,7 @@ export default function ReceiptViewer({ booking, onBack }) {
   <div class="header">
     <div class="logo">GoSwish</div>
     <div class="receipt-title">RECEIPT</div>
-    <div class="receipt-number">Receipt #${booking.bookingId}</div>
+    <div class="receipt-number">Receipt #${formatBookingId(booking.bookingId)}</div>
   </div>
 
   <div class="section">
@@ -96,7 +97,7 @@ export default function ReceiptViewer({ booking, onBack }) {
     </div>
     <div class="info-row">
       <span class="label">Service Type</span>
-      <span class="value">${booking.serviceType.charAt(0).toUpperCase() + booking.serviceType.slice(1)} Clean</span>
+      <span class="value">${(booking.serviceType || 'Standard').charAt(0).toUpperCase() + (booking.serviceType || 'standard').slice(1)} Clean</span>
     </div>
     <div class="info-row">
       <span class="label">Property</span>
@@ -217,7 +218,7 @@ export default function ReceiptViewer({ booking, onBack }) {
                     <div className="text-center mb-8">
                         <h1 className="text-3xl font-bold mb-2">GoSwish</h1>
                         <h2 className="text-2xl font-semibold text-gray-900 mb-2">RECEIPT</h2>
-                        <p className="text-sm text-gray-500">Receipt #{booking.bookingId}</p>
+                        <p className="text-sm text-gray-500">Receipt #{formatBookingId(booking.bookingId)}</p>
                     </div>
 
                     {/* Booking Info */}

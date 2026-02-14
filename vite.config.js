@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     host: true, // Listen on all addresses for mobile testing
     port: 5174,
+    strictPort: true, // Fail if port 5174 is not available (never auto-change ports)
   },
   build: {
     target: 'esnext',
