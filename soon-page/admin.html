@@ -840,6 +840,210 @@
             background: rgba(255, 255, 255, 0.08);
             color: var(--text-white);
         }
+
+        /* Cleaner Management */
+        .cleaners-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .cleaners-toolbar .search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 8px 14px;
+            flex: 1;
+            max-width: 350px;
+        }
+
+        .cleaners-toolbar .search-box i {
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        .cleaners-toolbar .search-box input {
+            background: none;
+            border: none;
+            color: var(--text-white);
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            width: 100%;
+        }
+
+        .cleaners-toolbar .search-box input::placeholder {
+            color: var(--text-dim);
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+            background: none;
+            color: var(--text-dim);
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-btn:hover {
+            color: var(--text-white);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .filter-btn.active {
+            color: var(--primary);
+            background: var(--primary-light);
+            border-color: var(--primary);
+        }
+
+        .badge-active {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+
+        .badge-inactive {
+            background: rgba(156, 163, 175, 0.15);
+            color: #9ca3af;
+        }
+
+        .badge-suspended {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+
+        .cleaner-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            color: var(--primary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .cleaner-name-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .star-rating {
+            color: #f59e0b;
+            font-size: 13px;
+            letter-spacing: 1px;
+        }
+
+        .service-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 2px;
+            background: rgba(27, 122, 145, 0.12);
+            color: var(--primary);
+        }
+
+        .area-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 2px;
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--warning);
+        }
+
+        .avail-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 2px;
+            background: rgba(34, 197, 94, 0.12);
+            color: var(--success);
+        }
+
+        .cleaner-stat-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .cleaner-stat {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 16px 24px;
+            text-align: center;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .cleaner-stat .value {
+            font-size: 28px;
+            font-weight: 800;
+        }
+
+        .cleaner-stat .label {
+            color: var(--text-dim);
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .checkbox-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            accent-color: var(--primary);
+        }
+
+        .checkbox-item label {
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 500;
+        }
     </style>
 </head>
 
@@ -887,6 +1091,7 @@
         <div class="tabs">
             <button class="tab active" data-tab="overview">Overview</button>
             <button class="tab" data-tab="bookings">Bookings</button>
+            <button class="tab" data-tab="cleaners">Cleaners</button>
             <button class="tab" data-tab="submissions">Waitlist</button>
             <button class="tab" data-tab="visits">Visits</button>
             <button class="tab" data-tab="activity">Activity</button>
@@ -1026,6 +1231,56 @@
             </div>
         </div>
 
+        <!-- Cleaners Tab -->
+        <div class="tab-content" id="tab-cleaners">
+            <!-- Cleaners List View -->
+            <div id="cleanersListView">
+                <div class="cleaner-stat-row" id="cleanerStats"></div>
+                <div class="cleaners-toolbar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="cleanerSearch" placeholder="Search cleaners..."
+                            oninput="filterCleaners()">
+                    </div>
+                    <div class="filter-group">
+                        <button class="filter-btn active" onclick="setCleanerFilter('all', this)">All</button>
+                        <button class="filter-btn" onclick="setCleanerFilter('active', this)">Active</button>
+                        <button class="filter-btn" onclick="setCleanerFilter('inactive', this)">Inactive</button>
+                        <button class="filter-btn" onclick="setCleanerFilter('suspended', this)">Suspended</button>
+                    </div>
+                    <button class="btn btn-primary" onclick="showAddCleaner()">
+                        <i class="fas fa-plus"></i> Add Cleaner
+                    </button>
+                </div>
+                <div class="table-card">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cleaner</th>
+                                <th>Contact</th>
+                                <th>Services</th>
+                                <th>Areas</th>
+                                <th>Rate</th>
+                                <th>Rating</th>
+                                <th>Jobs</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cleanersTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Cleaner Detail View -->
+            <div id="cleanerDetailView" class="booking-detail-view">
+                <button class="detail-back-btn" onclick="backToCleanersList()">
+                    <i class="fas fa-arrow-left"></i> Back to Cleaners
+                </button>
+                <div id="cleanerDetailContent"></div>
+            </div>
+        </div>
+
         <!-- Activity Tab -->
         <div class="tab-content" id="tab-activity">
             <div class="chart-card">
@@ -1038,6 +1293,9 @@
             const ANALYTICS_KEY = 'mopt_analytics';
             const WAITLIST_KEY = 'mopt_waitlist';
             const BOOKINGS_KEY = 'mopt_bookings';
+            const CLEANERS_KEY = 'mopt_cleaners';
+
+            let currentCleanerFilter = 'all';
 
             function getBookings() {
                 try {
@@ -1049,6 +1307,18 @@
 
             function saveBookings(bookings) {
                 localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings));
+            }
+
+            function getCleaners() {
+                try {
+                    return JSON.parse(localStorage.getItem(CLEANERS_KEY)) || [];
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function saveCleaners(cleaners) {
+                localStorage.setItem(CLEANERS_KEY, JSON.stringify(cleaners));
             }
 
             function getAnalytics() {
@@ -1136,6 +1406,7 @@
                 renderVisitsTable(analytics.visits || []);
                 renderActivityTimeline(analytics, waitlist, bookings);
                 renderBookingsTable(bookings);
+                renderCleanersTable();
             }
 
             function renderBarChart(containerId, data) {
@@ -1790,12 +2061,463 @@
             }
 
             function clearData() {
-                if (confirm('Are you sure you want to clear ALL analytics, waitlist, and bookings data? This cannot be undone.')) {
+                if (confirm('Are you sure you want to clear ALL analytics, waitlist, bookings, and cleaners data? This cannot be undone.')) {
                     localStorage.removeItem(ANALYTICS_KEY);
                     localStorage.removeItem(WAITLIST_KEY);
                     localStorage.removeItem(BOOKINGS_KEY);
+                    localStorage.removeItem(CLEANERS_KEY);
                     refreshData();
                 }
+            }
+
+            // ========== CLEANER MANAGEMENT ==========
+
+            const ALL_SERVICES = ['Standard Clean', 'Deep Clean', 'Move-In/Out', 'Post-Construction', 'Carpet Clean', 'Window Clean', 'Laundry', 'Organization'];
+            const ALL_AREAS = ['Dallas', 'Fort Worth', 'Plano', 'Arlington', 'Irving', 'Frisco', 'McKinney', 'Denton', 'Richardson', 'Garland'];
+            const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+            function generateCleanerId() {
+                return 'CLN-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 5).toUpperCase();
+            }
+
+            function getInitials(first, last) {
+                return ((first || '')[0] || '').toUpperCase() + ((last || '')[0] || '').toUpperCase();
+            }
+
+            function renderStars(rating) {
+                const full = Math.floor(rating);
+                const half = rating % 1 >= 0.5 ? 1 : 0;
+                const empty = 5 - full - half;
+                return '<span class="star-rating">' +
+                    '★'.repeat(full) +
+                    (half ? '½' : '') +
+                    '☆'.repeat(empty) +
+                    '</span> <small style="color:var(--text-dim)">' + rating.toFixed(1) + '</small>';
+            }
+
+            function renderCleanerStats() {
+                const cleaners = getCleaners();
+                const total = cleaners.length;
+                const active = cleaners.filter(c => c.status === 'active').length;
+                const inactive = cleaners.filter(c => c.status === 'inactive').length;
+                const suspended = cleaners.filter(c => c.status === 'suspended').length;
+                const avgRating = total > 0 ? (cleaners.reduce((s, c) => s + (c.rating || 0), 0) / total).toFixed(1) : '0.0';
+
+                document.getElementById('cleanerStats').innerHTML = `
+                    <div class="cleaner-stat">
+                        <div class="value" style="color:var(--text-white)">${total}</div>
+                        <div class="label">Total Cleaners</div>
+                    </div>
+                    <div class="cleaner-stat">
+                        <div class="value" style="color:var(--success)">${active}</div>
+                        <div class="label">Active</div>
+                    </div>
+                    <div class="cleaner-stat">
+                        <div class="value" style="color:#9ca3af">${inactive}</div>
+                        <div class="label">Inactive</div>
+                    </div>
+                    <div class="cleaner-stat">
+                        <div class="value" style="color:var(--danger)">${suspended}</div>
+                        <div class="label">Suspended</div>
+                    </div>
+                    <div class="cleaner-stat">
+                        <div class="value" style="color:var(--warning)">⭐ ${avgRating}</div>
+                        <div class="label">Avg Rating</div>
+                    </div>
+                `;
+            }
+
+            function renderCleanersTable() {
+                renderCleanerStats();
+                const cleaners = getCleaners();
+                const tbody = document.getElementById('cleanersTable');
+                if (!tbody) return;
+
+                const search = (document.getElementById('cleanerSearch')?.value || '').toLowerCase();
+
+                let filtered = cleaners.filter(c => {
+                    if (currentCleanerFilter !== 'all' && c.status !== currentCleanerFilter) return false;
+                    if (search) {
+                        const searchStr = `${c.firstName} ${c.lastName} ${c.email} ${c.phone} ${(c.services || []).join(' ')} ${(c.areas || []).join(' ')}`.toLowerCase();
+                        return searchStr.includes(search);
+                    }
+                    return true;
+                });
+
+                if (filtered.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><i class="fas fa-user-slash"></i><p>No cleaners found</p></td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = filtered.map(c => {
+                    const initials = getInitials(c.firstName, c.lastName);
+                    const services = (c.services || []).slice(0, 2).map(s => `<span class="service-tag">${s}</span>`).join('');
+                    const moreServices = (c.services || []).length > 2 ? `<span class="service-tag">+${c.services.length - 2}</span>` : '';
+                    const areas = (c.areas || []).slice(0, 2).map(a => `<span class="area-tag">${a}</span>`).join('');
+                    const moreAreas = (c.areas || []).length > 2 ? `<span class="area-tag">+${c.areas.length - 2}</span>` : '';
+
+                    return `
+                        <tr>
+                            <td>
+                                <div class="cleaner-name-cell">
+                                    <span class="cleaner-avatar">${initials}</span>
+                                    <div>
+                                        <strong>${c.firstName} ${c.lastName}</strong>
+                                        <div class="booking-details">${c.cleanerId}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div>${c.email || 'N/A'}</div>
+                                <div class="booking-details">${c.phone || 'N/A'}</div>
+                            </td>
+                            <td>${services}${moreServices}</td>
+                            <td>${areas}${moreAreas}</td>
+                            <td class="booking-price">$${(c.hourlyRate || 0).toFixed(0)}/hr</td>
+                            <td>${renderStars(c.rating || 0)}</td>
+                            <td>${c.totalJobs || 0}</td>
+                            <td><span class="badge badge-${c.status || 'inactive'}">${(c.status || 'inactive')}</span></td>
+                            <td>
+                                <button class="action-btn view" onclick="viewCleanerDetails('${c.cleanerId}')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="action-btn confirm" onclick="editCleaner('${c.cleanerId}')">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button class="action-btn cancel" onclick="deleteCleaner('${c.cleanerId}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            function setCleanerFilter(filter, btn) {
+                currentCleanerFilter = filter;
+                document.querySelectorAll('#tab-cleaners .filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderCleanersTable();
+            }
+
+            function filterCleaners() {
+                renderCleanersTable();
+            }
+
+            function viewCleanerDetails(cleanerId) {
+                const cleaners = getCleaners();
+                const c = cleaners.find(cl => cl.cleanerId === cleanerId);
+                if (!c) return;
+
+                document.getElementById('cleanersListView').style.display = 'none';
+                document.getElementById('cleanerDetailView').classList.add('active');
+
+                const services = (c.services || []).map(s => `<span class="service-tag">${s}</span>`).join('') || 'None';
+                const areas = (c.areas || []).map(a => `<span class="area-tag">${a}</span>`).join('') || 'None';
+                const availability = (c.availability || []).map(d => `<span class="avail-tag">${d}</span>`).join('') || 'Not set';
+                const initials = getInitials(c.firstName, c.lastName);
+
+                document.getElementById('cleanerDetailContent').innerHTML = `
+                    <div class="detail-header">
+                        <div class="detail-header-left" style="display:flex;align-items:center;gap:16px">
+                            <span class="cleaner-avatar" style="width:56px;height:56px;font-size:22px">${initials}</span>
+                            <div>
+                                <h2 style="margin:0 0 4px">${c.firstName} ${c.lastName}</h2>
+                                <div class="detail-meta">${c.cleanerId} • Joined ${new Date(c.createdAt).toLocaleDateString()}${c.updatedAt ? ' • Updated ' + new Date(c.updatedAt).toLocaleDateString() : ''}</div>
+                            </div>
+                        </div>
+                        <div class="detail-actions">
+                            <button class="btn btn-edit" onclick="editCleaner('${c.cleanerId}')">
+                                <i class="fas fa-pen"></i> Edit
+                            </button>
+                            <button class="btn btn-delete" onclick="deleteCleaner('${c.cleanerId}')">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="detail-grid">
+                        <div class="detail-card">
+                            <h3><i class="fas fa-info-circle"></i> Status & Performance</h3>
+                            <div class="detail-row">
+                                <span class="detail-label">Status</span>
+                                <span class="detail-value"><span class="badge badge-${c.status}">${c.status}</span></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Rating</span>
+                                <span class="detail-value">${renderStars(c.rating || 0)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Total Jobs</span>
+                                <span class="detail-value">${c.totalJobs || 0}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Hourly Rate</span>
+                                <span class="detail-value highlight">$${(c.hourlyRate || 0).toFixed(2)}/hr</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-card">
+                            <h3><i class="fas fa-address-card"></i> Contact Info</h3>
+                            <div class="detail-row">
+                                <span class="detail-label">Email</span>
+                                <span class="detail-value">${c.email || 'N/A'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Phone</span>
+                                <span class="detail-value">${c.phone || 'N/A'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Address</span>
+                                <span class="detail-value">${c.address || 'N/A'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">City / State</span>
+                                <span class="detail-value">${c.city || 'N/A'}${c.state ? ', ' + c.state : ''}</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-card">
+                            <h3><i class="fas fa-broom"></i> Services Offered</h3>
+                            <div style="padding:8px 0">${services}</div>
+                        </div>
+
+                        <div class="detail-card">
+                            <h3><i class="fas fa-map-location-dot"></i> Service Areas</h3>
+                            <div style="padding:8px 0">${areas}</div>
+                        </div>
+
+                        <div class="detail-card">
+                            <h3><i class="fas fa-clock"></i> Availability</h3>
+                            <div style="padding:8px 0">${availability}</div>
+                            <div class="detail-row">
+                                <span class="detail-label">Preferred Hours</span>
+                                <span class="detail-value">${c.preferredHours || 'Flexible'}</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-card">
+                            <h3><i class="fas fa-clipboard-list"></i> Notes</h3>
+                            <div class="detail-notes">${c.notes || 'No notes'}</div>
+                        </div>
+                    </div>
+                `;
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            function backToCleanersList() {
+                document.getElementById('cleanersListView').style.display = 'block';
+                document.getElementById('cleanerDetailView').classList.remove('active');
+            }
+
+            function renderCleanerForm(cleaner = null) {
+                const isNew = !cleaner;
+                const c = cleaner || { firstName: '', lastName: '', email: '', phone: '', address: '', city: '', state: 'Texas', hourlyRate: 25, rating: 0, totalJobs: 0, status: 'active', services: [], areas: [], availability: [], preferredHours: '', notes: '' };
+
+                const statusOpts = ['active', 'inactive', 'suspended'].map(s =>
+                    `<option value="${s}" ${c.status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+                ).join('');
+
+                const servicesCheckboxes = ALL_SERVICES.map(s =>
+                    `<div class="checkbox-item">
+                        <input type="checkbox" id="svc_${s.replace(/\s/g, '_')}" name="services" value="${s}" ${(c.services || []).includes(s) ? 'checked' : ''}>
+                        <label for="svc_${s.replace(/\s/g, '_')}">${s}</label>
+                    </div>`
+                ).join('');
+
+                const areasCheckboxes = ALL_AREAS.map(a =>
+                    `<div class="checkbox-item">
+                        <input type="checkbox" id="area_${a.replace(/\s/g, '_')}" name="areas" value="${a}" ${(c.areas || []).includes(a) ? 'checked' : ''}>
+                        <label for="area_${a.replace(/\s/g, '_')}">${a}</label>
+                    </div>`
+                ).join('');
+
+                const availCheckboxes = ALL_DAYS.map(d =>
+                    `<div class="checkbox-item">
+                        <input type="checkbox" id="avail_${d}" name="availability" value="${d}" ${(c.availability || []).includes(d) ? 'checked' : ''}>
+                        <label for="avail_${d}">${d}</label>
+                    </div>`
+                ).join('');
+
+                const hoursOpts = ['Flexible', 'Morning (8 AM - 12 PM)', 'Afternoon (12 PM - 5 PM)', 'Evening (5 PM - 9 PM)', 'Full Day (8 AM - 5 PM)'].map(h =>
+                    `<option value="${h}" ${c.preferredHours === h ? 'selected' : ''}>${h}</option>`
+                ).join('');
+
+                return `
+                    <div class="detail-header">
+                        <div class="detail-header-left">
+                            <h2><i class="fas ${isNew ? 'fa-user-plus' : 'fa-pen-to-square'}" style="color:${isNew ? 'var(--success)' : 'var(--warning)'}"></i> ${isNew ? 'Add New Cleaner' : 'Edit ' + c.firstName + ' ' + c.lastName}</h2>
+                            <div class="detail-meta">${isNew ? 'Fill in the details below' : 'Update details and click Save'}</div>
+                        </div>
+                    </div>
+
+                    <form id="cleanerForm" onsubmit="return saveCleanerForm(event, '${isNew ? '' : c.cleanerId}')">
+                        <div class="detail-grid">
+                            <div class="detail-card">
+                                <h3><i class="fas fa-user"></i> Personal Info</h3>
+                                <div class="detail-row">
+                                    <span class="detail-label">First Name *</span>
+                                    <input class="edit-input" name="firstName" value="${c.firstName}" required>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Last Name *</span>
+                                    <input class="edit-input" name="lastName" value="${c.lastName}" required>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Email *</span>
+                                    <input class="edit-input" name="email" type="email" value="${c.email}" required>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Phone</span>
+                                    <input class="edit-input" name="phone" value="${c.phone}">
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Address</span>
+                                    <input class="edit-input" name="address" value="${c.address || ''}">
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">City</span>
+                                    <input class="edit-input" name="city" value="${c.city || ''}">
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">State</span>
+                                    <input class="edit-input" name="state" value="${c.state || 'Texas'}">
+                                </div>
+                            </div>
+
+                            <div class="detail-card">
+                                <h3><i class="fas fa-info-circle"></i> Status & Rate</h3>
+                                <div class="detail-row">
+                                    <span class="detail-label">Status</span>
+                                    <select class="edit-select" name="status">${statusOpts}</select>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Hourly Rate ($)</span>
+                                    <input class="edit-input" name="hourlyRate" type="number" step="0.01" min="0" value="${c.hourlyRate || 25}">
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Rating (0-5)</span>
+                                    <input class="edit-input" name="rating" type="number" step="0.1" min="0" max="5" value="${c.rating || 0}">
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Total Jobs</span>
+                                    <input class="edit-input" name="totalJobs" type="number" min="0" value="${c.totalJobs || 0}">
+                                </div>
+                            </div>
+
+                            <div class="detail-card">
+                                <h3><i class="fas fa-broom"></i> Services Offered</h3>
+                                <div class="checkbox-grid">${servicesCheckboxes}</div>
+                            </div>
+
+                            <div class="detail-card">
+                                <h3><i class="fas fa-map-location-dot"></i> Service Areas</h3>
+                                <div class="checkbox-grid">${areasCheckboxes}</div>
+                            </div>
+
+                            <div class="detail-card">
+                                <h3><i class="fas fa-clock"></i> Availability</h3>
+                                <div class="checkbox-grid" style="margin-bottom:12px">${availCheckboxes}</div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Preferred Hours</span>
+                                    <select class="edit-select" name="preferredHours">${hoursOpts}</select>
+                                </div>
+                            </div>
+
+                            <div class="detail-card">
+                                <h3><i class="fas fa-clipboard-list"></i> Notes</h3>
+                                <textarea class="edit-textarea" name="notes" placeholder="Internal notes about this cleaner...">${c.notes || ''}</textarea>
+                            </div>
+                        </div>
+
+                        <div class="edit-actions">
+                            <button type="button" class="btn btn-cancel-edit" onclick="${isNew ? 'backToCleanersList()' : 'viewCleanerDetails(\'' + c.cleanerId + '\')'}">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                            <button type="submit" class="btn btn-save">
+                                <i class="fas fa-check"></i> ${isNew ? 'Add Cleaner' : 'Save Changes'}
+                            </button>
+                        </div>
+                    </form>
+                `;
+            }
+
+            function showAddCleaner() {
+                document.getElementById('cleanersListView').style.display = 'none';
+                document.getElementById('cleanerDetailView').classList.add('active');
+                document.getElementById('cleanerDetailContent').innerHTML = renderCleanerForm();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            function editCleaner(cleanerId) {
+                const cleaners = getCleaners();
+                const c = cleaners.find(cl => cl.cleanerId === cleanerId);
+                if (!c) return;
+
+                document.getElementById('cleanersListView').style.display = 'none';
+                document.getElementById('cleanerDetailView').classList.add('active');
+                document.getElementById('cleanerDetailContent').innerHTML = renderCleanerForm(c);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            function saveCleanerForm(event, cleanerId) {
+                event.preventDefault();
+                const form = document.getElementById('cleanerForm');
+                const fd = new FormData(form);
+
+                const checkedServices = Array.from(form.querySelectorAll('input[name="services"]:checked')).map(cb => cb.value);
+                const checkedAreas = Array.from(form.querySelectorAll('input[name="areas"]:checked')).map(cb => cb.value);
+                const checkedAvail = Array.from(form.querySelectorAll('input[name="availability"]:checked')).map(cb => cb.value);
+
+                const cleaners = getCleaners();
+                const isNew = !cleanerId;
+
+                const data = {
+                    firstName: fd.get('firstName'),
+                    lastName: fd.get('lastName'),
+                    email: fd.get('email'),
+                    phone: fd.get('phone'),
+                    address: fd.get('address'),
+                    city: fd.get('city'),
+                    state: fd.get('state'),
+                    status: fd.get('status'),
+                    hourlyRate: parseFloat(fd.get('hourlyRate')) || 25,
+                    rating: parseFloat(fd.get('rating')) || 0,
+                    totalJobs: parseInt(fd.get('totalJobs')) || 0,
+                    services: checkedServices,
+                    areas: checkedAreas,
+                    availability: checkedAvail,
+                    preferredHours: fd.get('preferredHours'),
+                    notes: fd.get('notes'),
+                    updatedAt: new Date().toISOString()
+                };
+
+                if (isNew) {
+                    data.cleanerId = generateCleanerId();
+                    data.createdAt = new Date().toISOString();
+                    cleaners.push(data);
+                } else {
+                    const idx = cleaners.findIndex(c => c.cleanerId === cleanerId);
+                    if (idx === -1) return false;
+                    data.cleanerId = cleanerId;
+                    data.createdAt = cleaners[idx].createdAt;
+                    cleaners[idx] = data;
+                }
+
+                saveCleaners(cleaners);
+                refreshData();
+                viewCleanerDetails(data.cleanerId);
+                return false;
+            }
+
+            function deleteCleaner(cleanerId) {
+                if (!confirm('Are you sure you want to permanently delete this cleaner? This cannot be undone.')) return;
+
+                const cleaners = getCleaners().filter(c => c.cleanerId !== cleanerId);
+                saveCleaners(cleaners);
+                refreshData();
+                backToCleanersList();
             }
 
             // Tab switching
