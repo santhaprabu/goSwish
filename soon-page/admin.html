@@ -1697,7 +1697,7 @@
                 }).join('');
             }
 
-            function updateBookingStatus(bookingId, newStatus) {
+            function updateBookingStatus(bookingId, newStatus, reloadDetail) {
                 const bookings = getBookings();
                 const bookingIndex = bookings.findIndex(b => b.bookingId === bookingId);
                 if (bookingIndex !== -1) {
@@ -1705,6 +1705,9 @@
                     bookings[bookingIndex].updatedAt = new Date().toISOString();
                     saveBookings(bookings);
                     refreshData();
+                    if (reloadDetail) {
+                        viewBookingDetails(bookingId);
+                    }
                 }
             }
 
@@ -1748,7 +1751,13 @@
                         <h3><i class="fas fa-info-circle"></i> Status & Pricing</h3>
                         <div class="detail-row">
                             <span class="detail-label">Status</span>
-                            <span class="detail-value"><span class="badge badge-${status}">${status}</span></span>
+                            <span class="detail-value">
+                                <div class="inline-assign">
+                                    <select onchange="updateBookingStatus('${booking.bookingId}', this.value, true)" style="padding:6px 10px;font-size:13px">
+                                        ${buildStatusOptions(status)}
+                                    </select>
+                                </div>
+                            </span>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Estimated Total</span>
