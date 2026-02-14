@@ -1763,6 +1763,19 @@
                             <span class="detail-label">Estimated Total</span>
                             <span class="detail-value highlight">${booking.pricing?.total || '$0.00'}</span>
                         </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Estimated Cleaner Payment</span>
+                            <span class="detail-value" style="color:var(--success);font-weight:700">${(() => {
+                        const totalStr = (booking.pricing?.total || '$0').replace(/[^0-9.]/g, '');
+                        const totalNum = parseFloat(totalStr) || 0;
+                        const subtotal = totalNum / 1.0825;
+                        const cleanerPay = subtotal * 0.9;
+                        return '$' + cleanerPay.toFixed(2);
+                    })()}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label" style="font-size:11px;color:var(--text-dim)">90% of pre-tax service fee</span>
+                        </div>
                     </div>
 
                     <!-- Assigned Cleaner -->
