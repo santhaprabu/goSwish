@@ -138,10 +138,25 @@
             font-size: 20px;
         }
 
-        .stat-card .icon.blue { background: var(--primary-light); color: var(--primary); }
-        .stat-card .icon.green { background: rgba(34, 197, 94, 0.15); color: var(--success); }
-        .stat-card .icon.orange { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
-        .stat-card .icon.purple { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+        .stat-card .icon.blue {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .stat-card .icon.green {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+
+        .stat-card .icon.orange {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+
+        .stat-card .icon.purple {
+            background: rgba(168, 85, 247, 0.15);
+            color: #a855f7;
+        }
 
         .stat-card .value {
             font-size: 36px;
@@ -298,7 +313,8 @@
             border-collapse: collapse;
         }
 
-        th, td {
+        th,
+        td {
             padding: 12px 16px;
             text-align: left;
             border-bottom: 1px solid var(--card-border);
@@ -505,11 +521,26 @@
 
         /* Responsive */
         @media (max-width: 768px) {
-            body { padding: 16px; }
-            .charts-grid { grid-template-columns: 1fr; }
-            .pie-container { justify-content: center; }
-            .header { flex-direction: column; align-items: flex-start; }
-            .header-actions { width: 100%; }
+            body {
+                padding: 16px;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pie-container {
+                justify-content: center;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-actions {
+                width: 100%;
+            }
         }
 
         /* Auth Overlay */
@@ -596,6 +627,219 @@
         .main-content-visible {
             display: block;
         }
+
+        /* Booking Detail View */
+        .booking-detail-view {
+            display: none;
+        }
+
+        .booking-detail-view.active {
+            display: block;
+        }
+
+        .detail-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--card-border);
+            color: var(--text-white);
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .detail-back-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .detail-header-left h2 {
+            margin: 0 0 6px;
+            font-size: 24px;
+        }
+
+        .detail-header-left .detail-meta {
+            color: var(--text-dim);
+            font-size: 13px;
+        }
+
+        .detail-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .detail-actions .btn {
+            font-size: 14px;
+            padding: 8px 18px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .detail-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .detail-card h3 {
+            font-size: 16px;
+            margin: 0 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--primary);
+        }
+
+        .detail-card h3 i {
+            font-size: 18px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            gap: 12px;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: var(--text-dim);
+            font-size: 13px;
+            font-weight: 500;
+            min-width: 110px;
+            flex-shrink: 0;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            text-align: right;
+            word-break: break-word;
+        }
+
+        .detail-value.highlight {
+            color: var(--success);
+            font-size: 18px;
+        }
+
+        .detail-notes {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 8px;
+            color: var(--text-dim);
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        /* Edit Mode */
+        .edit-input {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-white);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .edit-input:focus {
+            border-color: var(--primary);
+        }
+
+        .edit-select {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-white);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .edit-textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-white);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .edit-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .status-select-wrapper {
+            display: inline-block;
+        }
+
+        .btn-edit {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+
+        .btn-edit:hover {
+            background: rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+
+        .btn-delete:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-save {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-cancel-edit {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-white);
+        }
     </style>
 </head>
 
@@ -619,285 +863,296 @@
     </div>
 
     <div id="mainContent" class="main-content-hidden">
-    <div class="header">
-        <h1><i class="fas fa-chart-line"></i> Mopt Analytics</h1>
-        <div class="header-actions">
-            <button class="btn btn-secondary" onclick="refreshData()">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-            <button class="btn btn-primary" onclick="exportData()">
-                <i class="fas fa-download"></i> Export JSON
-            </button>
-            <button class="btn btn-primary" onclick="exportCSV()">
-                <i class="fas fa-file-csv"></i> Export CSV
-            </button>
-            <button class="btn btn-danger" onclick="clearData()">
-                <i class="fas fa-trash"></i> Clear
-            </button>
-        </div>
-    </div>
-
-    <p class="last-updated" id="lastUpdated">Last updated: --</p>
-
-    <!-- Tabs -->
-    <div class="tabs">
-        <button class="tab active" data-tab="overview">Overview</button>
-        <button class="tab" data-tab="bookings">Bookings</button>
-        <button class="tab" data-tab="submissions">Waitlist</button>
-        <button class="tab" data-tab="visits">Visits</button>
-        <button class="tab" data-tab="activity">Activity</button>
-    </div>
-
-    <!-- Overview Tab -->
-    <div class="tab-content active" id="tab-overview">
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="icon blue"><i class="fas fa-eye"></i></div>
-                <div class="value" id="totalVisits">0</div>
-                <div class="label">Total Visits</div>
-            </div>
-            <div class="stat-card">
-                <div class="icon green"><i class="fas fa-envelope"></i></div>
-                <div class="value" id="totalSubmissions">0</div>
-                <div class="label">Waitlist Signups</div>
-            </div>
-            <div class="stat-card">
-                <div class="icon orange"><i class="fas fa-house"></i></div>
-                <div class="value" id="homeownerCount">0</div>
-                <div class="label">Homeowners</div>
-            </div>
-            <div class="stat-card">
-                <div class="icon blue"><i class="fas fa-broom"></i></div>
-                <div class="value" id="cleanerCount">0</div>
-                <div class="label">Cleaners</div>
-            </div>
-            <div class="stat-card">
-                <div class="icon purple"><i class="fas fa-percentage"></i></div>
-                <div class="value" id="conversionRate">0%</div>
-                <div class="label">Conversion Rate</div>
-            </div>
-            <div class="stat-card">
-                <div class="icon green"><i class="fas fa-calendar-check"></i></div>
-                <div class="value" id="totalBookings">0</div>
-                <div class="label">Total Bookings</div>
-            </div>
-            <div class="stat-card">
-                <div class="icon orange"><i class="fas fa-clock"></i></div>
-                <div class="value" id="pendingBookings">0</div>
-                <div class="label">Pending Bookings</div>
+        <div class="header">
+            <h1><i class="fas fa-chart-line"></i> Mopt Analytics</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button class="btn btn-primary" onclick="exportData()">
+                    <i class="fas fa-download"></i> Export JSON
+                </button>
+                <button class="btn btn-primary" onclick="exportCSV()">
+                    <i class="fas fa-file-csv"></i> Export CSV
+                </button>
+                <button class="btn btn-danger" onclick="clearData()">
+                    <i class="fas fa-trash"></i> Clear
+                </button>
             </div>
         </div>
 
-        <div class="charts-grid">
+        <p class="last-updated" id="lastUpdated">Last updated: --</p>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="overview">Overview</button>
+            <button class="tab" data-tab="bookings">Bookings</button>
+            <button class="tab" data-tab="submissions">Waitlist</button>
+            <button class="tab" data-tab="visits">Visits</button>
+            <button class="tab" data-tab="activity">Activity</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div class="tab-content active" id="tab-overview">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="icon blue"><i class="fas fa-eye"></i></div>
+                    <div class="value" id="totalVisits">0</div>
+                    <div class="label">Total Visits</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon green"><i class="fas fa-envelope"></i></div>
+                    <div class="value" id="totalSubmissions">0</div>
+                    <div class="label">Waitlist Signups</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon orange"><i class="fas fa-house"></i></div>
+                    <div class="value" id="homeownerCount">0</div>
+                    <div class="label">Homeowners</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon blue"><i class="fas fa-broom"></i></div>
+                    <div class="value" id="cleanerCount">0</div>
+                    <div class="label">Cleaners</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon purple"><i class="fas fa-percentage"></i></div>
+                    <div class="value" id="conversionRate">0%</div>
+                    <div class="label">Conversion Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon green"><i class="fas fa-calendar-check"></i></div>
+                    <div class="value" id="totalBookings">0</div>
+                    <div class="label">Total Bookings</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon orange"><i class="fas fa-clock"></i></div>
+                    <div class="value" id="pendingBookings">0</div>
+                    <div class="label">Pending Bookings</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3><i class="fas fa-map-marker-alt"></i> Signups by State</h3>
+                    <div class="bar-chart" id="stateChart"></div>
+                </div>
+
+                <div class="chart-card">
+                    <h3><i class="fas fa-mobile-alt"></i> Device Breakdown</h3>
+                    <div class="pie-container" id="deviceChart"></div>
+                </div>
+
+                <div class="chart-card">
+                    <h3><i class="fas fa-link"></i> Traffic Sources</h3>
+                    <div class="bar-chart" id="referrerChart"></div>
+                </div>
+
+                <div class="chart-card">
+                    <h3><i class="fas fa-calendar"></i> Daily Visits (Last 7 Days)</h3>
+                    <div class="bar-chart" id="dailyChart"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bookings Tab -->
+        <div class="tab-content" id="tab-bookings">
+            <!-- Bookings List View -->
+            <div id="bookingsListView">
+                <div class="table-card">
+                    <h3><i class="fas fa-calendar-check"></i> Booking Requests</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Booking ID</th>
+                                <th>Date/Time</th>
+                                <th>Customer</th>
+                                <th>Service</th>
+                                <th>Address</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Booking Detail View -->
+            <div id="bookingDetailView" class="booking-detail-view">
+                <button class="detail-back-btn" onclick="backToBookingsList()">
+                    <i class="fas fa-arrow-left"></i> Back to Bookings
+                </button>
+                <div id="bookingDetailContent"></div>
+            </div>
+        </div>
+
+        <!-- Submissions Tab -->
+        <div class="tab-content" id="tab-submissions">
+            <div class="table-card">
+                <h3><i class="fas fa-users"></i> Waitlist Submissions</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>State</th>
+                        </tr>
+                    </thead>
+                    <tbody id="submissionsTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Visits Tab -->
+        <div class="tab-content" id="tab-visits">
+            <div class="table-card">
+                <h3><i class="fas fa-eye"></i> Recent Visits</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date/Time</th>
+                            <th>Device</th>
+                            <th>Browser</th>
+                            <th>Source</th>
+                            <th>Scroll</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="visitsTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Activity Tab -->
+        <div class="tab-content" id="tab-activity">
             <div class="chart-card">
-                <h3><i class="fas fa-map-marker-alt"></i> Signups by State</h3>
-                <div class="bar-chart" id="stateChart"></div>
-            </div>
-
-            <div class="chart-card">
-                <h3><i class="fas fa-mobile-alt"></i> Device Breakdown</h3>
-                <div class="pie-container" id="deviceChart"></div>
-            </div>
-
-            <div class="chart-card">
-                <h3><i class="fas fa-link"></i> Traffic Sources</h3>
-                <div class="bar-chart" id="referrerChart"></div>
-            </div>
-
-            <div class="chart-card">
-                <h3><i class="fas fa-calendar"></i> Daily Visits (Last 7 Days)</h3>
-                <div class="bar-chart" id="dailyChart"></div>
+                <h3><i class="fas fa-mouse-pointer"></i> Recent Activity</h3>
+                <div class="timeline" id="activityTimeline"></div>
             </div>
         </div>
-    </div>
 
-    <!-- Bookings Tab -->
-    <div class="tab-content" id="tab-bookings">
-        <div class="table-card">
-            <h3><i class="fas fa-calendar-check"></i> Booking Requests</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Booking ID</th>
-                        <th>Date/Time</th>
-                        <th>Customer</th>
-                        <th>Service</th>
-                        <th>Address</th>
-                        <th>Total</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="bookingsTable"></tbody>
-            </table>
-        </div>
-    </div>
+        <script>
+            const ANALYTICS_KEY = 'mopt_analytics';
+            const WAITLIST_KEY = 'mopt_waitlist';
+            const BOOKINGS_KEY = 'mopt_bookings';
 
-    <!-- Submissions Tab -->
-    <div class="tab-content" id="tab-submissions">
-        <div class="table-card">
-            <h3><i class="fas fa-users"></i> Waitlist Submissions</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>State</th>
-                    </tr>
-                </thead>
-                <tbody id="submissionsTable"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Visits Tab -->
-    <div class="tab-content" id="tab-visits">
-        <div class="table-card">
-            <h3><i class="fas fa-eye"></i> Recent Visits</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Date/Time</th>
-                        <th>Device</th>
-                        <th>Browser</th>
-                        <th>Source</th>
-                        <th>Scroll</th>
-                        <th>Time</th>
-                    </tr>
-                </thead>
-                <tbody id="visitsTable"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Activity Tab -->
-    <div class="tab-content" id="tab-activity">
-        <div class="chart-card">
-            <h3><i class="fas fa-mouse-pointer"></i> Recent Activity</h3>
-            <div class="timeline" id="activityTimeline"></div>
-        </div>
-    </div>
-
-    <script>
-        const ANALYTICS_KEY = 'mopt_analytics';
-        const WAITLIST_KEY = 'mopt_waitlist';
-        const BOOKINGS_KEY = 'mopt_bookings';
-
-        function getBookings() {
-            try {
-                return JSON.parse(localStorage.getItem(BOOKINGS_KEY)) || [];
-            } catch (e) {
-                return [];
-            }
-        }
-
-        function saveBookings(bookings) {
-            localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings));
-        }
-
-        function getAnalytics() {
-            try {
-                return JSON.parse(localStorage.getItem(ANALYTICS_KEY)) || {
-                    visits: [],
-                    submissions: [],
-                    clicks: [],
-                    summary: {
-                        totalVisits: 0,
-                        totalSubmissions: 0,
-                        homeownerSubmissions: 0,
-                        cleanerSubmissions: 0,
-                        stateBreakdown: {},
-                        deviceBreakdown: { desktop: 0, mobile: 0, tablet: 0 },
-                        referrerBreakdown: {},
-                        dailyVisits: {}
-                    }
-                };
-            } catch (e) {
-                return { visits: [], submissions: [], clicks: [], summary: {} };
-            }
-        }
-
-        function getWaitlist() {
-            try {
-                return JSON.parse(localStorage.getItem(WAITLIST_KEY)) || [];
-            } catch (e) {
-                return [];
-            }
-        }
-
-        function refreshData() {
-            const analytics = getAnalytics();
-            const waitlist = getWaitlist();
-            const bookings = getBookings();
-            const summary = analytics.summary || {};
-
-            document.getElementById('lastUpdated').textContent =
-                'Last updated: ' + new Date().toLocaleString();
-
-            // Update bookings stats
-            const totalBookings = bookings.length;
-            const pendingBookings = bookings.filter(b => b.status === 'pending').length;
-            document.getElementById('totalBookings').textContent = totalBookings;
-            document.getElementById('pendingBookings').textContent = pendingBookings;
-
-            // Merge waitlist into submissions if not already
-            const allSubmissions = [...(analytics.submissions || [])];
-            waitlist.forEach(w => {
-                if (!allSubmissions.find(s => s.email === w.email)) {
-                    allSubmissions.push({
-                        timestamp: w.timestamp,
-                        email: w.email,
-                        role: w.role,
-                        state: w.state
-                    });
+            function getBookings() {
+                try {
+                    return JSON.parse(localStorage.getItem(BOOKINGS_KEY)) || [];
+                } catch (e) {
+                    return [];
                 }
-            });
-
-            // Count from merged submissions
-            const homeowners = allSubmissions.filter(s => s.role === 'homeowner').length;
-            const cleaners = allSubmissions.filter(s => s.role === 'cleaner').length;
-            const totalVisits = summary.totalVisits || analytics.visits?.length || 0;
-
-            document.getElementById('totalVisits').textContent = totalVisits;
-            document.getElementById('totalSubmissions').textContent = allSubmissions.length;
-            document.getElementById('homeownerCount').textContent = homeowners;
-            document.getElementById('cleanerCount').textContent = cleaners;
-
-            const convRate = totalVisits > 0 ? Math.round((allSubmissions.length / totalVisits) * 100) : 0;
-            document.getElementById('conversionRate').textContent = convRate + '%';
-
-            // State breakdown from all submissions
-            const stateBreakdown = {};
-            allSubmissions.forEach(s => {
-                stateBreakdown[s.state] = (stateBreakdown[s.state] || 0) + 1;
-            });
-            renderBarChart('stateChart', stateBreakdown);
-
-            renderPieChart('deviceChart', summary.deviceBreakdown || {});
-            renderBarChart('referrerChart', summary.referrerBreakdown || {});
-            renderDailyChart('dailyChart', summary.dailyVisits || {});
-            renderSubmissionsTable(allSubmissions);
-            renderVisitsTable(analytics.visits || []);
-            renderActivityTimeline(analytics, waitlist, bookings);
-            renderBookingsTable(bookings);
-        }
-
-        function renderBarChart(containerId, data) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-
-            const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
-            const maxValue = Math.max(...entries.map(e => e[1]), 1);
-
-            if (entries.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-chart-bar"></i><p>No data yet</p></div>';
-                return;
             }
 
-            container.innerHTML = entries.slice(0, 6).map(([label, value]) => {
-                const percentage = (value / maxValue) * 100;
-                return `
+            function saveBookings(bookings) {
+                localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings));
+            }
+
+            function getAnalytics() {
+                try {
+                    return JSON.parse(localStorage.getItem(ANALYTICS_KEY)) || {
+                        visits: [],
+                        submissions: [],
+                        clicks: [],
+                        summary: {
+                            totalVisits: 0,
+                            totalSubmissions: 0,
+                            homeownerSubmissions: 0,
+                            cleanerSubmissions: 0,
+                            stateBreakdown: {},
+                            deviceBreakdown: { desktop: 0, mobile: 0, tablet: 0 },
+                            referrerBreakdown: {},
+                            dailyVisits: {}
+                        }
+                    };
+                } catch (e) {
+                    return { visits: [], submissions: [], clicks: [], summary: {} };
+                }
+            }
+
+            function getWaitlist() {
+                try {
+                    return JSON.parse(localStorage.getItem(WAITLIST_KEY)) || [];
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function refreshData() {
+                const analytics = getAnalytics();
+                const waitlist = getWaitlist();
+                const bookings = getBookings();
+                const summary = analytics.summary || {};
+
+                document.getElementById('lastUpdated').textContent =
+                    'Last updated: ' + new Date().toLocaleString();
+
+                // Update bookings stats
+                const totalBookings = bookings.length;
+                const pendingBookings = bookings.filter(b => b.status === 'pending').length;
+                document.getElementById('totalBookings').textContent = totalBookings;
+                document.getElementById('pendingBookings').textContent = pendingBookings;
+
+                // Merge waitlist into submissions if not already
+                const allSubmissions = [...(analytics.submissions || [])];
+                waitlist.forEach(w => {
+                    if (!allSubmissions.find(s => s.email === w.email)) {
+                        allSubmissions.push({
+                            timestamp: w.timestamp,
+                            email: w.email,
+                            role: w.role,
+                            state: w.state
+                        });
+                    }
+                });
+
+                // Count from merged submissions
+                const homeowners = allSubmissions.filter(s => s.role === 'homeowner').length;
+                const cleaners = allSubmissions.filter(s => s.role === 'cleaner').length;
+                const totalVisits = summary.totalVisits || analytics.visits?.length || 0;
+
+                document.getElementById('totalVisits').textContent = totalVisits;
+                document.getElementById('totalSubmissions').textContent = allSubmissions.length;
+                document.getElementById('homeownerCount').textContent = homeowners;
+                document.getElementById('cleanerCount').textContent = cleaners;
+
+                const convRate = totalVisits > 0 ? Math.round((allSubmissions.length / totalVisits) * 100) : 0;
+                document.getElementById('conversionRate').textContent = convRate + '%';
+
+                // State breakdown from all submissions
+                const stateBreakdown = {};
+                allSubmissions.forEach(s => {
+                    stateBreakdown[s.state] = (stateBreakdown[s.state] || 0) + 1;
+                });
+                renderBarChart('stateChart', stateBreakdown);
+
+                renderPieChart('deviceChart', summary.deviceBreakdown || {});
+                renderBarChart('referrerChart', summary.referrerBreakdown || {});
+                renderDailyChart('dailyChart', summary.dailyVisits || {});
+                renderSubmissionsTable(allSubmissions);
+                renderVisitsTable(analytics.visits || []);
+                renderActivityTimeline(analytics, waitlist, bookings);
+                renderBookingsTable(bookings);
+            }
+
+            function renderBarChart(containerId, data) {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+
+                const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
+                const maxValue = Math.max(...entries.map(e => e[1]), 1);
+
+                if (entries.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><i class="fas fa-chart-bar"></i><p>No data yet</p></div>';
+                    return;
+                }
+
+                container.innerHTML = entries.slice(0, 6).map(([label, value]) => {
+                    const percentage = (value / maxValue) * 100;
+                    return `
                     <div class="bar-item">
                         <span class="bar-label">${label}</span>
                         <div class="bar-track">
@@ -906,71 +1161,71 @@
                         <span class="bar-value">${value}</span>
                     </div>
                 `;
-            }).join('');
-        }
+                }).join('');
+            }
 
-        function renderPieChart(containerId, data) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
+            function renderPieChart(containerId, data) {
+                const container = document.getElementById(containerId);
+                if (!container) return;
 
-            const total = Object.values(data).reduce((a, b) => a + b, 0) || 1;
-            const colors = { desktop: '#1b7a91', mobile: '#22c55e', tablet: '#f59e0b' };
-            const entries = Object.entries(data).filter(([_, v]) => v > 0);
+                const total = Object.values(data).reduce((a, b) => a + b, 0) || 1;
+                const colors = { desktop: '#1b7a91', mobile: '#22c55e', tablet: '#f59e0b' };
+                const entries = Object.entries(data).filter(([_, v]) => v > 0);
 
-            let gradientStops = [];
-            let currentDeg = 0;
+                let gradientStops = [];
+                let currentDeg = 0;
 
-            entries.forEach(([key, value]) => {
-                const deg = (value / total) * 360;
-                gradientStops.push(`${colors[key] || '#666'} ${currentDeg}deg ${currentDeg + deg}deg`);
-                currentDeg += deg;
-            });
+                entries.forEach(([key, value]) => {
+                    const deg = (value / total) * 360;
+                    gradientStops.push(`${colors[key] || '#666'} ${currentDeg}deg ${currentDeg + deg}deg`);
+                    currentDeg += deg;
+                });
 
-            const gradient = gradientStops.length > 0
-                ? `conic-gradient(${gradientStops.join(', ')})`
-                : 'conic-gradient(#333 0deg 360deg)';
+                const gradient = gradientStops.length > 0
+                    ? `conic-gradient(${gradientStops.join(', ')})`
+                    : 'conic-gradient(#333 0deg 360deg)';
 
-            container.innerHTML = `
+                container.innerHTML = `
                 <div class="pie-chart" style="background: ${gradient}"></div>
                 <div class="pie-legend">
                     ${entries.map(([key, value]) => `
                         <div class="legend-item">
                             <div class="legend-color" style="background: ${colors[key] || '#666'}"></div>
                             <span class="legend-label">${key.charAt(0).toUpperCase() + key.slice(1)}</span>
-                            <span class="legend-value">${value} (${Math.round((value/total)*100)}%)</span>
+                            <span class="legend-value">${value} (${Math.round((value / total) * 100)}%)</span>
                         </div>
                     `).join('')}
                 </div>
             `;
-        }
-
-        function renderDailyChart(containerId, data) {
-            const dates = [];
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                dates.push(d.toISOString().split('T')[0]);
             }
 
-            const chartData = {};
-            dates.forEach(date => {
-                const dayLabel = new Date(date).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
-                chartData[dayLabel] = data[date] || 0;
-            });
+            function renderDailyChart(containerId, data) {
+                const dates = [];
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    dates.push(d.toISOString().split('T')[0]);
+                }
 
-            renderBarChart(containerId, chartData);
-        }
+                const chartData = {};
+                dates.forEach(date => {
+                    const dayLabel = new Date(date).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+                    chartData[dayLabel] = data[date] || 0;
+                });
 
-        function renderSubmissionsTable(submissions) {
-            const tbody = document.getElementById('submissionsTable');
-            if (!tbody) return;
-
-            if (submissions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No submissions yet</td></tr>';
-                return;
+                renderBarChart(containerId, chartData);
             }
 
-            tbody.innerHTML = submissions.slice().reverse().slice(0, 100).map(sub => `
+            function renderSubmissionsTable(submissions) {
+                const tbody = document.getElementById('submissionsTable');
+                if (!tbody) return;
+
+                if (submissions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No submissions yet</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = submissions.slice().reverse().slice(0, 100).map(sub => `
                 <tr>
                     <td>${new Date(sub.timestamp).toLocaleString()}</td>
                     <td>${sub.email}</td>
@@ -978,18 +1233,18 @@
                     <td>${sub.state || 'N/A'}</td>
                 </tr>
             `).join('');
-        }
-
-        function renderVisitsTable(visits) {
-            const tbody = document.getElementById('visitsTable');
-            if (!tbody) return;
-
-            if (visits.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No visits yet</td></tr>';
-                return;
             }
 
-            tbody.innerHTML = visits.slice().reverse().slice(0, 100).map(v => `
+            function renderVisitsTable(visits) {
+                const tbody = document.getElementById('visitsTable');
+                if (!tbody) return;
+
+                if (visits.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No visits yet</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = visits.slice().reverse().slice(0, 100).map(v => `
                 <tr>
                     <td>${new Date(v.timestamp).toLocaleString()}</td>
                     <td>${v.device || 'Unknown'}</td>
@@ -999,30 +1254,30 @@
                     <td>${v.timeOnPage || 0}s</td>
                 </tr>
             `).join('');
-        }
-
-        function renderBookingsTable(bookings) {
-            const tbody = document.getElementById('bookingsTable');
-            if (!tbody) return;
-
-            if (bookings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-calendar-xmark"></i><p>No bookings yet</p></td></tr>';
-                return;
             }
 
-            tbody.innerHTML = bookings.slice().reverse().map(booking => {
-                const customerName = `${booking.contact?.firstName || ''} ${booking.contact?.lastName || ''}`.trim() || 'N/A';
-                const customerEmail = booking.contact?.email || '';
-                const serviceName = booking.service?.name || 'N/A';
-                const address = `${booking.property?.city || ''}`;
-                const fullAddress = `${booking.property?.address || ''}, ${booking.property?.city || ''} ${booking.property?.zipcode || ''}`;
-                const total = booking.pricing?.total || '$0.00';
-                const status = booking.status || 'pending';
-                const scheduleDate = booking.schedule?.date ? new Date(booking.schedule.date + 'T00:00:00').toLocaleDateString() : 'N/A';
-                const scheduleTime = booking.schedule?.timeRange || '';
-                const sqft = booking.property?.sqft || '';
+            function renderBookingsTable(bookings) {
+                const tbody = document.getElementById('bookingsTable');
+                if (!tbody) return;
 
-                return `
+                if (bookings.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-calendar-xmark"></i><p>No bookings yet</p></td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = bookings.slice().reverse().map(booking => {
+                    const customerName = `${booking.contact?.firstName || ''} ${booking.contact?.lastName || ''}`.trim() || 'N/A';
+                    const customerEmail = booking.contact?.email || '';
+                    const serviceName = booking.service?.name || 'N/A';
+                    const address = `${booking.property?.city || ''}`;
+                    const fullAddress = `${booking.property?.address || ''}, ${booking.property?.city || ''} ${booking.property?.zipcode || ''}`;
+                    const total = booking.pricing?.total || '$0.00';
+                    const status = booking.status || 'pending';
+                    const scheduleDate = booking.schedule?.date ? new Date(booking.schedule.date + 'T00:00:00').toLocaleDateString() : 'N/A';
+                    const scheduleTime = booking.schedule?.timeRange || '';
+                    const sqft = booking.property?.sqft || '';
+
+                    return `
                     <tr>
                         <td>
                             <strong>${booking.bookingId || 'N/A'}</strong>
@@ -1060,123 +1315,423 @@
                         </td>
                     </tr>
                 `;
-            }).join('');
-        }
+                }).join('');
+            }
 
-        function updateBookingStatus(bookingId, newStatus) {
-            const bookings = getBookings();
-            const bookingIndex = bookings.findIndex(b => b.bookingId === bookingId);
-            if (bookingIndex !== -1) {
-                bookings[bookingIndex].status = newStatus;
-                bookings[bookingIndex].updatedAt = new Date().toISOString();
+            function updateBookingStatus(bookingId, newStatus) {
+                const bookings = getBookings();
+                const bookingIndex = bookings.findIndex(b => b.bookingId === bookingId);
+                if (bookingIndex !== -1) {
+                    bookings[bookingIndex].status = newStatus;
+                    bookings[bookingIndex].updatedAt = new Date().toISOString();
+                    saveBookings(bookings);
+                    refreshData();
+                }
+            }
+
+            function viewBookingDetails(bookingId) {
+                const bookings = getBookings();
+                const booking = bookings.find(b => b.bookingId === bookingId);
+                if (!booking) return;
+
+                // Hide list, show detail
+                document.getElementById('bookingsListView').style.display = 'none';
+                const detailView = document.getElementById('bookingDetailView');
+                detailView.classList.add('active');
+
+                const status = booking.status || 'pending';
+                const scheduleDate = booking.schedule?.date
+                    ? new Date(booking.schedule.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                    : 'N/A';
+                const addons = booking.service?.addons?.length
+                    ? booking.service.addons.map(a => a.charAt(0).toUpperCase() + a.slice(1).replace('-', ' ')).join(', ')
+                    : 'None';
+
+                document.getElementById('bookingDetailContent').innerHTML = `
+                <div class="detail-header">
+                    <div class="detail-header-left">
+                        <h2><i class="fas fa-calendar-check" style="color:var(--primary)"></i> ${booking.bookingId || 'N/A'}</h2>
+                        <div class="detail-meta">Created ${new Date(booking.createdAt).toLocaleString()}${booking.updatedAt ? ' • Updated ' + new Date(booking.updatedAt).toLocaleString() : ''}</div>
+                    </div>
+                    <div class="detail-actions">
+                        <button class="btn btn-edit" onclick="editBooking('${booking.bookingId}')">
+                            <i class="fas fa-pen"></i> Edit
+                        </button>
+                        <button class="btn btn-delete" onclick="deleteBooking('${booking.bookingId}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+
+                <div class="detail-grid">
+                    <!-- Status & Pricing -->
+                    <div class="detail-card">
+                        <h3><i class="fas fa-info-circle"></i> Status & Pricing</h3>
+                        <div class="detail-row">
+                            <span class="detail-label">Status</span>
+                            <span class="detail-value"><span class="badge badge-${status}">${status}</span></span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Estimated Total</span>
+                            <span class="detail-value highlight">${booking.pricing?.total || '$0.00'}</span>
+                        </div>
+                    </div>
+
+                    <!-- Customer -->
+                    <div class="detail-card">
+                        <h3><i class="fas fa-user"></i> Customer</h3>
+                        <div class="detail-row">
+                            <span class="detail-label">Name</span>
+                            <span class="detail-value">${booking.contact?.firstName || ''} ${booking.contact?.lastName || ''}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Email</span>
+                            <span class="detail-value">${booking.contact?.email || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Phone</span>
+                            <span class="detail-value">${booking.contact?.phone || 'N/A'}</span>
+                        </div>
+                    </div>
+
+                    <!-- Property -->
+                    <div class="detail-card">
+                        <h3><i class="fas fa-house-chimney"></i> Property</h3>
+                        <div class="detail-row">
+                            <span class="detail-label">Address</span>
+                            <span class="detail-value">${booking.property?.address || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">City / State</span>
+                            <span class="detail-value">${booking.property?.city || 'N/A'}${booking.property?.state ? ', ' + booking.property.state : ''}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Zip Code</span>
+                            <span class="detail-value">${booking.property?.zipcode || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Type</span>
+                            <span class="detail-value">${(booking.property?.type || 'N/A').charAt(0).toUpperCase() + (booking.property?.type || '').slice(1)}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Size</span>
+                            <span class="detail-value">${booking.property?.sqft || 'N/A'} sq ft</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Bedrooms</span>
+                            <span class="detail-value">${booking.property?.bedrooms || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Bathrooms</span>
+                            <span class="detail-value">${booking.property?.bathrooms || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Pets</span>
+                            <span class="detail-value">${booking.property?.hasPets ? 'Yes' + (booking.property?.petNotes ? ' — ' + booking.property.petNotes : '') : 'No'}</span>
+                        </div>
+                    </div>
+
+                    <!-- Service -->
+                    <div class="detail-card">
+                        <h3><i class="fas fa-wand-magic-sparkles"></i> Service</h3>
+                        <div class="detail-row">
+                            <span class="detail-label">Type</span>
+                            <span class="detail-value">${booking.service?.name || 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Add-ons</span>
+                            <span class="detail-value">${addons}</span>
+                        </div>
+                    </div>
+
+                    <!-- Schedule -->
+                    <div class="detail-card">
+                        <h3><i class="fas fa-calendar-days"></i> Schedule</h3>
+                        <div class="detail-row">
+                            <span class="detail-label">Date</span>
+                            <span class="detail-value">${scheduleDate}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Time Window</span>
+                            <span class="detail-value">${booking.schedule?.timeRange || 'N/A'}</span>
+                        </div>
+                    </div>
+
+                    <!-- Notes & Access -->
+                    <div class="detail-card">
+                        <h3><i class="fas fa-clipboard-list"></i> Notes & Access</h3>
+                        <div class="detail-row" style="flex-direction:column;gap:6px">
+                            <span class="detail-label">Special Instructions</span>
+                            <div class="detail-notes">${booking.notes || 'None'}</div>
+                        </div>
+                        <div class="detail-row" style="flex-direction:column;gap:6px">
+                            <span class="detail-label">Access Instructions</span>
+                            <div class="detail-notes">${booking.contact?.accessInstructions || 'None'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+                // Scroll to top of detail view
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            function backToBookingsList() {
+                document.getElementById('bookingsListView').style.display = 'block';
+                document.getElementById('bookingDetailView').classList.remove('active');
+            }
+
+            function editBooking(bookingId) {
+                const bookings = getBookings();
+                const booking = bookings.find(b => b.bookingId === bookingId);
+                if (!booking) return;
+
+                const statusOptions = ['pending', 'confirmed', 'completed', 'cancelled'].map(s =>
+                    `<option value="${s}" ${booking.status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+                ).join('');
+
+                const propertyTypes = ['house', 'apartment', 'condo', 'townhouse'].map(t =>
+                    `<option value="${t}" ${booking.property?.type === t ? 'selected' : ''}>${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
+                ).join('');
+
+                document.getElementById('bookingDetailContent').innerHTML = `
+                <div class="detail-header">
+                    <div class="detail-header-left">
+                        <h2><i class="fas fa-pen-to-square" style="color:var(--warning)"></i> Editing ${booking.bookingId}</h2>
+                        <div class="detail-meta">Make changes and click Save</div>
+                    </div>
+                </div>
+
+                <form id="editBookingForm" onsubmit="return saveBookingEdit(event, '${booking.bookingId}')">
+                    <div class="detail-grid">
+                        <!-- Status -->
+                        <div class="detail-card">
+                            <h3><i class="fas fa-info-circle"></i> Status</h3>
+                            <div class="detail-row">
+                                <span class="detail-label">Status</span>
+                                <select class="edit-select" name="status">${statusOptions}</select>
+                            </div>
+                        </div>
+
+                        <!-- Customer -->
+                        <div class="detail-card">
+                            <h3><i class="fas fa-user"></i> Customer</h3>
+                            <div class="detail-row">
+                                <span class="detail-label">First Name</span>
+                                <input class="edit-input" name="firstName" value="${booking.contact?.firstName || ''}">
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Last Name</span>
+                                <input class="edit-input" name="lastName" value="${booking.contact?.lastName || ''}">
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Email</span>
+                                <input class="edit-input" name="email" type="email" value="${booking.contact?.email || ''}">
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Phone</span>
+                                <input class="edit-input" name="phone" value="${booking.contact?.phone || ''}">
+                            </div>
+                        </div>
+
+                        <!-- Property -->
+                        <div class="detail-card">
+                            <h3><i class="fas fa-house-chimney"></i> Property</h3>
+                            <div class="detail-row">
+                                <span class="detail-label">Address</span>
+                                <input class="edit-input" name="address" value="${booking.property?.address || ''}">
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">City</span>
+                                <input class="edit-input" name="city" value="${booking.property?.city || ''}">
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">State</span>
+                                <input class="edit-input" name="state" value="${booking.property?.state || 'Texas'}">
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Zip Code</span>
+                                <input class="edit-input" name="zipcode" value="${booking.property?.zipcode || ''}">
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Type</span>
+                                <select class="edit-select" name="propertyType">${propertyTypes}</select>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Sq Ft</span>
+                                <input class="edit-input" name="sqft" type="number" value="${booking.property?.sqft || ''}">
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Bedrooms</span>
+                                <input class="edit-input" name="bedrooms" type="number" min="1" max="10" value="${booking.property?.bedrooms || ''}">
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Bathrooms</span>
+                                <input class="edit-input" name="bathrooms" type="number" min="1" max="10" value="${booking.property?.bathrooms || ''}">
+                            </div>
+                        </div>
+
+                        <!-- Schedule -->
+                        <div class="detail-card">
+                            <h3><i class="fas fa-calendar-days"></i> Schedule</h3>
+                            <div class="detail-row">
+                                <span class="detail-label">Date</span>
+                                <input class="edit-input" name="date" type="date" value="${booking.schedule?.date || ''}">
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Time Slot</span>
+                                <select class="edit-select" name="timeSlot">
+                                    <option value="morning" ${booking.schedule?.timeSlot === 'morning' ? 'selected' : ''}>Morning (9 AM - 12 PM)</option>
+                                    <option value="afternoon" ${booking.schedule?.timeSlot === 'afternoon' ? 'selected' : ''}>Afternoon (12 PM - 3 PM)</option>
+                                    <option value="evening" ${booking.schedule?.timeSlot === 'evening' ? 'selected' : ''}>Evening (3 PM - 6 PM)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="detail-card">
+                            <h3><i class="fas fa-clipboard-list"></i> Notes & Access</h3>
+                            <div class="detail-row" style="flex-direction:column;gap:6px">
+                                <span class="detail-label">Special Instructions</span>
+                                <textarea class="edit-textarea" name="notes">${booking.notes || ''}</textarea>
+                            </div>
+                            <div class="detail-row" style="flex-direction:column;gap:6px">
+                                <span class="detail-label">Access Instructions</span>
+                                <textarea class="edit-textarea" name="accessInstructions">${booking.contact?.accessInstructions || ''}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="edit-actions">
+                        <button type="button" class="btn btn-cancel-edit" onclick="viewBookingDetails('${booking.bookingId}')">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                        <button type="submit" class="btn btn-save">
+                            <i class="fas fa-check"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            `;
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            function saveBookingEdit(event, bookingId) {
+                event.preventDefault();
+                const form = document.getElementById('editBookingForm');
+                const fd = new FormData(form);
+
+                const bookings = getBookings();
+                const idx = bookings.findIndex(b => b.bookingId === bookingId);
+                if (idx === -1) return false;
+
+                const booking = bookings[idx];
+
+                // Update fields
+                booking.status = fd.get('status');
+                booking.contact = booking.contact || {};
+                booking.contact.firstName = fd.get('firstName');
+                booking.contact.lastName = fd.get('lastName');
+                booking.contact.email = fd.get('email');
+                booking.contact.phone = fd.get('phone');
+                booking.contact.accessInstructions = fd.get('accessInstructions');
+
+                booking.property = booking.property || {};
+                booking.property.address = fd.get('address');
+                booking.property.city = fd.get('city');
+                booking.property.state = fd.get('state');
+                booking.property.zipcode = fd.get('zipcode');
+                booking.property.type = fd.get('propertyType');
+                booking.property.sqft = fd.get('sqft');
+                booking.property.bedrooms = fd.get('bedrooms');
+                booking.property.bathrooms = fd.get('bathrooms');
+
+                const timeSlotMap = { morning: '9 AM - 12 PM', afternoon: '12 PM - 3 PM', evening: '3 PM - 6 PM' };
+                booking.schedule = booking.schedule || {};
+                booking.schedule.date = fd.get('date');
+                booking.schedule.timeSlot = fd.get('timeSlot');
+                booking.schedule.timeRange = timeSlotMap[fd.get('timeSlot')] || booking.schedule.timeRange;
+
+                booking.notes = fd.get('notes');
+                booking.updatedAt = new Date().toISOString();
+
+                bookings[idx] = booking;
                 saveBookings(bookings);
                 refreshData();
-            }
-        }
 
-        function viewBookingDetails(bookingId) {
-            const bookings = getBookings();
-            const booking = bookings.find(b => b.bookingId === bookingId);
-            if (booking) {
-                const details = `
-Booking ID: ${booking.bookingId}
-Status: ${booking.status}
-Created: ${new Date(booking.createdAt).toLocaleString()}
-
-CUSTOMER:
-Name: ${booking.contact?.firstName} ${booking.contact?.lastName}
-Email: ${booking.contact?.email}
-Phone: ${booking.contact?.phone}
-
-PROPERTY:
-Address: ${booking.property?.address}
-City: ${booking.property?.city}, ${booking.property?.zipcode}
-Type: ${booking.property?.type}
-Size: ${booking.property?.sqft} sq ft
-Bedrooms: ${booking.property?.bedrooms}
-Bathrooms: ${booking.property?.bathrooms}
-Pets: ${booking.property?.hasPets ? 'Yes - ' + (booking.property?.petNotes || '') : 'No'}
-
-SERVICE:
-Type: ${booking.service?.name}
-Add-ons: ${booking.service?.addons?.length ? booking.service.addons.join(', ') : 'None'}
-
-SCHEDULE:
-Date: ${booking.schedule?.date}
-Time: ${booking.schedule?.timeRange}
-
-PRICING:
-Total: ${booking.pricing?.total}
-
-NOTES:
-${booking.notes || 'None'}
-
-ACCESS INSTRUCTIONS:
-${booking.contact?.accessInstructions || 'None'}
-                `.trim();
-                alert(details);
-            }
-        }
-
-        function renderActivityTimeline(analytics, waitlist, bookings = []) {
-            const container = document.getElementById('activityTimeline');
-            if (!container) return;
-
-            const activities = [];
-
-            (analytics.visits || []).forEach(v => {
-                activities.push({
-                    type: 'visit',
-                    timestamp: v.timestamp,
-                    title: 'Page Visit',
-                    meta: `${v.device || 'Unknown'} • ${v.browser || 'Unknown'} • ${v.referrerCategory || 'Direct'}`
-                });
-            });
-
-            waitlist.forEach(w => {
-                activities.push({
-                    type: 'submission',
-                    timestamp: w.timestamp,
-                    title: `New ${w.role} signup`,
-                    meta: `${w.email} • ${w.state || 'N/A'}`
-                });
-            });
-
-            (analytics.clicks || []).forEach(c => {
-                activities.push({
-                    type: 'click',
-                    timestamp: c.timestamp,
-                    title: c.action || 'Click',
-                    meta: c.element || ''
-                });
-            });
-
-            (bookings || []).forEach(b => {
-                activities.push({
-                    type: 'booking',
-                    timestamp: b.createdAt,
-                    title: `New Booking: ${b.service?.name || 'Service'}`,
-                    meta: `${b.contact?.firstName || ''} ${b.contact?.lastName || ''} • ${b.property?.city || ''} • ${b.pricing?.total || ''}`
-                });
-            });
-
-            activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-            if (activities.length === 0) {
-                container.innerHTML = '<div class="empty-state"><i class="fas fa-clock"></i><p>No activity yet</p></div>';
-                return;
+                // Show updated detail view
+                viewBookingDetails(bookingId);
+                return false;
             }
 
-            const icons = {
-                visit: { icon: 'eye', bg: 'var(--primary-light)', color: 'var(--primary)' },
-                submission: { icon: 'envelope', bg: 'rgba(34, 197, 94, 0.15)', color: 'var(--success)' },
-                click: { icon: 'mouse-pointer', bg: 'rgba(245, 158, 11, 0.15)', color: 'var(--warning)' },
-                booking: { icon: 'calendar-check', bg: 'rgba(168, 85, 247, 0.15)', color: '#a855f7' }
-            };
+            function deleteBooking(bookingId) {
+                if (!confirm('Are you sure you want to permanently delete this booking? This cannot be undone.')) return;
 
-            container.innerHTML = activities.slice(0, 50).map(act => {
-                const i = icons[act.type] || icons.click;
-                return `
+                const bookings = getBookings().filter(b => b.bookingId !== bookingId);
+                saveBookings(bookings);
+                refreshData();
+                backToBookingsList();
+            }
+
+            function renderActivityTimeline(analytics, waitlist, bookings = []) {
+                const container = document.getElementById('activityTimeline');
+                if (!container) return;
+
+                const activities = [];
+
+                (analytics.visits || []).forEach(v => {
+                    activities.push({
+                        type: 'visit',
+                        timestamp: v.timestamp,
+                        title: 'Page Visit',
+                        meta: `${v.device || 'Unknown'} • ${v.browser || 'Unknown'} • ${v.referrerCategory || 'Direct'}`
+                    });
+                });
+
+                waitlist.forEach(w => {
+                    activities.push({
+                        type: 'submission',
+                        timestamp: w.timestamp,
+                        title: `New ${w.role} signup`,
+                        meta: `${w.email} • ${w.state || 'N/A'}`
+                    });
+                });
+
+                (analytics.clicks || []).forEach(c => {
+                    activities.push({
+                        type: 'click',
+                        timestamp: c.timestamp,
+                        title: c.action || 'Click',
+                        meta: c.element || ''
+                    });
+                });
+
+                (bookings || []).forEach(b => {
+                    activities.push({
+                        type: 'booking',
+                        timestamp: b.createdAt,
+                        title: `New Booking: ${b.service?.name || 'Service'}`,
+                        meta: `${b.contact?.firstName || ''} ${b.contact?.lastName || ''} • ${b.property?.city || ''} • ${b.pricing?.total || ''}`
+                    });
+                });
+
+                activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                if (activities.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><i class="fas fa-clock"></i><p>No activity yet</p></div>';
+                    return;
+                }
+
+                const icons = {
+                    visit: { icon: 'eye', bg: 'var(--primary-light)', color: 'var(--primary)' },
+                    submission: { icon: 'envelope', bg: 'rgba(34, 197, 94, 0.15)', color: 'var(--success)' },
+                    click: { icon: 'mouse-pointer', bg: 'rgba(245, 158, 11, 0.15)', color: 'var(--warning)' },
+                    booking: { icon: 'calendar-check', bg: 'rgba(168, 85, 247, 0.15)', color: '#a855f7' }
+                };
+
+                container.innerHTML = activities.slice(0, 50).map(act => {
+                    const i = icons[act.type] || icons.click;
+                    return `
                     <div class="timeline-item">
                         <div class="timeline-icon" style="background: ${i.bg}; color: ${i.color}">
                             <i class="fas fa-${i.icon}"></i>
@@ -1187,76 +1742,76 @@ ${booking.contact?.accessInstructions || 'None'}
                         </div>
                     </div>
                 `;
-            }).join('');
-        }
-
-        function exportData() {
-            const data = {
-                analytics: getAnalytics(),
-                waitlist: getWaitlist(),
-                bookings: getBookings(),
-                exportedAt: new Date().toISOString()
-            };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `mopt-analytics-${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function exportCSV() {
-            const waitlist = getWaitlist();
-            const analytics = getAnalytics();
-            const allSubmissions = [...waitlist];
-
-            if (allSubmissions.length === 0) {
-                alert('No submissions to export');
-                return;
+                }).join('');
             }
 
-            const headers = ['Date', 'Email', 'Role', 'State'];
-            const rows = allSubmissions.map(s => [
-                new Date(s.timestamp).toLocaleString(),
-                s.email,
-                s.role,
-                s.state || ''
-            ]);
-
-            const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `mopt-waitlist-${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function clearData() {
-            if (confirm('Are you sure you want to clear ALL analytics, waitlist, and bookings data? This cannot be undone.')) {
-                localStorage.removeItem(ANALYTICS_KEY);
-                localStorage.removeItem(WAITLIST_KEY);
-                localStorage.removeItem(BOOKINGS_KEY);
-                refreshData();
+            function exportData() {
+                const data = {
+                    analytics: getAnalytics(),
+                    waitlist: getWaitlist(),
+                    bookings: getBookings(),
+                    exportedAt: new Date().toISOString()
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `mopt-analytics-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
             }
-        }
 
-        // Tab switching
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', function() {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                this.classList.add('active');
-                document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+            function exportCSV() {
+                const waitlist = getWaitlist();
+                const analytics = getAnalytics();
+                const allSubmissions = [...waitlist];
+
+                if (allSubmissions.length === 0) {
+                    alert('No submissions to export');
+                    return;
+                }
+
+                const headers = ['Date', 'Email', 'Role', 'State'];
+                const rows = allSubmissions.map(s => [
+                    new Date(s.timestamp).toLocaleString(),
+                    s.email,
+                    s.role,
+                    s.state || ''
+                ]);
+
+                const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `mopt-waitlist-${new Date().toISOString().split('T')[0]}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            function clearData() {
+                if (confirm('Are you sure you want to clear ALL analytics, waitlist, and bookings data? This cannot be undone.')) {
+                    localStorage.removeItem(ANALYTICS_KEY);
+                    localStorage.removeItem(WAITLIST_KEY);
+                    localStorage.removeItem(BOOKINGS_KEY);
+                    refreshData();
+                }
+            }
+
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function () {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                    document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+                });
             });
-        });
 
-        // Initial load
-        refreshData();
-        setInterval(refreshData, 30000);
-    </script>
+            // Initial load
+            refreshData();
+            setInterval(refreshData, 30000);
+        </script>
     </div>
 
     <script>
@@ -1274,7 +1829,7 @@ ${booking.contact?.accessInstructions || 'None'}
                         unlockDashboard();
                         return;
                     }
-                } catch (e) {}
+                } catch (e) { }
             }
             // Show auth overlay
             document.getElementById('authOverlay').classList.remove('hidden');
