@@ -1044,6 +1044,57 @@
             cursor: pointer;
             font-weight: 500;
         }
+
+        .badge-in-progress {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+        }
+
+        .assigned-cleaner-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            background: rgba(27, 122, 145, 0.12);
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .assigned-cleaner-badge .cleaner-avatar {
+            width: 22px;
+            height: 22px;
+            font-size: 10px;
+        }
+
+        .unassigned-label {
+            color: var(--text-dim);
+            font-size: 12px;
+            font-style: italic;
+        }
+
+        .inline-assign {
+            position: relative;
+            display: inline-block;
+        }
+
+        .inline-assign select {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--card-border);
+            color: var(--text-white);
+            font-family: inherit;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            max-width: 140px;
+        }
+
+        .inline-assign select:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
     </style>
 </head>
 
@@ -1175,6 +1226,7 @@
                                 <th>Service</th>
                                 <th>Address</th>
                                 <th>Total</th>
+                                <th>Assigned Cleaner</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -1527,12 +1579,40 @@
             `).join('');
             }
 
+            function getCleanerDisplayName(cleanerId) {
+                if (!cleanerId) return null;
+                const cleaners = getCleaners();
+                const c = cleaners.find(cl => cl.cleanerId === cleanerId);
+                if (!c) return null;
+                return { name: `${c.firstName} ${c.lastName}`, initials: getInitials(c.firstName, c.lastName), cleanerId: c.cleanerId };
+            }
+
+            function buildCleanerAssignOptions(selectedCleanerId) {
+                const cleaners = getCleaners().filter(c => c.status === 'active');
+                let opts = `<option value="">-- Unassigned --</option>`;
+                cleaners.forEach(c => {
+                    const selected = c.cleanerId === selectedCleanerId ? 'selected' : '';
+                    opts += `<option value="${c.cleanerId}" ${selected}>${c.firstName} ${c.lastName}</option>`;
+                });
+                return opts;
+            }
+
+            function assignCleanerToBooking(bookingId, cleanerId) {
+                const bookings = getBookings();
+                const idx = bookings.findIndex(b => b.bookingId === bookingId);
+                if (idx === -1) return;
+                bookings[idx].assignedCleanerId = cleanerId || null;
+                bookings[idx].updatedAt = new Date().toISOString();
+                saveBookings(bookings);
+                refreshData();
+            }
+
             function renderBookingsTable(bookings) {
                 const tbody = document.getElementById('bookingsTable');
                 if (!tbody) return;
 
                 if (bookings.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-calendar-xmark"></i><p>No bookings yet</p></td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><i class="fas fa-calendar-xmark"></i><p>No bookings yet</p></td></tr>';
                     return;
                 }
 
@@ -1547,6 +1627,12 @@
                     const scheduleDate = booking.schedule?.date ? new Date(booking.schedule.date + 'T00:00:00').toLocaleDateString() : 'N/A';
                     const scheduleTime = booking.schedule?.timeRange || '';
                     const sqft = booking.property?.sqft || '';
+
+                    // Assigned cleaner display
+                    const cleanerInfo = getCleanerDisplayName(booking.assignedCleanerId);
+                    const cleanerCell = cleanerInfo
+                        ? `<span class="assigned-cleaner-badge"><span class="cleaner-avatar">${cleanerInfo.initials}</span>${cleanerInfo.name}</span>`
+                        : `<div class="inline-assign"><select onchange="assignCleanerToBooking('${booking.bookingId}', this.value)">${buildCleanerAssignOptions(booking.assignedCleanerId)}</select></div>`;
 
                     return `
                     <tr>
@@ -1570,6 +1656,7 @@
                             <span title="${fullAddress}">${address}</span>
                         </td>
                         <td class="booking-price">${total}</td>
+                        <td>${cleanerCell}</td>
                         <td><span class="badge badge-${status}">${status}</span></td>
                         <td>
                             ${status === 'pending' ? `
@@ -1646,6 +1733,50 @@
                             <span class="detail-label">Estimated Total</span>
                             <span class="detail-value highlight">${booking.pricing?.total || '$0.00'}</span>
                         </div>
+                    </div>
+
+                    <!-- Assigned Cleaner -->
+                    <div class="detail-card">
+                        <h3><i class="fas fa-user-gear"></i> Assigned Cleaner</h3>
+                        ${(() => {
+                            const ci = getCleanerDisplayName(booking.assignedCleanerId);
+                            if (ci) {
+                                return `
+                                    <div class="detail-row">
+                                        <span class="detail-label">Cleaner</span>
+                                        <span class="detail-value">
+                                            <span class="assigned-cleaner-badge">
+                                                <span class="cleaner-avatar">${ci.initials}</span>
+                                                ${ci.name}
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">Cleaner ID</span>
+                                        <span class="detail-value">${ci.cleanerId}</span>
+                                    </div>
+                                    <div style="margin-top:8px">
+                                        <button class="btn btn-edit" style="font-size:12px;padding:6px 12px" onclick="viewCleanerDetails('${ci.cleanerId}')">
+                                            <i class="fas fa-eye"></i> View Cleaner Profile
+                                        </button>
+                                    </div>
+                                `;
+                            } else {
+                                return `
+                                    <div class="detail-row">
+                                        <span class="detail-label">Cleaner</span>
+                                        <span class="detail-value"><em class="unassigned-label">Not assigned</em></span>
+                                    </div>
+                                    <div style="margin-top:8px">
+                                        <div class="inline-assign">
+                                            <select onchange="assignCleanerToBooking('${booking.bookingId}', this.value); viewBookingDetails('${booking.bookingId}');" style="padding:6px 10px;font-size:13px">
+                                                ${buildCleanerAssignOptions(booking.assignedCleanerId)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        })()}
                     </div>
 
                     <!-- Customer -->
@@ -1757,13 +1888,15 @@
                 const booking = bookings.find(b => b.bookingId === bookingId);
                 if (!booking) return;
 
-                const statusOptions = ['pending', 'confirmed', 'completed', 'cancelled'].map(s =>
-                    `<option value="${s}" ${booking.status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+                const statusOptions = ['pending', 'confirmed', 'in-progress', 'completed', 'cancelled'].map(s =>
+                    `<option value="${s}" ${booking.status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')}</option>`
                 ).join('');
 
                 const propertyTypes = ['house', 'apartment', 'condo', 'townhouse'].map(t =>
                     `<option value="${t}" ${booking.property?.type === t ? 'selected' : ''}>${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
                 ).join('');
+
+                const cleanerOptions = buildCleanerAssignOptions(booking.assignedCleanerId);
 
                 document.getElementById('bookingDetailContent').innerHTML = `
                 <div class="detail-header">
@@ -1775,12 +1908,16 @@
 
                 <form id="editBookingForm" onsubmit="return saveBookingEdit(event, '${booking.bookingId}')">
                     <div class="detail-grid">
-                        <!-- Status -->
+                        <!-- Status & Assignment -->
                         <div class="detail-card">
-                            <h3><i class="fas fa-info-circle"></i> Status</h3>
+                            <h3><i class="fas fa-info-circle"></i> Status & Assignment</h3>
                             <div class="detail-row">
                                 <span class="detail-label">Status</span>
                                 <select class="edit-select" name="status">${statusOptions}</select>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Assigned Cleaner</span>
+                                <select class="edit-select" name="assignedCleanerId">${cleanerOptions}</select>
                             </div>
                         </div>
 
@@ -1900,6 +2037,7 @@
 
                 // Update fields
                 booking.status = fd.get('status');
+                booking.assignedCleanerId = fd.get('assignedCleanerId') || null;
                 booking.contact = booking.contact || {};
                 booking.contact.firstName = fd.get('firstName');
                 booking.contact.lastName = fd.get('lastName');
